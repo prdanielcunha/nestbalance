@@ -33,7 +33,7 @@ jobs:
       GCP_WIF_PROVIDER: projects/555464791734/locations/global/workloadIdentityPools/mn-prod-github/providers/github
       GCP_DEPLOY_SERVICE_ACCOUNT: mn-web-deployer@millionsnest.iam.gserviceaccount.com
       NESTBALANCE_RUNTIME_SERVICE_ACCOUNT: nestbalance-runtime@millionsnest.iam.gserviceaccount.com
-      FIREBASE_HOSTING_SITE: mn-nestbalance-555464791734
+      FIREBASE_HOSTING_SITE: mn-nb-homol-555464791734
       FIREBASE_STORAGE_BUCKET: millionsnest.firebasestorage.app
       NEXT_PUBLIC_FIREBASE_API_KEY: AIzaSyAhXY8TV8qoXz8Pd2u5jFHUTVssZmi3kMs
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: millionsnest.firebaseapp.com
@@ -142,7 +142,7 @@ jobs:
           if ! grep -Fq "$FIREBASE_HOSTING_SITE" /tmp/hosting-sites.json; then
             npx firebase hosting:sites:create "$FIREBASE_HOSTING_SITE" --project "$GCP_PROJECT_ID"
           fi
-          npx firebase target:apply hosting nestbalance "$FIREBASE_HOSTING_SITE" --project "$GCP_PROJECT_ID"
+          npx firebase target:apply hosting nestbalance-homologation "$FIREBASE_HOSTING_SITE" --project "$GCP_PROJECT_ID"
 
       - name: Preserve and authorize NestBalance Firebase Auth domain
         shell: bash
@@ -171,7 +171,7 @@ jobs:
             /tmp/firebase-auth-updated.json >/dev/null
 
       - name: Deploy NestBalance Hosting only
-        run: npx firebase deploy --only hosting:nestbalance --project "$GCP_PROJECT_ID"
+        run: npx firebase deploy --only hosting:nestbalance-homologation --project "$GCP_PROJECT_ID"
 
       - name: Smoke check public Hosting and API rewrite
         shell: bash

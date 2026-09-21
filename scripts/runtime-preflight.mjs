@@ -20,7 +20,7 @@ const expected = {
   projectNumber: '555464791734',
   region: 'us-central1',
   bucket: 'millionsnest.firebasestorage.app',
-  hostingSite: 'mn-nestbalance-555464791734'
+  hostingSite: 'mn-nb-homol-555464791734'
 };
 
 if (process.env.GCP_PROJECT_ID.trim() !== expected.projectId) {
@@ -40,7 +40,7 @@ if (process.env.FIREBASE_STORAGE_BUCKET.trim() !== expected.bucket) {
   process.exit(1);
 }
 if (process.env.FIREBASE_HOSTING_SITE.trim() !== expected.hostingSite) {
-  console.error('Hosting site must be the dedicated NestBalance site.');
+  console.error('Hosting site must be the dedicated NestBalance homologation site.');
   process.exit(1);
 }
 
