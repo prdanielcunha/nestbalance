@@ -1,0 +1,30 @@
+'use client';
+import { ref, uploadBytesResumable } from 'firebase/storage';
+import { auth, storage } from '@/src/lib/firebase/client';
+
+async function api<T>(path: string, body: unknown): Promise<T> {
+  const token = await auth?.currentUser?.getIdToken();
+  if (!token) throw new Error('AUTH_REQUIRED');
+  const response = await fetch(path, {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify(body)
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'REQUEST_FAILED');
+  return json as T;
+}
+
+export async function ingestEvidence(householdId: string, file: File) {
+  if (!storage) throw new Error('STORAGE_NOT_CONFIGURED');
+  const started = await api<{evidenceId:string;uploadPath:string}>('/api/evidence/start', {
+    householdId, originalName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size
+  });
+  const objectRef = ref(storage, started.uploadPath);
+  const task = uploadBytesResumable(objectRef, file, {
+    contentType: file.type,
+    customMetadata: { householdId, evidenceId: started.evidenceId }
+  });
+  await new Promise<void>((resolve, reject) => task.on('state_changed', undefined, reject, () => resolve()));
+  return api<{status:'accepted'|'duplicate';evidenceId:string;canonicalEvidenceId:string}>('/api/evidence/finalize', {
+    householdId, evidenceId: started.evidenceId
+  });
+}
