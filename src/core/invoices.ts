@@ -126,10 +126,13 @@ function installmentFromLine(line:string){
     return validInstallmentMatch(current,total)?{current,total}:null;
   }
 
-  const dateRanges=[
-    ...[...line.matchAll(/\b\d{2}[\/.\-]\d{2}[\/.\-]\d{2,4}\b/g)].map(m=>[m.index,m.index+m[0].length] as const),
-    ...[...line.matchAll(/\b\d{2}[\/.\-]\d{2}\b/g)].map(m=>[m.index,m.index+m[0].length] as const)
-  ];
+  const fullDateRanges=[...line.matchAll(/\b\d{2}[\/.\-]\d{2}[\/.\-]\d{2,4}\b/g)]
+    .map(m=>[m.index,m.index+m[0].length] as const);
+  const shortDateAtStart=line.match(/^\s*(\d{2}[\/.\-]\d{2})\b/);
+  const shortDateRanges=shortDateAtStart&&shortDateAtStart.index!==undefined
+    ? [[shortDateAtStart.index+shortDateAtStart[0].indexOf(shortDateAtStart[1]),shortDateAtStart.index+shortDateAtStart[0].indexOf(shortDateAtStart[1])+shortDateAtStart[1].length] as const]
+    : [];
+  const dateRanges=[...fullDateRanges,...shortDateRanges];
 
   for(const match of line.matchAll(genericInstallmentPattern)){
     const start=match.index;
