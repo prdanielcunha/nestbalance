@@ -70,7 +70,7 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   }
 
   if (!firebaseConfigured) return <main className="center-shell"><section className="setup-card"><div className="brand-mark">N</div><h1>NestBalance</h1><p>{t.setupMissing}</p></section></main>;
-  if (loading) return <main className="center-shell"><div className="skeleton-card" aria-label="Carregando" /></main>;
+  if (loading) return <main className="center-shell"><div className="skeleton-card" role="status"><span className="sr-only">Carregando</span></div></main>;
 
   const authenticatedUser = auth?.currentUser ?? null;
   if (!state && sessionError && authenticatedUser) {
