@@ -4,6 +4,8 @@ import { FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import { detectDocumentSignals } from '../src/core/document-signals.js';
 import { parseFinancialList } from '../src/core/text-parser.js';
 import { extractFinancialImage } from './ai/financial-image.js';
+import { extractMovementListImage } from './ai/movement-list-image.js';
+import { buildImportedMovements } from '../src/core/movement-import.js';
 import { transcribeFinancialAudio } from './ai/audio-transcription.js';
 import { isOpenAiConfigured } from './ai/openai-client.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
@@ -49,7 +51,8 @@ function publicExtraction(data:any){
     extraction:data.extraction||null,
     transcript:data.transcript||null,
     transcriptTruncated:Boolean(data.transcriptTruncated),
-    parsedInterpretations:data.parsedInterpretations||null
+    parsedInterpretations:data.parsedInterpretations||null,
+    movementList:data.movementList||null
   };
 }
 
@@ -118,21 +121,43 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     let persisted:any;
     if(kind==='image'){
       const result=await extractFinancialImage(bytes,mimeType);
-      persisted={
-        version:1,
-        analysisVersion,
-        evidenceId:resolved.evidenceId,
-        state:'extracted',
-        kind:'image',
-        model:result.model,
-        extraction:result.extraction,
-        deterministic:false,
-        aiUsed:true,
-        visionUsed:true,
-        sttUsed:false,
-        ocrUsed:false,
-        createdAt:FieldValue.serverTimestamp()
-      };
+      if(result.extraction.documentType==='bank_screenshot'){
+        const movementList=await extractMovementListImage(bytes,mimeType);
+        const parsedInterpretations=buildImportedMovements(movementList.extraction);
+        persisted={
+          version:1,
+          analysisVersion,
+          evidenceId:resolved.evidenceId,
+          state:'extracted',
+          kind:'image',
+          model:movementList.model,
+          extraction:result.extraction,
+          movementList:movementList.extraction,
+          parsedInterpretations:parsedInterpretations.length?parsedInterpretations:null,
+          deterministic:false,
+          aiUsed:true,
+          visionUsed:true,
+          sttUsed:false,
+          ocrUsed:false,
+          createdAt:FieldValue.serverTimestamp()
+        };
+      }else{
+        persisted={
+          version:1,
+          analysisVersion,
+          evidenceId:resolved.evidenceId,
+          state:'extracted',
+          kind:'image',
+          model:result.model,
+          extraction:result.extraction,
+          deterministic:false,
+          aiUsed:true,
+          visionUsed:true,
+          sttUsed:false,
+          ocrUsed:false,
+          createdAt:FieldValue.serverTimestamp()
+        };
+      }
     }else{
       const result=await transcribeFinancialAudio(bytes,mimeType,String(resolved.data.originalName||'audio'));
       const parsedInterpretations=parseFinancialList(result.transcript).filter(item=>item.money.amountMinor>0);
