@@ -211,7 +211,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         householdId,
         amountMinor:item.money.amountMinor,
         description:item.description,
-        observedOn:item.occurredOn||null
+        observedOn:item.occurredOn||null,
+        visibility
       });
       setPaymentMatches(result.matches);
     }catch{
