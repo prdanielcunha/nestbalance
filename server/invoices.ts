@@ -150,7 +150,7 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
     const evidenceId=String(req.body?.evidenceId||'');
     const referenceDate=referenceDateFrom(req);
     const rawIds=Array.isArray(req.body?.itemIds)?req.body.itemIds:[];
-    const itemIds=[...new Set(rawIds.map((value:any)=>String(value||'')).filter(Boolean))];
+    const itemIds:string[]=[...new Set<string>(rawIds.map((value:any)=>String(value||'')).filter((value:string)=>Boolean(value)))];
     if(itemIds.length===0) return error(res,400,'EMPTY_INVOICE_SELECTION');
     if(itemIds.length>120) return error(res,400,'INVOICE_SELECTION_TOO_LARGE');
 
