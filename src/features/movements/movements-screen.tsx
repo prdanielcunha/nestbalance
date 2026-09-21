@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
@@ -24,7 +25,7 @@ function matchesFilter(row:HomeRow,filter:Filter){
   return row.direction==='expense'&&row.source!=='credit_card_invoice';
 }
 
-export function MovementsScreen({householdId}:{householdId:string}){
+export function MovementsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
   const [rows,setRows]=useState<HomeRow[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
@@ -108,6 +109,6 @@ export function MovementsScreen({householdId}:{householdId:string}){
             </article>)}
           </section>}
 
-    <AppNav/>
+    <AppNav canContribute={role!=='read_only'}/>
   </main>;
 }
