@@ -17,13 +17,16 @@ export type InvoicePreviewItem={
 };
 
 export type InvoicePreview={
-  parserVersion:'invoice-v0.1';
+  parserVersion:'invoice-v0.1'|'invoice-vision-v1';
   invoiceKey:string;
   dueOn:string;
   dueDateSource:'document'|'card_cycle';
   items:InvoicePreviewItem[];
   ignoredLines:number;
   reviewCount:number;
+  globalNeedsReview:string[];
+  statementTotalMinor:number|null;
+  reconciliationDeltaMinor:number|null;
   observedMinor:number;
   futureInstallmentsMinor:number;
 };
@@ -144,7 +147,7 @@ function installmentFromLine(line:string){
   return null;
 }
 
-function stableItemId(index:number,line:string){
+export function invoicePreviewItemId(index:number,line:string){
   let hash=2166136261;
   for(const ch of line){
     hash^=ch.charCodeAt(0);
@@ -208,7 +211,7 @@ export function parseInvoiceText(input:{
       : [];
 
     items.push({
-      id:stableItemId(index,line),
+      id:invoicePreviewItemId(index,line),
       sourceLine:line.slice(0,300),
       description,
       amountMinor,
@@ -234,6 +237,9 @@ export function parseInvoiceText(input:{
     items,
     ignoredLines,
     reviewCount:items.filter(item=>item.needsReview.length>0).length,
+    globalNeedsReview:[],
+    statementTotalMinor:null,
+    reconciliationDeltaMinor:null,
     observedMinor,
     futureInstallmentsMinor
   };
