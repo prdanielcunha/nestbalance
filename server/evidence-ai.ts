@@ -105,14 +105,14 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     if(!acquired) return error(res,409,'AI_ANALYSIS_IN_PROGRESS');
 
     const storagePath=String(resolved.data.storagePath||'');
-    if(!storagePath) return error(res,409,'EVIDENCE_STORAGE_UNAVAILABLE');
+    if(!storagePath) throw Object.assign(new Error('EVIDENCE_STORAGE_UNAVAILABLE'),{statusCode:409});
     const [bytes]=await adminBucket.file(storagePath).download();
     const verification=verifyVaultPreviewBytes({
       size:Number(resolved.data.verifiedSize||0),
       mimeType,
       sha256:String(resolved.data.sha256||'')
     },bytes);
-    if(!verification.ok) return error(res,409,`EVIDENCE_${verification.reason.toUpperCase()}`);
+    if(!verification.ok) throw Object.assign(new Error(`EVIDENCE_${verification.reason.toUpperCase()}`),{statusCode:409});
 
     let persisted:any;
     if(kind==='image'){
@@ -134,7 +134,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
       };
     }else{
       const result=await transcribeFinancialAudio(bytes,mimeType,String(resolved.data.originalName||'audio'));
-      const parsedInterpretations=parseFinancialList(result.transcript);
+      const parsedInterpretations=parseFinancialList(result.transcript).filter(item=>item.money.amountMinor>0);
       persisted={
         version:1,
         analysisVersion,
@@ -144,7 +144,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
         model:result.model,
         transcript:result.transcript,
         transcriptTruncated:result.truncated,
-        parsedInterpretations,
+        parsedInterpretations:parsedInterpretations.length?parsedInterpretations:null,
         signals:detectDocumentSignals(result.transcript),
         deterministic:false,
         aiUsed:true,
@@ -194,7 +194,9 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     }
     const safe=[
       'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','AI_NOT_CONFIGURED',
-      'AI_IMAGE_TYPE_REQUIRED','AI_IMAGE_TOO_LARGE','AI_AUDIO_TYPE_REQUIRED','AI_AUDIO_TOO_LARGE'
+      'AI_IMAGE_TYPE_REQUIRED','AI_IMAGE_TOO_LARGE','AI_AUDIO_TYPE_REQUIRED','AI_AUDIO_TOO_LARGE',
+      'EVIDENCE_STORAGE_UNAVAILABLE','EVIDENCE_INVALID_METADATA','EVIDENCE_SIZE_MISMATCH',
+      'EVIDENCE_SIGNATURE_MISMATCH','EVIDENCE_HASH_MISMATCH'
     ];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'AI_ANALYSIS_FAILED');
   }
