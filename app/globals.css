@@ -216,3 +216,31 @@
 .invoice-global-review strong{font-size:12px}
 .invoice-global-review span{margin-top:4px;font-size:11px;line-height:1.5;color:var(--muted)}
 @media(max-width:720px){.invoice-reconciliation{grid-template-columns:1fr}}
+
+
+.invoice-item-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.invoice-item-footer span,.invoice-item-footer em{font-size:11px;color:var(--muted);font-style:normal}
+.invoice-item-footer em{color:#b17625;font-weight:750}
+.invoice-item-footer button,.invoice-global-actions button,.invoice-add-item-button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:8px 11px;font-size:11px;font-weight:800}
+.invoice-item-footer button:hover,.invoice-global-actions button:hover,.invoice-add-item-button:hover{border-color:rgba(94,106,210,.35);color:var(--iris)}
+.invoice-add-item-button{margin-top:10px;width:100%;background:transparent}
+.invoice-global-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.nested-sheet-backdrop{position:fixed;inset:0;z-index:70;display:flex;align-items:flex-end;justify-content:center;padding:24px;background:rgba(8,11,20,.52);backdrop-filter:blur(14px)}
+.invoice-editor-sheet{width:min(620px,100%);max-height:min(88vh,780px);overflow:auto;border:1px solid var(--line);border-radius:28px;background:var(--paper);box-shadow:0 30px 90px rgba(0,0,0,.28);padding:24px}
+.invoice-editor-sheet h3{margin:6px 0 18px;font-size:24px;letter-spacing:-.035em}
+.invoice-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.invoice-kind-picker{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.invoice-kind-picker button{border:1px solid var(--line);background:var(--surface-strong);color:var(--muted);border-radius:14px;padding:11px 12px;font-size:12px;font-weight:800}
+.invoice-kind-picker button.active{border-color:rgba(94,106,210,.4);background:rgba(94,106,210,.08);color:var(--iris)}
+.invoice-installment-toggle{display:flex;align-items:center;gap:10px;margin:16px 0 4px;font-size:12px;font-weight:750}
+.invoice-installment-toggle input{width:16px;height:16px}
+.invoice-editor-actions{flex-wrap:wrap}
+.danger-ghost-button{border:1px solid rgba(185,72,72,.24);background:rgba(185,72,72,.06);color:#a44848;padding:11px 14px;border-radius:999px;font-weight:800}
+@media(max-width:720px){
+  .nested-sheet-backdrop{padding:0;align-items:flex-end}
+  .invoice-editor-sheet{border-radius:26px 26px 0 0;padding:20px;max-height:92vh}
+  .invoice-editor-grid{grid-template-columns:1fr}
+  .invoice-item-footer{align-items:flex-start}
+  .invoice-global-actions{flex-direction:column}
+  .invoice-global-actions button{width:100%}
+}
