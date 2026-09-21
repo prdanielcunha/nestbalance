@@ -29,11 +29,12 @@ export async function commitInterpretation(args: {
   uid: string;
   interpretation: FinancialInterpretation;
   file?: File | null;
+  evidenceId?: string | null;
   onUploadProgress?: (progress: UploadProgress) => void;
 }): Promise<CommitResult> {
   const { householdId, interpretation, file, onUploadProgress } = args;
-  let evidenceId: string | null = null;
-  if (file) {
+  let evidenceId: string | null = args.evidenceId ?? null;
+  if (file && !evidenceId) {
     const evidence = await ingestEvidence(householdId, file, onUploadProgress);
     evidenceId = evidence.canonicalEvidenceId;
   }

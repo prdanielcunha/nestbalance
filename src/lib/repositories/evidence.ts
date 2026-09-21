@@ -1,6 +1,7 @@
 'use client';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { auth, storage } from '@/src/lib/firebase/client';
+import type { DocumentSignalsResult } from '@/src/core/document-signals';
 
 export type UploadProgress = { phase: 'uploading' | 'verifying'; percent: number };
 
@@ -33,4 +34,20 @@ export async function ingestEvidence(householdId: string, file: File, onProgress
   return api<{status:'accepted'|'duplicate';evidenceId:string;canonicalEvidenceId:string}>('/api/evidence/finalize', {
     householdId, evidenceId: started.evidenceId
   });
+}
+
+export type EvidenceTextAnalysis = {
+  state:'extracted'|'needs_ai'|'unavailable';
+  parser:string|null;
+  reason:string|null;
+  text:string|null;
+  characters:number;
+  truncated:boolean;
+  totalPages:number|null;
+  extractedPages:number|null;
+  signals:DocumentSignalsResult;
+};
+
+export async function analyzeEvidenceText(householdId:string,evidenceId:string) {
+  return api<EvidenceTextAnalysis>('/api/evidence/analyze-text',{householdId,evidenceId});
 }
