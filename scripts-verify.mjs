@@ -93,6 +93,7 @@ assert.match(openFinanceSource,/preservedTransactionHistory:true/);
 assert.ok(!openFinanceSource.includes('password:req.body'),'Bank passwords must never be accepted by NestBalance.');
 assert.match(belvoSource,/process\.env\.BELVO_SECRET_ID/);
 assert.match(belvoSource,/process\.env\.BELVO_SECRET_PASSWORD/);
+assert.match(belvoSource,/NESTBALANCE_ALLOW_PAID_INTEGRATIONS/);
 assert.match(belvoSource,/consent_link_creation/);
 assert.match(openFinanceCore,/nestbalance\.millionsnest\.com/);
 assert.match(openFinanceCore,/mn-nestbalance-555464791734\.web\.app/);
