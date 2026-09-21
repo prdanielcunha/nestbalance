@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { getVaultDetail, getVaultPreview, listVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
+import { getVaultDetail, getVaultPreview, listVault, searchVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
@@ -42,6 +42,10 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   const [previewUrl,setPreviewUrl]=useState<string|null>(null);
   const [previewLoading,setPreviewLoading]=useState(false);
   const [view,setView]=useState<FinancialView>('household');
+  const [query,setQuery]=useState('');
+  const [searching,setSearching]=useState(false);
+  const [searchResults,setSearchResults]=useState<VaultItem[]|null>(null);
+  const [searchError,setSearchError]=useState('');
 
   async function load() {
     setLoading(true); setError('');
@@ -51,6 +55,28 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   }
 
   useEffect(()=>{ void load(); },[householdId]);
+
+  useEffect(()=>{
+    const normalized=query.trim();
+    if(normalized.length<2){
+      setSearchResults(null);
+      setSearching(false);
+      setSearchError('');
+      return;
+    }
+
+    let cancelled=false;
+    setSearching(true);
+    setSearchError('');
+    const timer=window.setTimeout(()=>{
+      void searchVault(householdId,normalized,view)
+        .then(result=>{if(!cancelled)setSearchResults(result.items);})
+        .catch(()=>{if(!cancelled){setSearchResults([]);setSearchError('Não conseguimos pesquisar seu Cofre agora.');}})
+        .finally(()=>{if(!cancelled)setSearching(false);});
+    },350);
+
+    return ()=>{cancelled=true;window.clearTimeout(timer);};
+  },[householdId,query,view]);
 
   useEffect(()=>()=>{ if(previewUrl) URL.revokeObjectURL(previewUrl); },[previewUrl]);
 
@@ -75,6 +101,8 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   }
 
   const visibleItems=useMemo(()=>items.filter(item=>inFinancialView(item.scope,view)),[items,view]);
+  const displayItems=searchResults??visibleItems;
+  const normalizedQuery=query.trim();
 
   const summary=useMemo(()=>{
     const signals=detail?.understood?.signals?.candidates||[];
@@ -99,16 +127,34 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
       <p>Comprovantes, faturas e arquivos originais ficam preservados. O NestBalance separa o que você enviou do que ele entendeu.</p>
     </section>
 
-    {error && <p className="error-copy" role="alert">{error}</p>}
+    <section className="vault-search-panel" aria-label="Pesquisar no Cofre">
+      <label htmlFor="vault-search">Encontre pelo que você lembra</label>
+      <div className="vault-search-input">
+        <input
+          id="vault-search"
+          type="search"
+          value={query}
+          onChange={event=>setQuery(event.target.value)}
+          placeholder="Ex.: comprovante da luz de setembro"
+          maxLength={120}
+          autoComplete="off"
+        />
+        {query&&<button type="button" onClick={()=>setQuery('')} aria-label="Limpar busca">Limpar</button>}
+      </div>
+      <p>{searching?'Procurando nos documentos entendidos…':normalizedQuery.length>=2?`${displayItems.length} resultado${displayItems.length===1?'':'s'} encontrado${displayItems.length===1?'':'s'}.`:'Busque por valor, mês, estabelecimento, pessoa ou descrição.'}</p>
+    </section>
+
+    {(error||searchError) && <p className="error-copy" role="alert">{error||searchError}</p>}
 
     {loading ? <div className="vault-list" aria-label="Carregando Cofre">{[0,1,2].map(i=><div className="vault-row skeleton-line" key={i} />)}</div>
-    : visibleItems.length===0 ? <section className="empty-state"><h3>Seu Cofre começa com o primeiro envio.</h3><p>Quando você enviar um comprovante, fatura ou documento pela Entrada universal, o original aparecerá aqui.</p></section>
-    : <section className="vault-list" aria-label="Documentos guardados">
-      {visibleItems.map(item=><button className="vault-row" key={item.evidenceId} onClick={()=>openItem(item)}>
+    : normalizedQuery.length>=2&&!searching&&displayItems.length===0 ? <section className="empty-state"><h3>Nada encontrado com essa lembrança.</h3><p>Tente um valor, mês, estabelecimento ou outra palavra que aparecia no comprovante.</p></section>
+    : visibleItems.length===0&&normalizedQuery.length<2 ? <section className="empty-state"><h3>Seu Cofre começa com o primeiro envio.</h3><p>Quando você enviar um comprovante, fatura ou documento pela Entrada universal, o original aparecerá aqui.</p></section>
+    : <section className="vault-list" aria-label={normalizedQuery.length>=2?'Resultados da busca':'Documentos guardados'}>
+      {displayItems.map(item=><button className="vault-row" key={item.evidenceId} onClick={()=>openItem(item)}>
         <div className="vault-file-mark">{typeLabel(item.mimeType).slice(0,1)}</div>
         <div className="vault-row-copy">
           <strong>{item.originalName}</strong>
-          <span>{typeLabel(item.mimeType)} · {sizeLabel(item.size)} · {understandingLabel(item.extractionState)}{item.scope==='personal'?' · Só para mim':''}</span>
+          <span>{item.matchReason?'Encontrado por '+item.matchReason:typeLabel(item.mimeType)+' · '+sizeLabel(item.size)+' · '+understandingLabel(item.extractionState)+(item.scope==='personal'?' · Só para mim':'')}</span>
         </div>
         <span className="vault-row-date">{item.createdAtMs ? new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(item.createdAtMs) : ''}</span>
       </button>)}
