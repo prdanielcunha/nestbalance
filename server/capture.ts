@@ -5,6 +5,7 @@ import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
 import { parseFinancialText } from '../src/core/text-parser.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertScopedAccess, scopeFields } from './privacy.js';
 
 function error(res: Response, status: number, code: string) { return res.status(status).json({ ok: false, error: code }); }
 
@@ -13,6 +14,7 @@ export async function commitCapture(req: Request, res: Response) {
     const user = await requireFirebaseUser(req);
     const householdId = String(req.body?.householdId || '');
     await requireHouseholdMember(householdId,user.uid,'contribute');
+    const privacy=scopeFields(req.body?.scope,user.uid);
     const sourceText = String(req.body?.sourceText || '').trim();
     if (!sourceText || sourceText.length > 8000) return error(res, 400, 'INVALID_CAPTURE_TEXT');
     const observedOn = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body?.observedOn || '')) ? String(req.body.observedOn) : new Date().toISOString().slice(0,10);
@@ -24,12 +26,15 @@ export async function commitCapture(req: Request, res: Response) {
       const ev = await adminDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`).get();
       if (!ev.exists) return error(res, 400, 'EVIDENCE_NOT_FOUND');
       const data = ev.data()!;
+      assertScopedAccess(data,user.uid);
+      const evidenceScope=data.scope==='personal'?'personal':'household';
+      if(evidenceScope!==privacy.scope) return error(res,409,'PRIVACY_SCOPE_MISMATCH');
       if (!['accepted','duplicate'].includes(data.status)) return error(res, 409, 'EVIDENCE_NOT_READY');
       evidenceId = data.canonicalEvidenceId || evidenceId;
     }
 
     const fingerprint = fingerprintForInterpretation(interpretation, observedOn);
-    const fingerprintId = createHash('sha256').update(fingerprint).digest('hex');
+    const fingerprintId = createHash('sha256').update(privacy.scope+'|'+(privacy.ownerUid||'')+'|'+fingerprint).digest('hex');
     const target = interpretation.kind === 'commitment' ? 'commitments' : 'transactions';
     const entityRef = adminDb.collection('households').doc(householdId).collection(target).doc();
     const fingerprintRef = adminDb.doc(`households/${householdId}/captureFingerprints/${fingerprintId}`);
@@ -49,6 +54,8 @@ export async function commitCapture(req: Request, res: Response) {
 
       tx.create(entityRef, {
         description: interpretation.description,
+        scope:privacy.scope,
+        ownerUid:privacy.ownerUid,
         amountMinor: interpretation.money.amountMinor,
         currency: interpretation.money.currency,
         direction: interpretation.direction,
@@ -76,6 +83,7 @@ export async function commitCapture(req: Request, res: Response) {
       });
       tx.create(auditRef, {
         type: 'capture.committed',
+        scope:privacy.scope,
         actorUid: user.uid,
         entityType: interpretation.kind,
         entityId: entityRef.id,
@@ -86,6 +94,6 @@ export async function commitCapture(req: Request, res: Response) {
 
     return res.status(result.status === 'created' ? 201 : 200).json({ ok: true, ...result });
   } catch (err: any) {
-    return error(res, err.statusCode || 500, ['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'].includes(err.message) ? err.message : 'CAPTURE_COMMIT_FAILED');
+    return error(res, err.statusCode || 500, ['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'].includes(err.message) ? err.message : 'CAPTURE_COMMIT_FAILED');
   }
 }
