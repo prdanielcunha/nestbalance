@@ -1,0 +1,38 @@
+name: Audit NestBalance WIF Provider
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/wif-provider-audit.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GCP_PROJECT_ID: millionsnest
+      GCP_WIF_PROVIDER: projects/555464791734/locations/global/workloadIdentityPools/mn-prod-github/providers/github
+      GCP_DEPLOY_SERVICE_ACCOUNT: mn-web-deployer@millionsnest.iam.gserviceaccount.com
+
+    steps:
+      - name: Authenticate to MillionsNest GCP
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Describe GitHub WIF provider
+        run: |
+          gcloud iam workload-identity-pools providers describe github             --project="$GCP_PROJECT_ID"             --location=global             --workload-identity-pool=mn-prod-github             --format='yaml(attributeCondition,attributeMapping)'
