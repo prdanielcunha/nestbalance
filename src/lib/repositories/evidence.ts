@@ -3,6 +3,7 @@ import { auth } from '@/src/lib/firebase/client';
 import type { DocumentSignalsResult } from '@/src/core/document-signals';
 import type { AiFinancialExtraction } from '@/src/core/ai-financial';
 import type { FinancialInterpretation } from '@/src/core/types';
+import type { ImportedMovementList } from '@/src/core/movement-import';
 
 export type UploadProgress = { phase: 'uploading' | 'verifying'; percent: number };
 
@@ -77,6 +78,7 @@ export type AiEvidenceAnalysis = {
   transcript:string|null;
   transcriptTruncated:boolean;
   parsedInterpretations:FinancialInterpretation[]|null;
+  movementList:ImportedMovementList|null;
 };
 
 export async function analyzeEvidenceAi(householdId:string,evidenceId:string) {
