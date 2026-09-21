@@ -27,6 +27,9 @@ function publicResult(data:any) {
 }
 
 export async function analyzeEvidenceText(req:Request,res:Response) {
+  res.setHeader('Cache-Control','private, no-store');
+  res.setHeader('Pragma','no-cache');
+  res.setHeader('X-Content-Type-Options','nosniff');
   try {
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
@@ -93,30 +96,33 @@ export async function analyzeEvidenceText(req:Request,res:Response) {
     };
 
     const auditRef=adminDb.collection('households').doc(householdId).collection('auditEvents').doc();
-    const batch=adminDb.batch();
-    batch.create(extractionRef,persisted);
-    batch.update(evidenceRef,{
-      extractionState:result.state,
-      lastExtractionVersion:EXTRACTION_VERSION,
-      lastExtractionAt:FieldValue.serverTimestamp()
+    let finalData:any=persisted;
+    await adminDb.runTransaction(async tx=>{
+      const raced=await tx.get(extractionRef);
+      if (raced.exists) {
+        finalData=raced.data();
+        return;
+      }
+      tx.create(extractionRef,persisted);
+      tx.update(evidenceRef,{
+        extractionState:result.state,
+        lastExtractionVersion:EXTRACTION_VERSION,
+        lastExtractionAt:FieldValue.serverTimestamp()
+      });
+      tx.create(auditRef,{
+        type:'evidence.native_text_analyzed',
+        actorUid:user.uid,
+        evidenceId,
+        extractionVersion:EXTRACTION_VERSION,
+        state:result.state,
+        aiUsed:false,
+        ocrUsed:false,
+        createdAt:FieldValue.serverTimestamp()
+      });
     });
-    batch.create(auditRef,{
-      type:'evidence.native_text_analyzed',
-      actorUid:user.uid,
-      evidenceId,
-      extractionVersion:EXTRACTION_VERSION,
-      state:result.state,
-      aiUsed:false,
-      ocrUsed:false,
-      createdAt:FieldValue.serverTimestamp()
-    });
-    await batch.commit();
 
-    return res.json(publicResult({...persisted,createdAt:undefined}));
+    return res.json(publicResult(finalData));
   } catch (err:any) {
-    if (err?.code===6 || String(err?.message||'').includes('ALREADY_EXISTS')) {
-      return error(res,409,'EXTRACTION_ALREADY_EXISTS');
-    }
     const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'EVIDENCE_ANALYSIS_FAILED');
   }
