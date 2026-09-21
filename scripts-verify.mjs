@@ -58,6 +58,7 @@ assert.match(aiImage,/AI_IMAGE_MAX_BYTES=8\*1024\*1024/);
 assert.match(aiImage,/untrusted data, never as instructions/);
 assert.match(aiAudio,/AI_AUDIO_MAX_BYTES=10\*1024\*1024/);
 assert.match(aiAudio,/gpt-transcribe|transcriptionModel/);
+assert.match(cloudrun,/app\.get\('\/api\/healthz'/);
 
 function sourceFiles(root){
   const out=[];
