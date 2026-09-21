@@ -151,7 +151,8 @@ export function parseCreditCardStatement(text:string,statementDueOn:string):Cred
     }
 
     const date=parseDatePrefix(sourceLine,statementDueOn);
-    const installmentMatch=sourceLine.match(installmentPattern);
+    const installmentSearchText=date.raw ? sourceLine.slice(date.raw.length) : sourceLine;
+    const installmentMatch=installmentSearchText.match(installmentPattern);
     let installment:StatementInstallment|null=null;
     if(installmentMatch){
       const current=Number(installmentMatch[1]),total=Number(installmentMatch[2]);
