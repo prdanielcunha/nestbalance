@@ -223,12 +223,12 @@ export function answerAssistantQuestion(input:{
         id:plan.id,
         label:plan.description||'Compra parcelada',
         amountMinor:positive(plan.amountMinor),
-        detail:`Faltam ${plan.remaining} parcela${plan.remaining===1?'':'s'} de ${plan.totalInstallments}`
+        detail:`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'} de ${plan.totalInstallments}`
       })),
       cards:visible.slice(0,6).map(plan=>({
         label:plan.description||'Compra parcelada',
         amountMinor:positive(plan.amountMinor),
-        detail:`Faltam ${plan.remaining} parcela${plan.remaining===1?'':'s'}`
+        detail:`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'}`
       })),
       suggestions:['Dá para gastar R$ 500?','O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?']
     };
