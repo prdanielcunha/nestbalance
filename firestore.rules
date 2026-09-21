@@ -46,11 +46,9 @@ service cloud.firestore {
         allow create, update, delete: if false;
       }
       match /evidenceAssets/{id} {
-        allow read: if isMember(hid);
-        allow create, update, delete: if false;
+        allow read, create, update, delete: if false;
         match /extractions/{extractionId} {
-          allow read: if isMember(hid);
-          allow create, update, delete: if false;
+          allow read, create, update, delete: if false;
         }
       }
       match /evidenceHashes/{id} {
