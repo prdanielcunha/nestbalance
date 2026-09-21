@@ -93,3 +93,15 @@
 .premium-input:focus,.money-input-wrap:focus-within{border-color:rgba(94,106,210,.6);box-shadow:0 0 0 3px rgba(94,106,210,.09)}
 .field-help{display:block;margin-top:7px;font-size:11px;color:var(--muted)}
 @media(max-width:720px){.first-money-card{grid-template-columns:1fr;align-items:start}.first-money-card .primary-button{width:100%}.account-type-grid{grid-template-columns:1fr}}
+
+
+.direction-choice-panel{margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--surface-strong)}
+.direction-choice-panel>span{display:block;font-size:13px;font-weight:750;margin-bottom:10px}
+.direction-choice-panel>div{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.direction-choice-panel button{border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:11px 10px;border-radius:14px;font-weight:750}
+.direction-choice-panel button:active{transform:scale(.98)}
+.direction-choice-panel small{display:block;color:var(--muted);font-size:12px;line-height:1.45;margin-top:10px}
+.vault-transcript{margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--paper)}
+.vault-transcript>span{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}
+.vault-transcript p{margin:0;color:var(--ink);font-size:13px;line-height:1.6;white-space:pre-wrap}
+@media(max-width:720px){.direction-choice-panel>div{grid-template-columns:1fr}}
