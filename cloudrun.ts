@@ -4,6 +4,7 @@ import { finalizeEvidence, startEvidence } from './server/evidence.js';
 import { analyzeEvidenceText } from './server/evidence-analysis.js';
 import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence } from './server/vault.js';
 import { createAccount } from './server/accounts.js';
+import { analyzeEvidenceWithAi } from './server/evidence-ai.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -12,6 +13,7 @@ app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'nestbalance-ap
 app.post('/api/evidence/start', startEvidence);
 app.post('/api/evidence/finalize', finalizeEvidence);
 app.post('/api/evidence/analyze-text', analyzeEvidenceText);
+app.post('/api/evidence/analyze-ai', analyzeEvidenceWithAi);
 app.post('/api/vault/list', listVaultEvidence);
 app.post('/api/vault/detail', getVaultEvidenceDetail);
 app.post('/api/vault/preview', previewVaultEvidence);
