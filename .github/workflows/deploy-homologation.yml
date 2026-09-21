@@ -1,10 +1,13 @@
 name: Deploy NestBalance Homologation
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       confirm:
-        description: Type DEPLOY_NESTBALANCE_HOMOLOG to deploy main
+        description: Type DEPLOY_NESTBALANCE_HOMOLOG to redeploy main
         required: true
         type: string
 
@@ -14,26 +17,26 @@ permissions:
 
 concurrency:
   group: nestbalance-homologation
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
-    if: github.ref_name == 'main' && inputs.confirm == 'DEPLOY_NESTBALANCE_HOMOLOG'
+    if: github.event_name == 'push' || inputs.confirm == 'DEPLOY_NESTBALANCE_HOMOLOG'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    environment: homologation
+    timeout-minutes: 35
     env:
-      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-      GCP_REGION: ${{ vars.GCP_REGION }}
-      GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
-      GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
-      NESTBALANCE_RUNTIME_SERVICE_ACCOUNT: ${{ vars.NESTBALANCE_RUNTIME_SERVICE_ACCOUNT }}
-      FIREBASE_HOSTING_SITE: ${{ vars.FIREBASE_HOSTING_SITE }}
-      FIREBASE_STORAGE_BUCKET: ${{ vars.FIREBASE_STORAGE_BUCKET }}
-      NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
-      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
-      NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+      GCP_PROJECT_ID: millionsnest
+      GCP_PROJECT_NUMBER: "555464791734"
+      GCP_REGION: us-central1
+      GCP_WIF_PROVIDER: projects/555464791734/locations/global/workloadIdentityPools/mn-prod-github/providers/github
+      GCP_DEPLOY_SERVICE_ACCOUNT: mn-web-deployer@millionsnest.iam.gserviceaccount.com
+      NESTBALANCE_RUNTIME_SERVICE_ACCOUNT: nestbalance-runtime@millionsnest.iam.gserviceaccount.com
+      FIREBASE_HOSTING_SITE: mn-nestbalance-555464791734
+      FIREBASE_STORAGE_BUCKET: millionsnest.firebasestorage.app
+      NEXT_PUBLIC_FIREBASE_API_KEY: AIzaSyAhXY8TV8qoXz8Pd2u5jFHUTVssZmi3kMs
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: millionsnest.firebaseapp.com
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: millionsnest
+      NEXT_PUBLIC_FIREBASE_APP_ID: 1:555464791734:web:3059e8ac2b8089a1767817
       OPENAI_SECRET_NAME: ${{ vars.OPENAI_SECRET_NAME }}
       OPENAI_VISION_MODEL: ${{ vars.OPENAI_VISION_MODEL }}
       OPENAI_TRANSCRIBE_MODEL: ${{ vars.OPENAI_TRANSCRIBE_MODEL }}
@@ -60,7 +63,7 @@ jobs:
           npm run build
           npm run build:cloudrun
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to MillionsNest GCP
         uses: google-github-actions/auth@v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
@@ -72,7 +75,45 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: Deploy API to Cloud Run
+      - name: Bootstrap dedicated runtime identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUNTIME_NAME="${NESTBALANCE_RUNTIME_SERVICE_ACCOUNT%@*}"
+
+          if ! gcloud iam service-accounts describe "$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
+            gcloud iam service-accounts create "$RUNTIME_NAME" \
+              --project "$GCP_PROJECT_ID" \
+              --display-name "NestBalance Runtime"
+          fi
+
+          gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+            --member "serviceAccount:$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
+            --role "roles/datastore.user" \
+            --condition=None \
+            --quiet >/dev/null
+
+          gcloud storage buckets add-iam-policy-binding "gs://$FIREBASE_STORAGE_BUCKET" \
+            --member "serviceAccount:$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
+            --role "roles/storage.objectAdmin" \
+            --quiet >/dev/null
+
+          gcloud iam service-accounts add-iam-policy-binding "$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
+            --project "$GCP_PROJECT_ID" \
+            --member "serviceAccount:$GCP_DEPLOY_SERVICE_ACCOUNT" \
+            --role "roles/iam.serviceAccountUser" \
+            --quiet >/dev/null
+
+          if [[ -n "${OPENAI_SECRET_NAME:-}" ]]; then
+            gcloud secrets describe "$OPENAI_SECRET_NAME" --project "$GCP_PROJECT_ID" >/dev/null
+            gcloud secrets add-iam-policy-binding "$OPENAI_SECRET_NAME" \
+              --project "$GCP_PROJECT_ID" \
+              --member "serviceAccount:$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
+              --role "roles/secretmanager.secretAccessor" \
+              --quiet >/dev/null
+          fi
+
+      - name: Deploy NestBalance API
         shell: bash
         run: |
           set -euo pipefail
@@ -80,19 +121,71 @@ jobs:
           if [[ -n "${OPENAI_SECRET_NAME:-}" ]]; then
             EXTRA_ARGS+=(--set-secrets "OPENAI_API_KEY=${OPENAI_SECRET_NAME}:latest")
           fi
-          gcloud run deploy nestbalance-api             --source .             --project "$GCP_PROJECT_ID"             --region "$GCP_REGION"             --service-account "$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT"             --allow-unauthenticated             --memory 512Mi             --cpu 1             --concurrency 20             --min-instances 0             --max-instances 3             --timeout 60             --set-env-vars "FIREBASE_PROJECT_ID=$GCP_PROJECT_ID,FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET,OPENAI_VISION_MODEL=${OPENAI_VISION_MODEL:-gpt-5.6-luna},OPENAI_TRANSCRIBE_MODEL=${OPENAI_TRANSCRIBE_MODEL:-gpt-transcribe}"             "${EXTRA_ARGS[@]}"
 
-      - name: Bind dedicated Hosting target
-        run: npx firebase target:apply hosting nestbalance "$FIREBASE_HOSTING_SITE" --project "$GCP_PROJECT_ID"
+          gcloud run deploy nestbalance-api \
+            --source . \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --service-account "$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
+            --allow-unauthenticated \
+            --memory 512Mi \
+            --cpu 1 \
+            --concurrency 8 \
+            --min-instances 0 \
+            --max-instances 3 \
+            --timeout 60 \
+            --set-env-vars "FIREBASE_PROJECT_ID=$GCP_PROJECT_ID,FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET,OPENAI_VISION_MODEL=${OPENAI_VISION_MODEL:-gpt-5.6-luna},OPENAI_TRANSCRIBE_MODEL=${OPENAI_TRANSCRIBE_MODEL:-gpt-transcribe}" \
+            "${EXTRA_ARGS[@]}"
 
-      - name: Deploy Hosting only
+      - name: Ensure dedicated Firebase Hosting site
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx firebase hosting:sites:list --project "$GCP_PROJECT_ID" --json > /tmp/hosting-sites.json
+          if ! grep -Fq "$FIREBASE_HOSTING_SITE" /tmp/hosting-sites.json; then
+            npx firebase hosting:sites:create "$FIREBASE_HOSTING_SITE" --project "$GCP_PROJECT_ID"
+          fi
+          npx firebase target:apply hosting nestbalance "$FIREBASE_HOSTING_SITE" --project "$GCP_PROJECT_ID"
+
+      - name: Preserve and authorize NestBalance Firebase Auth domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH_HOST="$FIREBASE_HOSTING_SITE.web.app"
+          ACCESS_TOKEN="$(gcloud auth print-access-token)"
+          CONFIG_URL="https://identitytoolkit.googleapis.com/admin/v2/projects/$GCP_PROJECT_ID/config"
+
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "$CONFIG_URL" > /tmp/firebase-auth-config.json
+
+          jq --arg domain "$AUTH_HOST" \
+            '{authorizedDomains: (((.authorizedDomains // []) + [$domain]) | unique)}' \
+            /tmp/firebase-auth-config.json > /tmp/firebase-auth-patch.json
+
+          curl --fail --silent --show-error \
+            -X PATCH \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/firebase-auth-patch.json \
+            "$CONFIG_URL?updateMask=authorizedDomains" >/tmp/firebase-auth-updated.json
+
+          jq -e --arg domain "$AUTH_HOST" '.authorizedDomains | index($domain) != null' \
+            /tmp/firebase-auth-updated.json >/dev/null
+
+      - name: Deploy NestBalance Hosting only
         run: npx firebase deploy --only hosting:nestbalance --project "$GCP_PROJECT_ID"
 
-      - name: Smoke check Cloud Run
+      - name: Smoke check API and Hosting
         shell: bash
         run: |
           set -euo pipefail
           API_URL="$(gcloud run services describe nestbalance-api --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format='value(status.url)')"
           test -n "$API_URL"
           curl --fail --silent --show-error "$API_URL/healthz" | grep -q '"ok":true'
-          echo "Cloud Run health check passed."
+
+          HOSTING_URL="https://$FIREBASE_HOSTING_SITE.web.app"
+          curl --fail --silent --show-error "$HOSTING_URL/" | grep -q 'NestBalance'
+
+          echo "NESTBALANCE_API_URL=$API_URL"
+          echo "NESTBALANCE_HOMOLOG_URL=$HOSTING_URL"
