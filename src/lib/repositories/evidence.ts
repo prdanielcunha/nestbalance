@@ -2,6 +2,8 @@
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { auth, storage } from '@/src/lib/firebase/client';
 import type { DocumentSignalsResult } from '@/src/core/document-signals';
+import type { AiFinancialExtraction } from '@/src/core/ai-financial';
+import type { FinancialInterpretation } from '@/src/core/types';
 
 export type UploadProgress = { phase: 'uploading' | 'verifying'; percent: number };
 
@@ -50,4 +52,20 @@ export type EvidenceTextAnalysis = {
 
 export async function analyzeEvidenceText(householdId:string,evidenceId:string) {
   return api<EvidenceTextAnalysis>('/api/evidence/analyze-text',{householdId,evidenceId});
+}
+
+export type AiEvidenceAnalysis = {
+  ok:true;
+  state:'extracted';
+  kind:'image'|'audio';
+  analysisVersion:string;
+  model:string;
+  extraction:AiFinancialExtraction|null;
+  transcript:string|null;
+  transcriptTruncated:boolean;
+  parsedInterpretations:FinancialInterpretation[]|null;
+};
+
+export async function analyzeEvidenceAi(householdId:string,evidenceId:string) {
+  return api<AiEvidenceAnalysis>('/api/evidence/analyze-ai',{householdId,evidenceId});
 }
