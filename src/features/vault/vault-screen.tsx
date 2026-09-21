@@ -147,13 +147,14 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
     {(error||searchError) && <p className="error-copy" role="alert">{error||searchError}</p>}
 
     {loading ? <div className="vault-list" aria-label="Carregando Cofre">{[0,1,2].map(i=><div className="vault-row skeleton-line" key={i} />)}</div>
-    : visibleItems.length===0 ? <section className="empty-state"><h3>Seu Cofre começa com o primeiro envio.</h3><p>Quando você enviar um comprovante, fatura ou documento pela Entrada universal, o original aparecerá aqui.</p></section>
-    : <section className="vault-list" aria-label="Documentos guardados">
-      {visibleItems.map(item=><button className="vault-row" key={item.evidenceId} onClick={()=>openItem(item)}>
+    : normalizedQuery.length>=2&&!searching&&displayItems.length===0 ? <section className="empty-state"><h3>Nada encontrado com essa lembrança.</h3><p>Tente um valor, mês, estabelecimento ou outra palavra que aparecia no comprovante.</p></section>
+    : visibleItems.length===0&&normalizedQuery.length<2 ? <section className="empty-state"><h3>Seu Cofre começa com o primeiro envio.</h3><p>Quando você enviar um comprovante, fatura ou documento pela Entrada universal, o original aparecerá aqui.</p></section>
+    : <section className="vault-list" aria-label={normalizedQuery.length>=2?'Resultados da busca':'Documentos guardados'}>
+      {displayItems.map(item=><button className="vault-row" key={item.evidenceId} onClick={()=>openItem(item)}>
         <div className="vault-file-mark">{typeLabel(item.mimeType).slice(0,1)}</div>
         <div className="vault-row-copy">
           <strong>{item.originalName}</strong>
-          <span>{typeLabel(item.mimeType)} · {sizeLabel(item.size)} · {understandingLabel(item.extractionState)}{item.scope==='personal'?' · Só para mim':''}</span>
+          <span>{item.matchReason?'Encontrado por '+item.matchReason:typeLabel(item.mimeType)+' · '+sizeLabel(item.size)+' · '+understandingLabel(item.extractionState)+(item.scope==='personal'?' · Só para mim':'')}</span>
         </div>
         <span className="vault-row-date">{item.createdAtMs ? new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(item.createdAtMs) : ''}</span>
       </button>)}
