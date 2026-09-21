@@ -106,6 +106,8 @@ assert.match(deployMillionsNest, /GCP_REGION: us-central1/);
 assert.match(deployMillionsNest, /FIREBASE_HOSTING_SITE: mn-nestbalance-555464791734/);
 assert.match(deployMillionsNest, /mn-web-deployer@millionsnest\.iam\.gserviceaccount\.com/);
 assert.match(deployMillionsNest, /nestbalance-runtime@millionsnest\.iam\.gserviceaccount\.com/);
+assert.match(deployMillionsNest, /millionsnest-web\/nestbalance-api/);
+assert.ok(!deployMillionsNest.includes('--source .'),'NestBalance Cloud Run deploy must use the existing official Artifact Registry image path.');
 assert.match(deployMillionsNest, /Runtime IAM boundary/);
 assert.ok(!deployMillionsNest.includes('gcloud projects add-iam-policy-binding'),'App deploy must not mutate project IAM.');
 assert.ok(!deployMillionsNest.includes('gcloud storage buckets add-iam-policy-binding'),'App deploy must not mutate bucket IAM.');
