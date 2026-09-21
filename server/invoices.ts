@@ -13,6 +13,7 @@ import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 
 const EXTRACTION_VERSION='native-text-v1';
 const INVOICE_VISION_VERSION='invoice-vision-v1';
+const invoiceVisionDocumentId=(cardId:string)=>`${INVOICE_VISION_VERSION}-${cardId}`;
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -76,7 +77,7 @@ async function loadInvoiceContext(input:{
   const evidenceRef=household.collection('evidenceAssets').doc(evidenceId);
   const [nativeExtraction,visionExtraction]=await Promise.all([
     evidenceRef.collection('extractions').doc(EXTRACTION_VERSION).get(),
-    evidenceRef.collection('extractions').doc(INVOICE_VISION_VERSION).get()
+    evidenceRef.collection('extractions').doc(invoiceVisionDocumentId(cardId)).get()
   ]);
 
   const closingDay=Number(card.closingDay);
