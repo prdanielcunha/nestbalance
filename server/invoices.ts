@@ -283,7 +283,14 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
       const status=allClear&&selected.length===context.preview.items.length?'confirmed':'partial';
       const importData=importSnap.exists?importSnap.data()||{}:{};
       const previousConfirmed=Number.isSafeInteger(importData.confirmedAmountMinor)?Number(importData.confirmedAmountMinor):0;
-      const confirmedAmountMinor=previousConfirmed+createdAmountMinor;
+      const previousItemIds=Array.isArray(importData.confirmedItemIds)
+        ? importData.confirmedItemIds.map((value:any)=>String(value||'')).filter(Boolean)
+        : [];
+      const allConfirmedIds=new Set([...previousItemIds,...selected.map(item=>item.id)]);
+      const reconstructedConfirmed=context.preview.items
+        .filter(item=>allConfirmedIds.has(item.id))
+        .reduce((sum,item)=>sum+item.amountMinor,0);
+      const confirmedAmountMinor=Math.max(previousConfirmed+createdAmountMinor,reconstructedConfirmed);
       const existingPaid=Number.isSafeInteger(importData.paidAmountMinor)?Number(importData.paidAmountMinor):0;
       tx.set(importRef,{
         cardId,
