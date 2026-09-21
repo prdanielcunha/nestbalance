@@ -613,3 +613,8 @@
   .member-access{grid-column:2;justify-content:flex-start;flex-wrap:wrap}
   .pending-invites>div{align-items:flex-start;flex-direction:column;gap:3px}
 }
+
+.app-nav-add.readonly{cursor:default;opacity:.58;justify-content:center}
+.app-nav-add.readonly>span{font-size:10px;white-space:nowrap}
+.readonly-home-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.card-empty.readonly{cursor:default}
