@@ -4,3 +4,4 @@ export * from "./fingerprint.js";
 export * from "./summary.js";
 export * from "./installments.js";
 export * from "./evidence.js";
+export * from "./document-signals.js";

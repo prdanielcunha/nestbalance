@@ -19,3 +19,15 @@ const capture = readFileSync(new URL('./server/capture.ts', import.meta.url),'ut
 assert.match(capture, /runTransaction/);
 assert.match(capture, /captureFingerprints/);
 console.log('Static security invariants: PASS');
+
+const evidenceAnalysis = readFileSync(new URL('./server/evidence-analysis.ts', import.meta.url),'utf8');
+const pdfText = readFileSync(new URL('./server/pdf-text.ts', import.meta.url),'utf8');
+assert.match(evidenceAnalysis, /aiUsed:false/);
+assert.match(evidenceAnalysis, /ocrUsed:false/);
+assert.match(evidenceAnalysis, /extractions/);
+assert.match(pdfText, /PDF_TEXT_MAX_INPUT_BYTES = 4 \* 1024 \* 1024/);
+assert.match(pdfText, /PDF_TEXT_MAX_PAGES = 40/);
+assert.ok(!evidenceAnalysis.includes('@google/genai') && !pdfText.includes('@google/genai'));
+
+assert.match(evidenceAnalysis, /Cache-Control','private, no-store/);
+assert.match(evidenceAnalysis, /runTransaction/);

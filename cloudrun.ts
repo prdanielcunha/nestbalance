@@ -1,6 +1,7 @@
 import express from 'express';
 import { commitCapture } from './server/capture.js';
 import { finalizeEvidence, startEvidence } from './server/evidence.js';
+import { analyzeEvidenceText } from './server/evidence-analysis.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -8,6 +9,7 @@ app.use(express.json({ limit: '128kb' }));
 app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'nestbalance-api' }));
 app.post('/api/evidence/start', startEvidence);
 app.post('/api/evidence/finalize', finalizeEvidence);
+app.post('/api/evidence/analyze-text', analyzeEvidenceText);
 app.post('/api/capture/commit', commitCapture);
 app.use((_req, res) => res.status(404).json({ ok: false, error: 'NOT_FOUND' }));
 
