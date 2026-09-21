@@ -9,6 +9,7 @@ import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
 
 const ANALYSIS_VERSION='invoice-vision-v1';
+const extractionDocumentId=(cardId:string)=>`${ANALYSIS_VERSION}-${cardId}`;
 const LOCK_TTL_MS=2*60*1000;
 
 function error(res:Response,status:number,code:string){
@@ -88,7 +89,7 @@ export async function analyzeCreditCardInvoiceImage(req:Request,res:Response){
     const mimeType=String(resolved.data.mimeType||resolved.data.declaredMimeType||'');
     if(!mimeType.startsWith('image/')) return error(res,400,'INVOICE_IMAGE_TYPE_REQUIRED');
 
-    const extractionRef=resolved.ref.collection('extractions').doc(ANALYSIS_VERSION);
+    const extractionRef=resolved.ref.collection('extractions').doc(extractionDocumentId(cardId));
     const existing=await extractionRef.get();
     if(existing.exists){
       const data=existing.data()!;
@@ -102,7 +103,7 @@ export async function analyzeCreditCardInvoiceImage(req:Request,res:Response){
       });
     }
 
-    const activeLockRef=resolved.ref.collection('analysisLocks').doc(ANALYSIS_VERSION);
+    const activeLockRef=resolved.ref.collection('analysisLocks').doc(extractionDocumentId(cardId));
     lockRef=activeLockRef;
     requestId=randomUUID();
     const nowMs=Date.now();
