@@ -25,6 +25,8 @@ import {
   type UploadProgress
 } from '@/src/lib/repositories/evidence';
 import { messages } from '@/src/i18n/messages';
+import { ScopeChoice } from '@/src/features/privacy/scope-choice';
+import type { FinancialScope } from '@/src/core/privacy';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
@@ -63,6 +65,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [paymentMatchDismissed,setPaymentMatchDismissed]=useState(false);
   const [payingMatchId,setPayingMatchId]=useState('');
   const [screenSnapshot,setScreenSnapshot]=useState<AiFinancialScreenSnapshot|null>(null);
+  const [scope,setScope]=useState<FinancialScope>('household');
   const imageInputRef=useRef<HTMLInputElement|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const textRef=useRef<HTMLTextAreaElement|null>(null);
@@ -110,6 +113,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setPaymentMatchDismissed(false);
     setPayingMatchId('');
     setScreenSnapshot(null);
+    setScope('household');
     setOpen(false);
     onClose?.();
     setText('');
@@ -290,7 +294,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     try {
       let evidenceId = preparedEvidenceId;
       if (!evidenceId) {
-        const evidence = await ingestEvidence(householdId, activeFile, progress => setUpload(progress));
+        const evidence = await ingestEvidence(householdId, activeFile, progress => setUpload(progress), scope);
         evidenceId = evidence.canonicalEvidenceId;
         setPreparedEvidenceId(evidenceId);
       }
@@ -453,7 +457,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     try {
       let created = 0;
       if(screenSnapshot&&preparedEvidenceId){
-        await commitFinancialScreen({householdId,evidenceId:preparedEvidenceId});
+        await commitFinancialScreen({householdId,evidenceId:preparedEvidenceId,scope});
         created++;
       }
       let duplicates = 0;
@@ -464,7 +468,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           interpretation: interpretations[i],
           evidenceId: i === 0 ? preparedEvidenceId : null,
           file: i === 0 && !preparedEvidenceId ? file : null,
-          onUploadProgress: progress => setUpload(progress)
+          onUploadProgress: progress => setUpload(progress),
+          scope
         });
         if (result.status === 'duplicate') duplicates++;
         else created++;
@@ -520,6 +525,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           <div className="eyebrow">Jogue aqui. A gente organiza.</div>
           <h2>O que aconteceu?</h2>
           <p>Escreva, fale, mande um print ou um arquivo. Você não precisa decidir antes se foi dinheiro que entrou, saiu ou uma conta para pagar.</p>
+
+          <ScopeChoice value={scope} onChange={setScope} disabled={working||Boolean(preparedEvidenceId)}/>
 
           <div className="capture-quick-actions" aria-label="Como você quer contar">
             <button type="button" disabled={working} onClick={()=>textRef.current?.focus()}>
