@@ -257,3 +257,57 @@ export async function payCommitment(req:Request,res:Response){
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'COMMITMENT_PAYMENT_FAILED');
   }
 }
+
+
+export async function findCommitmentPaymentMatchesBatch(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    await requireHouseholdMember(householdId,user.uid);
+
+    const rawItems=Array.isArray(req.body?.items)?req.body.items.slice(0,80):[];
+    const items=rawItems.map((item:any,index:number)=>({
+      index:Number.isInteger(item?.index)?Number(item.index):index,
+      amountMinor:Number(item?.amountMinor),
+      description:safeText(item?.description),
+      observedOn:validIso(item?.observedOn)||new Date().toISOString().slice(0,10),
+      direction:String(item?.direction||'')
+    })).filter((item:any)=>item.direction==='expense'&&Number.isSafeInteger(item.amountMinor)&&item.amountMinor>0);
+
+    if(!items.length) return res.json({ok:true,matches:[]});
+
+    const household=adminDb.collection('households').doc(householdId);
+    const commitmentsSnap=await household.collection('commitments').where('status','==','pending').limit(100).get();
+    const commitments=commitmentsSnap.docs.map(dto);
+
+    const monthKeys=[...new Set(items.map((item:any)=>periodKeyForDate(item.observedOn)).filter(Boolean))] as string[];
+    const paidByMonth=new Map<string,Set<string>>();
+    await Promise.all(monthKeys.map(async monthKey=>{
+      paidByMonth.set(monthKey,await paidRecurringIdsForMonth(householdId,monthKey));
+    }));
+
+    const matches=items.map((item:any)=>{
+      const monthKey=periodKeyForDate(item.observedOn);
+      const paidIds=monthKey?paidByMonth.get(monthKey)||new Set<string>():new Set<string>();
+      const available=commitments.filter(commitment=>!paidIds.has(commitment.id));
+      return {
+        index:item.index,
+        candidates:matchPayableCommitments({
+          amountMinor:item.amountMinor,
+          description:item.description,
+          observedOn:item.observedOn
+        },available).map(match=>({
+          commitment:match.commitment,
+          score:match.score,
+          reasons:match.reasons
+        }))
+      };
+    });
+
+    return res.json({ok:true,matches});
+  }catch(err:any){
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'PAYMENT_MATCH_FAILED');
+  }
+}
