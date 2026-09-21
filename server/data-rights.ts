@@ -115,7 +115,10 @@ export async function exportPrivacyData(req:Request,res:Response){
     }
 
     const ownAudit=await actorAuditEvents(householdRef,user.uid);
-    result.activity=ownAudit.map(doc=>({id:doc.id,...sanitize('auditEvents',doc.data())}));
+    const visibleAudit=mode==='personal'
+      ? ownAudit.filter(doc=>personalOwned(doc.data(),user.uid))
+      : ownAudit;
+    result.activity=visibleAudit.map(doc=>({id:doc.id,...sanitize('auditEvents',doc.data())}));
 
     await householdRef.collection('auditEvents').add({
       type:'privacy.exported',scope:mode==='personal'?'personal':'household',ownerUid:mode==='personal'?user.uid:null,
@@ -140,6 +143,14 @@ export async function exportPrivacyData(req:Request,res:Response){
 
 async function deleteRefs(refs:FirebaseFirestore.DocumentReference[]){
   for(const ref of refs) await (adminDb as any).recursiveDelete(ref);
+}
+
+async function deleteFlatRefs(refs:FirebaseFirestore.DocumentReference[]){
+  for(let index=0;index<refs.length;index+=400){
+    const batch=adminDb.batch();
+    for(const ref of refs.slice(index,index+400)) batch.delete(ref);
+    await batch.commit();
+  }
 }
 
 export async function deletePersonalData(req:Request,res:Response){
@@ -182,16 +193,17 @@ export async function deletePersonalData(req:Request,res:Response){
     await deleteRefs(personalAudit.map(doc=>doc.ref));
 
     const indexCollections=['captureFingerprints','accountKeys','creditCardKeys','evidenceHashes','invoiceItemKeys','invoicePaymentKeys'];
-    const batch=adminDb.batch(); let batchOps=0;
+    const indexRefs:FirebaseFirestore.DocumentReference[]=[];
     for(const collection of indexCollections){
       const docs=await allDocs(household.collection(collection));
       for(const doc of docs){
         const data=doc.data();
-        const linked=[data.entityId,data.accountId,data.cardId,data.evidenceId,data.transactionId,data.invoiceImportId].map(String);
-        if(linked.some(id=>deletedIds.has(id))){ batch.delete(doc.ref); batchOps++; }
+        const linked=[data.entityId,data.accountId,data.cardId,data.evidenceId,data.transactionId,data.invoiceImportId]
+          .map(value=>String(value||'')).filter(Boolean);
+        if(linked.some(id=>deletedIds.has(id))) indexRefs.push(doc.ref);
       }
     }
-    if(batchOps) await batch.commit();
+    await deleteFlatRefs(indexRefs);
 
     await adminDb.collection('users').doc(user.uid).collection('privacyEvents').add({
       type:'privacy.personal_data_deleted',householdId,counts:{...Object.fromEntries(Object.entries(byCollection).map(([k,v])=>[k,v.length])),auditEvents:personalAudit.length},createdAt:FieldValue.serverTimestamp()
