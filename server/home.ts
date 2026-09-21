@@ -104,7 +104,7 @@ export async function getHomeData(req:Request,res:Response){
     const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
-      household.collection('transactions').orderBy('observedOn','desc').limit(150).get(),
+      household.collection('transactions').orderBy('createdAt','desc').limit(150).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(100).get(),
       household.collection('installmentPlans').where('status','==','active').limit(100).get(),
       household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get()
@@ -114,7 +114,9 @@ export async function getHomeData(req:Request,res:Response){
       ok:true,
       accounts:accounts.docs.map(accountDto),
       cards:cards.docs.map(cardDto),
-      transactions:transactions.docs.map(movementDto),
+      transactions:transactions.docs.map(movementDto).sort((a,b)=>
+        String(b.observedOn||'').localeCompare(String(a.observedOn||''))
+      ),
       commitments:commitments.docs.map(movementDto),
       installmentPlans:installmentPlans.docs.map(installmentPlanDto),
       invoiceImports:invoiceImports.docs.map(invoiceImportDto),
