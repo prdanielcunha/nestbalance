@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';\nimport Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { deriveCashView } from '@/src/core/cash-view';
 import { projectHouseholdFuture } from '@/src/core/future-projection';
