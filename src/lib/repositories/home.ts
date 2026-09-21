@@ -18,6 +18,7 @@ export type HomeRow={
   invoiceKey?:string|null;
   invoiceImportId?:string|null;
   observedOn?:string|null;
+  paidThisMonth?:boolean;
 };
 
 export type HomeAccount={
@@ -59,6 +60,29 @@ export type HomeInvoiceImport={
   paidFromAccountId:string|null;
 };
 
+export type HomeSavingsPot={
+  id:string;
+  name:string;
+  balanceMinor:number;
+  goalMinor:number|null;
+  currency:string;
+  institutionName:string|null;
+  source:string|null;
+  status:string;
+};
+
+export type HomeCardSnapshot={
+  id:string;
+  name:string;
+  last4:string|null;
+  statementAmountMinor:number|null;
+  dueOn:string|null;
+  availableLimitMinor:number|null;
+  totalLimitMinor:number|null;
+  institutionName:string|null;
+  source:string|null;
+};
+
 export type HomeCreditCard={
   id:string;
   name:string;
@@ -90,6 +114,8 @@ export async function loadHomeData(householdId:string){
     commitments:HomeRow[];
     installmentPlans:HomeInstallmentPlan[];
     invoiceImports:HomeInvoiceImport[];
+    savingsPots:HomeSavingsPot[];
+    cardSnapshots:HomeCardSnapshot[];
     refreshedAt:string;
   };
 }

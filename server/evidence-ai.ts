@@ -4,8 +4,7 @@ import { FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import { detectDocumentSignals } from '../src/core/document-signals.js';
 import { parseFinancialList } from '../src/core/text-parser.js';
 import { extractFinancialImage } from './ai/financial-image.js';
-import { extractMovementListImage } from './ai/movement-list-image.js';
-import { buildImportedMovements } from '../src/core/movement-import.js';
+import { buildImportedMovements, type ImportedMovementList } from '../src/core/movement-import.js';
 import { transcribeFinancialAudio } from './ai/audio-transcription.js';
 import { isOpenAiConfigured } from './ai/openai-client.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
@@ -74,7 +73,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     const kind=mimeType.startsWith('image/')?'image':mimeType.startsWith('audio/')?'audio':null;
     if(!kind) return error(res,400,'AI_MEDIA_TYPE_UNSUPPORTED');
 
-    const analysisVersion=kind==='image'?'vision-v1':'audio-v1';
+    const analysisVersion=kind==='image'?'vision-v2':'audio-v1';
     const extractionRef=resolved.ref.collection('extractions').doc(analysisVersion);
     const existing=await extractionRef.get();
     if(existing.exists) return res.json(publicExtraction(existing.data()));
@@ -121,43 +120,35 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     let persisted:any;
     if(kind==='image'){
       const result=await extractFinancialImage(bytes,mimeType);
-      if(result.extraction.documentType==='bank_screenshot'){
-        const movementList=await extractMovementListImage(bytes,mimeType);
-        const parsedInterpretations=buildImportedMovements(movementList.extraction);
-        persisted={
-          version:1,
-          analysisVersion,
-          evidenceId:resolved.evidenceId,
-          state:'extracted',
-          kind:'image',
-          model:movementList.model,
-          extraction:result.extraction,
-          movementList:movementList.extraction,
-          parsedInterpretations:parsedInterpretations.length?parsedInterpretations:null,
-          deterministic:false,
-          aiUsed:true,
-          visionUsed:true,
-          sttUsed:false,
-          ocrUsed:false,
-          createdAt:FieldValue.serverTimestamp()
-        };
-      }else{
-        persisted={
-          version:1,
-          analysisVersion,
-          evidenceId:resolved.evidenceId,
-          state:'extracted',
-          kind:'image',
-          model:result.model,
-          extraction:result.extraction,
-          deterministic:false,
-          aiUsed:true,
-          visionUsed:true,
-          sttUsed:false,
-          ocrUsed:false,
-          createdAt:FieldValue.serverTimestamp()
-        };
-      }
+      const screenType=result.extraction.screen?.screenType;
+      const cashMovementScreen=!['card_home','card_statement','retail_account'].includes(String(screenType||''));
+      const screenMovements=cashMovementScreen?(result.extraction.screen?.movements||[]):[];
+      const movementList:ImportedMovementList|null=screenMovements.length?{
+        documentType:result.extraction.screen?.screenType==='transaction_list'?'transaction_list':'bank_screenshot',
+        institution:result.extraction.screen?.institution||result.extraction.institution,
+        overallConfidence:result.extraction.overallConfidence,
+        ambiguities:result.extraction.ambiguities,
+        items:screenMovements
+      }:null;
+      const parsedInterpretations=movementList?buildImportedMovements(movementList):[];
+
+      persisted={
+        version:2,
+        analysisVersion,
+        evidenceId:resolved.evidenceId,
+        state:'extracted',
+        kind:'image',
+        model:result.model,
+        extraction:result.extraction,
+        movementList,
+        parsedInterpretations:parsedInterpretations.length?parsedInterpretations:null,
+        deterministic:false,
+        aiUsed:true,
+        visionUsed:true,
+        sttUsed:false,
+        ocrUsed:false,
+        createdAt:FieldValue.serverTimestamp()
+      };
     }else{
       const result=await transcribeFinancialAudio(bytes,mimeType,String(resolved.data.originalName||'audio'));
       const parsedInterpretations=parseFinancialList(result.transcript).filter(item=>item.money.amountMinor>0);

@@ -6,7 +6,7 @@ import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { ConnectedBanks } from '@/src/features/open-finance/connected-banks';
-import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInvoiceImport } from '@/src/lib/repositories/home';
+import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditCard, type HomeInvoiceImport, type HomeSavingsPot } from '@/src/lib/repositories/home';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const typeLabel:Record<string,string>={bank:'Conta bancária',wallet:'Carteira digital',cash:'Dinheiro'};
@@ -15,6 +15,8 @@ export function AccountsScreen({householdId}:{householdId:string}){
   const [accounts,setAccounts]=useState<HomeAccount[]>([]);
   const [cards,setCards]=useState<HomeCreditCard[]>([]);
   const [invoiceImports,setInvoiceImports]=useState<HomeInvoiceImport[]>([]);
+  const [savingsPots,setSavingsPots]=useState<HomeSavingsPot[]>([]);
+  const [cardSnapshots,setCardSnapshots]=useState<HomeCardSnapshot[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [refreshKey,setRefreshKey]=useState(0);
@@ -31,6 +33,8 @@ export function AccountsScreen({householdId}:{householdId:string}){
       setAccounts(data.accounts);
       setCards(data.cards||[]);
       setInvoiceImports(data.invoiceImports||[]);
+      setSavingsPots(data.savingsPots||[]);
+      setCardSnapshots(data.cardSnapshots||[]);
     }catch{
       setError('Não conseguimos carregar suas contas agora.');
     }finally{
@@ -46,6 +50,7 @@ export function AccountsScreen({householdId}:{householdId:string}){
   const investmentTotal=useMemo(()=>accounts
     .filter(item=>item.connectedProductType==='investment')
     .reduce((sum,item)=>sum+item.balanceMinor,0),[accounts]);
+  const savedTotal=useMemo(()=>savingsPots.reduce((sum,item)=>sum+item.balanceMinor,0),[savingsPots]);
 
   function refreshed(){
     setRefreshKey(value=>value+1);
@@ -129,6 +134,31 @@ export function AccountsScreen({householdId}:{householdId:string}){
               })}
             </div>}
     </section>
+
+    {!loading&&savingsPots.length>0&&<section className="savings-pots-section">
+      <div className="section-title"><div><h2>Dinheiro guardado</h2><span>{money.format(savedTotal/100)} separado do saldo para gastar</span></div></div>
+      <div className="savings-pot-grid">
+        {savingsPots.map(pot=><article className="savings-pot-card" key={pot.id}>
+          <span>{pot.institutionName||'Importado de um print'}</span>
+          <h3>{pot.name}</h3>
+          <strong>{money.format(pot.balanceMinor/100)}</strong>
+          {pot.goalMinor&&pot.goalMinor>0?<small>Meta {money.format(pot.goalMinor/100)}</small>:<small>Valor identificado na tela</small>}
+        </article>)}
+      </div>
+    </section>}
+
+    {!loading&&cardSnapshots.length>0&&<section className="recognized-cards-section">
+      <div className="section-title"><div><h2>Cartões reconhecidos</h2><span>informações vistas nos seus prints</span></div></div>
+      <div className="recognized-card-grid">
+        {cardSnapshots.map(card=><article className="recognized-card" key={card.id}>
+          <span>{card.institutionName||'Cartão'}</span>
+          <h3>{card.name}{card.last4?' · '+card.last4:''}</h3>
+          {card.statementAmountMinor!==null&&<strong>{money.format(card.statementAmountMinor/100)}</strong>}
+          {card.dueOn&&<small>Vence em {new Intl.DateTimeFormat('pt-BR').format(new Date(card.dueOn+'T12:00:00'))}</small>}
+          {card.availableLimitMinor!==null&&<small>Limite disponível: {money.format(card.availableLimitMinor/100)}</small>}
+        </article>)}
+      </div>
+    </section>}
 
     {!loading&&<ConnectedBanks householdId={householdId} accounts={accounts} onSynced={refreshed}/>}
     

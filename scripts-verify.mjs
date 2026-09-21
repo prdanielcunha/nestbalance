@@ -24,6 +24,8 @@ const runtimePreflight=read('./scripts/runtime-preflight.mjs');
 const openFinanceSource=read('./server/open-finance.ts');
 const belvoSource=read('./server/open-finance/belvo.ts');
 const openFinanceCore=read('./src/core/open-finance.ts');
+const financialScreenSource=read('./server/financial-screen.ts');
+const commitmentPaymentsSource=read('./server/commitment-payments.ts');
 
 assert.match(firestore,/match \/households\/\{hid\}/);
 assert.match(firestore,/allow read, write: if false;/);
@@ -83,6 +85,14 @@ assert.match(belvoSource,/process\.env\.BELVO_SECRET_PASSWORD/);
 assert.match(belvoSource,/consent_link_creation/);
 assert.match(openFinanceCore,/nestbalance\.millionsnest\.com/);
 assert.match(openFinanceCore,/mn-nestbalance-555464791734\.web\.app/);
+assert.match(financialScreenSource,/requireHouseholdMember/);
+assert.match(financialScreenSource,/SCREEN_ANALYSIS_REQUIRED/);
+assert.match(financialScreenSource,/savingsPots/);
+assert.match(financialScreenSource,/cardSnapshots/);
+assert.match(financialScreenSource,/vision-v2/);
+assert.match(commitmentPaymentsSource,/commitmentPayments/);
+assert.match(commitmentPaymentsSource,/runTransaction/);
+assert.match(commitmentPaymentsSource,/commitment\.paid/);
 
 function sourceFiles(root){
   const out=[];

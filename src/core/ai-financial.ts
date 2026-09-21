@@ -1,5 +1,62 @@
 export type AiFinancialDirection='expense'|'income'|'transfer'|'unknown';
 
+export type AiFinancialAccountSnapshot={
+  name:string;
+  productType:'account'|'wallet'|'savings'|'investment';
+  balanceMinor:number;
+  currency:'BRL'|'USD'|'EUR';
+  confidence:number;
+  last4:string|null;
+};
+
+export type AiFinancialPotSnapshot={
+  name:string;
+  balanceMinor:number;
+  goalMinor:number|null;
+  currency:'BRL'|'USD'|'EUR';
+  confidence:number;
+};
+
+export type AiFinancialCardSnapshot={
+  name:string;
+  last4:string|null;
+  statementAmountMinor:number|null;
+  dueOn:string|null;
+  availableLimitMinor:number|null;
+  totalLimitMinor:number|null;
+  confidence:number;
+};
+
+export type AiFinancialCommitmentSnapshot={
+  description:string;
+  amountMinor:number;
+  dueOn:string|null;
+  installment:{current:number;total:number}|null;
+  confidence:number;
+  needsReview:boolean;
+};
+
+export type AiFinancialMovementSnapshot={
+  description:string;
+  amountMinor:number;
+  direction:AiFinancialDirection;
+  dateIso:string|null;
+  confidence:number;
+  needsReview:boolean;
+  visibleText:string;
+};
+
+export type AiFinancialScreenSnapshot={
+  screenType:'single_event'|'account_home'|'transaction_list'|'card_home'|'card_statement'|'retail_account'|'savings_pots'|'mixed'|'other';
+  institution:string|null;
+  accounts:AiFinancialAccountSnapshot[];
+  pots:AiFinancialPotSnapshot[];
+  cards:AiFinancialCardSnapshot[];
+  commitments:AiFinancialCommitmentSnapshot[];
+  movements:AiFinancialMovementSnapshot[];
+  summary:string;
+};
+
 export type AiFinancialExtraction={
   documentType:'pix_receipt'|'bill'|'receipt'|'invoice'|'bank_screenshot'|'card_statement'|'other';
   description:string|null;
@@ -25,6 +82,7 @@ export type AiFinancialExtraction={
   needsConfirmation:boolean;
   ambiguities:string[];
   evidenceSummary:string;
+  screen?:AiFinancialScreenSnapshot|null;
 };
 
 function validAmount(value:number|null):value is number{

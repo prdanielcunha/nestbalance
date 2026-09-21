@@ -10,9 +10,12 @@ import {
   aiDirectionNeedsConfirmation,
   sourceTextFromAiExtraction,
   type AiFinancialDirection,
-  type AiFinancialExtraction
+  type AiFinancialExtraction,
+  type AiFinancialScreenSnapshot
 } from '@/src/core/ai-financial';
 import { commitInterpretation } from '@/src/lib/repositories/finance';
+import { findCommitmentPaymentMatches, payCommitment, type CommitmentPaymentCandidate } from '@/src/lib/repositories/commitment-payments';
+import { commitFinancialScreen } from '@/src/lib/repositories/financial-screen';
 import {
   analyzeEvidenceAi,
   analyzeEvidenceText,
@@ -55,6 +58,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [notice, setNotice] = useState('');
   const [recording,setRecording]=useState(false);
   const [showAllReview,setShowAllReview]=useState(false);
+  const [paymentMatches,setPaymentMatches]=useState<CommitmentPaymentCandidate[]>([]);
+  const [matchingPayments,setMatchingPayments]=useState(false);
+  const [paymentMatchDismissed,setPaymentMatchDismissed]=useState(false);
+  const [payingMatchId,setPayingMatchId]=useState('');
+  const [screenSnapshot,setScreenSnapshot]=useState<AiFinancialScreenSnapshot|null>(null);
   const imageInputRef=useRef<HTMLInputElement|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const textRef=useRef<HTMLTextAreaElement|null>(null);
@@ -97,6 +105,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     stopRecorderTracks();
     setRecording(false);
     setShowAllReview(false);
+    setPaymentMatches([]);
+    setMatchingPayments(false);
+    setPaymentMatchDismissed(false);
+    setPayingMatchId('');
+    setScreenSnapshot(null);
     setOpen(false);
     onClose?.();
     setText('');
@@ -128,6 +141,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setAmountChoices([]);
     setDirectionChoice(false);
     setInterpretations([]);
+    setPaymentMatches([]);
+    setMatchingPayments(false);
+    setPaymentMatchDismissed(false);
+    setPayingMatchId('');
+    setScreenSnapshot(null);
     setError('');
     setNotice(noticeText);
   }
@@ -178,13 +196,40 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     }
   }
 
+  async function loadPaymentMatches(item:FinancialInterpretation){
+    if(item.kind!=='transaction'||item.direction!=='expense'||item.money.amountMinor<=0) {
+      setPaymentMatches([]);
+      return;
+    }
+    setMatchingPayments(true);
+    setPaymentMatches([]);
+    setPaymentMatchDismissed(false);
+    try{
+      const result=await findCommitmentPaymentMatches({
+        householdId,
+        amountMinor:item.money.amountMinor,
+        description:item.description,
+        observedOn:item.occurredOn||null
+      });
+      setPaymentMatches(result.matches);
+    }catch{
+      setPaymentMatches([]);
+    }finally{
+      setMatchingPayments(false);
+    }
+  }
+
   function applySourceText(sourceText: string, documentDerived = false) {
     const parsed = parseFinancialList(sourceText);
+    const prepared=documentDerived ? markDocumentDerived(parsed) : parsed;
     setText(sourceText);
-    setInterpretations(documentDerived ? markDocumentDerived(parsed) : parsed);
+    setInterpretations(prepared);
     setAmountChoices([]);
     setDirectionChoice(false);
     setPendingAi(null);
+    setPaymentMatches([]);
+    setPaymentMatchDismissed(false);
+    if(prepared.length===1) void loadPaymentMatches(prepared[0]);
   }
 
   function prepareAiReview(extraction:AiFinancialExtraction,amountOverride?:number,directionOverride?:ConfirmedDirection){
@@ -258,13 +303,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         try{
           const ai=await analyzeEvidenceAi(householdId,evidenceId);
           setAiAnalysis(ai);
-          if(ai.kind==='image'&&ai.movementList&&ai.parsedInterpretations?.length){
-            setInterpretations(ai.parsedInterpretations);
-            const unresolved=ai.parsedInterpretations.filter(item=>item.needsReview.includes('direction')).length;
-            setNotice(unresolved
-              ? `Encontrei ${ai.parsedInterpretations.length} movimentações. Só ${unresolved} precisa${unresolved===1?'':'m'} que você diga se entrou ou saiu.`
-              : `Encontrei ${ai.parsedInterpretations.length} movimentações e organizei a lista. Confira e guarde.`);
-            return;
+          if(ai.kind==='image'&&ai.extraction?.screen){
+            const screen=ai.extraction.screen;
+            const resourceCount=screen.accounts.length+screen.pots.length+screen.cards.length+screen.commitments.length;
+            if(resourceCount>0) setScreenSnapshot(screen);
+            if(ai.parsedInterpretations?.length) setInterpretations(ai.parsedInterpretations);
+            const movementCount=ai.parsedInterpretations?.length||0;
+            const unresolved=ai.parsedInterpretations?.filter(item=>item.needsReview.includes('direction')).length||0;
+            if(resourceCount||movementCount){
+              setNotice(unresolved
+                ? `Entendi esta tela e organizei o que estava claro. Só ${unresolved} movimentação${unresolved===1?' precisa':' precisam'} de uma resposta rápida.`
+                : 'Entendi a tela financeira. Saldo, dinheiro guardado, contas, cartão e movimentos ficam separados corretamente.');
+              return;
+            }
           }
           if(ai.kind==='audio'){
             const transcript=ai.transcript?.trim()||'';
@@ -273,8 +324,10 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               if(transcript) setText(transcript);
               return;
             }
+            const audioItems=markDocumentDerived(ai.parsedInterpretations);
             setText(transcript);
-            setInterpretations(markDocumentDerived(ai.parsedInterpretations));
+            setInterpretations(audioItems);
+            if(audioItems.length===1) void loadPaymentMatches(audioItems[0]);
             setNotice(ai.transcriptTruncated?'Transcrevi o áudio parcialmente. Confira antes de guardar.':'Transcrevi o áudio. Confira antes de guardar.');
             return;
           }
@@ -362,8 +415,32 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     ));
   }
 
+  async function confirmMatchedPayment(candidate:CommitmentPaymentCandidate){
+    if(payingMatchId||saving) return;
+    setPayingMatchId(candidate.commitment.id);
+    setError('');
+    try{
+      await payCommitment({
+        householdId,
+        commitmentId:candidate.commitment.id,
+        paidOn:interpretations[0]?.occurredOn,
+        evidenceId:preparedEvidenceId
+      });
+      clearAll();
+      onCommitted?.();
+    }catch{
+      setError('Não conseguimos ligar esse pagamento à conta agora. Você pode escolher “Nenhuma dessas” e guardar normalmente.');
+    }finally{
+      setPayingMatchId('');
+    }
+  }
+
   async function confirm() {
-    if (!interpretations.length) return;
+    if (!interpretations.length&&!screenSnapshot) return;
+    if(paymentMatches.length&&!paymentMatchDismissed){
+      setError('Escolha a conta que este pagamento quitou ou toque em “Nenhuma dessas”.');
+      return;
+    }
     const unresolved=interpretations.filter(item=>item.needsReview.includes('direction')).length;
     if(unresolved){
       setError(`Só falta dizer o que aconteceu em ${unresolved} item${unresolved===1?'':'s'}.`);
@@ -375,6 +452,10 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setNotice('');
     try {
       let created = 0;
+      if(screenSnapshot&&preparedEvidenceId){
+        await commitFinancialScreen({householdId,evidenceId:preparedEvidenceId});
+        created++;
+      }
       let duplicates = 0;
       for (let i = 0; i < interpretations.length; i++) {
         const result = await commitInterpretation({
@@ -414,7 +495,13 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       ? attentionInterpretations
       : indexedInterpretations.slice(0,3);
   const hiddenReadyCount=showAllReview?0:Math.max(0,interpretations.length-visibleInterpretations.length);
-  const organizedLabel = interpretations.length === 1
+  const screenResourceCount=screenSnapshot
+    ? screenSnapshot.accounts.length+screenSnapshot.pots.length+screenSnapshot.cards.length+screenSnapshot.commitments.length
+    : 0;
+  const totalOrganizedCount=interpretations.length+screenResourceCount;
+  const organizedLabel = interpretations.length === 0&&screenResourceCount
+    ? `${screenResourceCount} item${screenResourceCount===1?'':'s'} da sua vida financeira`
+    : interpretations.length === 1
     ? (interpretations[0].kind === 'commitment'
         ? 'Conta para pagar'
         : interpretations[0].direction === 'income'
@@ -428,7 +515,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     {showTrigger&&<button className="capture-fab" onClick={() => setOpen(true)} aria-label={t.add}>＋ <span>{t.add}</span></button>}
     {open && <div className="sheet-backdrop" role="presentation" onMouseDown={e => e.target === e.currentTarget && reset()}>
       <section className="capture-sheet" role="dialog" aria-modal="true" aria-label={t.captureTitle}>
-        {!interpretations.length ? <>
+        {!interpretations.length&&!screenSnapshot ? <>
           <div className="sheet-handle" />
           <div className="eyebrow">Jogue aqui. A gente organiza.</div>
           <h2>O que aconteceu?</h2>
@@ -533,7 +620,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         </> : <>
           <div className="sheet-handle" />
           <div className="eyebrow">{t.understood}</div>
-          <h2>{interpretations.length === 1 ? interpretations[0].description : `Encontramos ${interpretations.length} itens`}</h2>
+          <h2>{interpretations.length === 1&&screenResourceCount===0
+            ? interpretations[0].description
+            : `Encontrei ${totalOrganizedCount} item${totalOrganizedCount===1?'':'s'} nesta tela`}</h2>
 
           <div className="evidence-stack" aria-label="Como o NestBalance entendeu">
             <div>
@@ -543,7 +632,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             </div>
             <div>
               <span>O NESTBALANCE ENTENDEU</span>
-              <strong>{interpretations.length === 1 ? `${interpretations[0].description} · ${money.format(interpretations[0].money.amountMinor / 100)}` : `${interpretations.length} itens encontrados`}</strong>
+              <strong>{interpretations.length === 1&&screenResourceCount===0
+                ? `${interpretations[0].description} · ${money.format(interpretations[0].money.amountMinor / 100)}`
+                : `${totalOrganizedCount} itens separados por tipo`}</strong>
               <small>{aiAnalysis ? 'Interpretação por IA; confirme antes de guardar.' : analysis?.state === 'extracted' ? 'Leitura nativa do documento; sem IA.' : reviewCount ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.` : 'Os dados principais estão claros.'}</small>
             </div>
             <div>
@@ -552,6 +643,46 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               <small>{file ? 'Documento e registro ficarão ligados entre si.' : 'Você poderá corrigir isso depois sem perder o original.'}</small>
             </div>
           </div>
+
+          {screenSnapshot&&<div className="financial-screen-summary">
+            <div className="financial-screen-summary-head">
+              <span>{screenSnapshot.institution||'Tela financeira'}</span>
+              <strong>Entendi o que cada número significa.</strong>
+            </div>
+            <div className="financial-screen-chips">
+              {screenSnapshot.accounts.length>0&&<span><b>{screenSnapshot.accounts.length}</b> saldo{screenSnapshot.accounts.length===1?'':'s'}</span>}
+              {screenSnapshot.pots.length>0&&<span><b>{screenSnapshot.pots.length}</b> dinheiro guardado</span>}
+              {screenSnapshot.cards.length>0&&<span><b>{screenSnapshot.cards.length}</b> cartão{screenSnapshot.cards.length===1?'':'ões'}</span>}
+              {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> conta{screenSnapshot.commitments.length===1?'':'s'} / parcela{screenSnapshot.commitments.length===1?'':'s'}</span>}
+              {interpretations.length>0&&<span><b>{interpretations.length}</b> movimento{interpretations.length===1?'':'s'}</span>}
+            </div>
+            <small>Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.</small>
+          </div>}
+
+          {matchingPayments&&interpretations.length===1&&<p className="confidence-note" role="status">Conferindo se isso paga alguma conta que já estava na sua lista…</p>}
+
+          {paymentMatches.length>0&&!paymentMatchDismissed&&<div className="payment-match-panel">
+            <div>
+              <span>{paymentMatches.length===1?'Parece que encontramos a conta':'Qual conta você pagou?'}</span>
+              <strong>{paymentMatches.length===1?'Isso pode quitar algo que já estava pendente.':'Há mais de uma conta parecida. Escolha só se tiver certeza.'}</strong>
+            </div>
+            <div className="payment-match-options">
+              {paymentMatches.map(candidate=><button
+                key={candidate.commitment.id}
+                type="button"
+                disabled={Boolean(payingMatchId)}
+                onClick={()=>void confirmMatchedPayment(candidate)}
+              >
+                <span>{candidate.commitment.dueDay?'Dia '+candidate.commitment.dueDay:'Na sua lista'}</span>
+                <strong>{candidate.commitment.description}</strong>
+                <b>{money.format(candidate.commitment.amountMinor/100)}</b>
+                <em>{payingMatchId===candidate.commitment.id?'Marcando…':'Marcar como pago'}</em>
+              </button>)}
+            </div>
+            <button type="button" className="payment-match-none" disabled={Boolean(payingMatchId)} onClick={()=>setPaymentMatchDismissed(true)}>
+              Nenhuma dessas
+            </button>
+          </div>}
 
           {interpretations.length>1&&<div className="capture-review-summary">
             <div><strong>{readyInterpretations.length}</strong><span>já organizado{readyInterpretations.length===1?'':'s'}</span></div>
@@ -600,11 +731,13 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>Corrigir</button>
-            <button className="primary-button" disabled={working||unresolvedDirectionCount>0} onClick={confirm}>{saving
+            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
               ? (upload?.phase === 'verifying' ? 'Conferindo…' : 'Guardando…')
               : unresolvedDirectionCount
                 ? `Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`
-                : 'Guardar'}</button>
+                : paymentMatches.length>0&&!paymentMatchDismissed
+                  ? 'Escolha a conta acima'
+                  : 'Guardar'}</button>
           </div>
         </>}
       </section>
