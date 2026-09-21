@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/client';
 import { deriveHomeSnapshot } from '@/src/core/summary';
@@ -34,7 +35,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
 
   const hasData = transactions.length + commitments.length > 0;
   return <main className="app-shell">
-    <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="avatar-dot" aria-hidden="true" /></header>
+    <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="topbar-actions"><Link className="text-link" href="/vault">Cofre</Link><div className="avatar-dot" aria-hidden="true" /></div></header>
     <section className="hero-balance"><span>{accounts.length ? t.availableNow : 'saldo disponível'}</span><strong>{accounts.length ? money.format(snapshot.availableMinor/100) : '—'}</strong><p>{accounts.length ? (snapshot.futureCommitmentsMinor > 0 ? `${money.format(snapshot.futureCommitmentsMinor/100)} ainda estão comprometidos.` : 'Sem contas pendentes registradas.') : 'Adicione uma conta ou saldo para vermos quanto está realmente disponível.'}</p></section>
     {commitments[0] && <section><div className="section-title"><h2>{t.attention}</h2></div><article className="spotlight-card"><div><span>{commitments[0].dueDay ? `Vence dia ${commitments[0].dueDay}` : 'Próximo compromisso'}</span><h3>{commitments[0].description}</h3></div><strong>{money.format(commitments[0].amountMinor/100)}</strong></article></section>}
     <section className="month-section"><div className="section-title"><h2>{t.month}</h2></div><div className="month-grid"><div><span>Entrou</span><strong>{money.format(transactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)/100)}</strong></div><div><span>Já saiu</span><strong>{money.format(snapshot.paidExpenseMinor/100)}</strong></div><div><span>Ainda vai sair</span><strong>{money.format(snapshot.futureCommitmentsMinor/100)}</strong></div><div className="projected"><span>Deve sobrar</span><strong>{accounts.length ? money.format(snapshot.projectedRemainderMinor/100) : '—'}</strong></div></div></section>
