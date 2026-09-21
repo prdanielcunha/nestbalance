@@ -12,6 +12,11 @@ function accountDto(doc:any){
     id:doc.id,
     name:String(data.name||'Conta'),
     type:String(data.type||'bank'),
+    connectedProductType:typeof data.connectedProductType==='string'?data.connectedProductType:null,
+    source:typeof data.source==='string'?data.source:null,
+    institutionName:typeof data.institutionName==='string'?data.institutionName:null,
+    connectionId:typeof data.connectionId==='string'?data.connectionId:null,
+    automaticallyInvestedMinor:Number.isSafeInteger(data.automaticallyInvestedMinor)?data.automaticallyInvestedMinor:null,
     balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
     currency:String(data.currency||'BRL'),
     status:String(data.status||'active')
@@ -109,7 +114,9 @@ export async function getHomeData(req:Request,res:Response){
       ok:true,
       accounts:accounts.docs.map(accountDto),
       cards:cards.docs.map(cardDto),
-      transactions:transactions.docs.map(movementDto),
+      transactions:transactions.docs.map(movementDto).sort((a,b)=>
+        String(b.observedOn||'').localeCompare(String(a.observedOn||''))
+      ),
       commitments:commitments.docs.map(movementDto),
       installmentPlans:installmentPlans.docs.map(installmentPlanDto),
       invoiceImports:invoiceImports.docs.map(invoiceImportDto),

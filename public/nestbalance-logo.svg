@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 96" role="img" aria-label="NestBalance">
+  <rect width="96" height="96" rx="24" fill="#111522"/>
+  <path d="M25 68V28h9.5l27 26.8V28H71v40h-9.1L34.5 41v27H25Z" fill="#F6F3EC"/>
+  <circle cx="72" cy="24" r="7" fill="#7D86E8"/>
+  <text x="122" y="61" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" fill="#111522">NestBalance</text>
+</svg>

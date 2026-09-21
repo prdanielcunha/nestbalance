@@ -90,6 +90,7 @@ export async function updateAccountBalance(req:Request,res:Response){
       if(!snap.exists) throw Object.assign(new Error('ACCOUNT_NOT_FOUND'),{statusCode:404});
       const data=snap.data()!;
       if(data.status!=='active') throw Object.assign(new Error('ACCOUNT_NOT_ACTIVE'),{statusCode:409});
+      if(data.readOnlySync===true||data.source==='open_finance') throw Object.assign(new Error('ACCOUNT_SYNC_READ_ONLY'),{statusCode:409});
       previousBalanceMinor=Number(data.balanceMinor??data.amountMinor??0);
 
       tx.update(accountRef,{
@@ -112,7 +113,7 @@ export async function updateAccountBalance(req:Request,res:Response){
 
     return res.json({ok:true,accountId,previousBalanceMinor,balanceMinor});
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE','ACCOUNT_SYNC_READ_ONLY'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'ACCOUNT_BALANCE_UPDATE_FAILED');
   }
 }

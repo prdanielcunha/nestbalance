@@ -53,14 +53,25 @@ export function HomeScreen({ householdId }: { householdId: string }) {
     return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
   }, [householdId, accountCreated, cardCreated]);
 
+  const currentMonthKey=useMemo(()=>{
+    const now=new Date();
+    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  },[]);
+  const monthTransactions=useMemo(
+    ()=>transactions.filter(item=>typeof item.observedOn==='string'&&item.observedOn.startsWith(currentMonthKey)),
+    [transactions,currentMonthKey]
+  );
+
   const cashView=useMemo(()=>deriveCashView({
-    transactions,
+    transactions:monthTransactions,
     commitments,
     invoices:invoiceImports
-  }),[transactions,commitments,invoiceImports]);
+  }),[monthTransactions,commitments,invoiceImports]);
 
   const snapshot = useMemo(() => {
-    const availableMinor = accounts.reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
+    const availableMinor = accounts
+      .filter(account=>account.connectedProductType!=='investment')
+      .reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
     return deriveHomeSnapshot({
       availableMinor,
       incomeMinor:0,
@@ -91,7 +102,7 @@ export function HomeScreen({ householdId }: { householdId: string }) {
     <section className="month-section">
       <div className="section-title"><h2>{t.month}</h2></div>
       <div className="month-grid">
-        <div><span>Entrou</span><strong>{money.format(transactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)/100)}</strong></div>
+        <div><span>Entrou</span><strong>{money.format(monthTransactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)/100)}</strong></div>
         <div><span>Já saiu</span><strong>{money.format(snapshot.paidExpenseMinor/100)}</strong></div>
         <div><span>Ainda vai sair</span><strong>{money.format(snapshot.futureCommitmentsMinor/100)}</strong></div>
         <div className="projected"><span>Deve sobrar</span><strong>{accounts.length ? money.format(snapshot.projectedRemainderMinor/100) : '—'}</strong></div>
@@ -127,7 +138,7 @@ export function HomeScreen({ householdId }: { householdId: string }) {
 
     <section className="timeline-section">
       <div className="section-title"><h2>Movimentos</h2><span>Timeline</span></div>
-      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?'No cartão':x.source==='credit_card_invoice_payment'?'Fatura paga':x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
+      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?'No cartão':x.source==='credit_card_invoice_payment'?'Fatura paga':x.source==='open_finance'?'Sincronizado':x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
     </section>
 
     <AppNav/>
