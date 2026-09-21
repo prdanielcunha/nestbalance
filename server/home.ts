@@ -23,6 +23,35 @@ function accountDto(doc:any){
   };
 }
 
+function savingsPotDto(doc:any){
+  const data=doc.data();
+  return {
+    id:doc.id,
+    name:String(data.name||'Dinheiro guardado'),
+    balanceMinor:Number(data.balanceMinor||0),
+    goalMinor:Number.isSafeInteger(data.goalMinor)?data.goalMinor:null,
+    currency:String(data.currency||'BRL'),
+    institutionName:typeof data.institutionName==='string'?data.institutionName:null,
+    source:typeof data.source==='string'?data.source:null,
+    status:String(data.status||'active')
+  };
+}
+
+function cardSnapshotDto(doc:any){
+  const data=doc.data();
+  return {
+    id:doc.id,
+    name:String(data.name||'Cartão'),
+    last4:typeof data.last4==='string'?data.last4:null,
+    statementAmountMinor:Number.isSafeInteger(data.statementAmountMinor)?data.statementAmountMinor:null,
+    dueOn:typeof data.dueOn==='string'?data.dueOn:null,
+    availableLimitMinor:Number.isSafeInteger(data.availableLimitMinor)?data.availableLimitMinor:null,
+    totalLimitMinor:Number.isSafeInteger(data.totalLimitMinor)?data.totalLimitMinor:null,
+    institutionName:typeof data.institutionName==='string'?data.institutionName:null,
+    source:typeof data.source==='string'?data.source:null
+  };
+}
+
 function cardDto(doc:any){
   const data=doc.data();
   return {
@@ -102,14 +131,16 @@ export async function getHomeData(req:Request,res:Response){
 
     const household=adminDb.collection('households').doc(householdId);
     const currentMonthKey=new Date().toISOString().slice(0,7);
-    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments]=await Promise.all([
+    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments,savingsPots,cardSnapshots]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(100).get(),
       household.collection('installmentPlans').where('status','==','active').limit(100).get(),
       household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get(),
-      household.collection('commitmentPayments').where('periodKey','==',currentMonthKey).limit(200).get()
+      household.collection('commitmentPayments').where('periodKey','==',currentMonthKey).limit(200).get(),
+      household.collection('savingsPots').where('status','==','active').limit(100).get(),
+      household.collection('cardSnapshots').limit(50).get()
     ]);
 
     const paidThisMonth=new Set(
@@ -129,6 +160,8 @@ export async function getHomeData(req:Request,res:Response){
       })),
       installmentPlans:installmentPlans.docs.map(installmentPlanDto),
       invoiceImports:invoiceImports.docs.map(invoiceImportDto),
+      savingsPots:savingsPots.docs.map(savingsPotDto),
+      cardSnapshots:cardSnapshots.docs.map(cardSnapshotDto),
       refreshedAt:new Date().toISOString()
     });
   }catch(err:any){
