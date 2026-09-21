@@ -627,7 +627,7 @@
 .card-empty.readonly{cursor:default}
 
 /* Privacy center */
-.scope-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 20px}
+.scope-choice-wrap{margin:16px 0 20px}.scope-choice-copy{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}.scope-choice-copy>strong{font-size:13px}.scope-choice-copy>span{font-size:11px;line-height:1.45;color:var(--muted)}.scope-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0}
 .scope-choice button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:18px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:4px}
 .scope-choice button span{font-size:12px;color:var(--muted);line-height:1.35}
 .scope-choice button.active{border-color:rgba(94,106,210,.5);box-shadow:0 0 0 3px rgba(94,106,210,.09);background:linear-gradient(145deg,rgba(94,106,210,.08),var(--surface-strong))}
