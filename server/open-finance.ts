@@ -17,6 +17,7 @@ import {
   deleteBelvoLink,
   getBelvoLink,
   isBelvoConfigured,
+  paidOpenFinanceEnabled,
   listBelvoAccounts,
   listBelvoBalances,
   listBelvoTransactions
@@ -94,6 +95,7 @@ function balanceMap(items:any[]){
 }
 
 async function syncConnection(householdId:string,connectionId:string,actorUid:string){
+  if(!paidOpenFinanceEnabled()) fail('OPEN_FINANCE_NOT_CONFIGURED',503);
   const household=adminDb.collection('households').doc(householdId);
   const connectionRef=household.collection('bankConnections').doc(connectionId);
   const connectionSnap=await connectionRef.get();
