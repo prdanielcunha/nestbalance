@@ -1,6 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
+import { resolveImportedMovementDirection } from '@/src/core/movement-import';
+import { parseFinancialCsv } from '@/src/core/csv-import';
 import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
 import {
@@ -51,17 +53,50 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [upload, setUpload] = useState<UploadProgress | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [recording,setRecording]=useState(false);
+  const [showAllReview,setShowAllReview]=useState(false);
+  const imageInputRef=useRef<HTMLInputElement|null>(null);
+  const fileInputRef=useRef<HTMLInputElement|null>(null);
+  const textRef=useRef<HTMLTextAreaElement|null>(null);
+  const recorderRef=useRef<MediaRecorder|null>(null);
+  const recorderChunksRef=useRef<BlobPart[]>([]);
+  const recorderStreamRef=useRef<MediaStream|null>(null);
 
-  const working = saving || analyzing;
+  const working = saving || analyzing || recording;
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !working) setOpen(false); };
+    const onPaste=(e:ClipboardEvent)=>{
+      const imageItem=Array.from(e.clipboardData?.items||[]).find(item=>item.type.startsWith('image/'));
+      if(!imageItem) return;
+      const pasted=imageItem.getAsFile();
+      if(!pasted) return;
+      e.preventDefault();
+      const extension=(pasted.type.split('/')[1]||'png').replace('jpeg','jpg');
+      const fileFromClipboard=new File([pasted],`print-${Date.now()}.${extension}`,{type:pasted.type||'image/png'});
+      selectFile(fileFromClipboard,'Print colado. Já estou organizando.');
+      void interpret(fileFromClipboard);
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('paste',onPaste);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('paste',onPaste);
+    };
   }, [open, working]);
 
+  function stopRecorderTracks(){
+    recorderStreamRef.current?.getTracks().forEach(track=>track.stop());
+    recorderStreamRef.current=null;
+    recorderRef.current=null;
+    recorderChunksRef.current=[];
+  }
+
   function clearAll() {
+    stopRecorderTracks();
+    setRecording(false);
+    setShowAllReview(false);
     setOpen(false);
     onClose?.();
     setText('');
@@ -81,6 +116,66 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   function reset() {
     if (working) return;
     clearAll();
+  }
+
+  function selectFile(nextFile:File,noticeText=''){
+    setFile(nextFile);
+    setText('');
+    setPreparedEvidenceId(null);
+    setAnalysis(null);
+    setAiAnalysis(null);
+    setPendingAi(null);
+    setAmountChoices([]);
+    setDirectionChoice(false);
+    setInterpretations([]);
+    setError('');
+    setNotice(noticeText);
+  }
+
+  async function startRecording(){
+    if(recording||working) return;
+    setError('');
+    setNotice('');
+    if(typeof navigator==='undefined'||!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){
+      setError('Este aparelho não liberou gravação direta. Você ainda pode enviar um áudio já gravado.');
+      fileInputRef.current?.click();
+      return;
+    }
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const recorder=new MediaRecorder(stream);
+      recorderStreamRef.current=stream;
+      recorderRef.current=recorder;
+      recorderChunksRef.current=[];
+      recorder.ondataavailable=event=>{ if(event.data.size) recorderChunksRef.current.push(event.data); };
+      recorder.onstop=()=>{
+        const mimeType=recorder.mimeType||'audio/webm';
+        const blob=new Blob(recorderChunksRef.current,{type:mimeType});
+        const extension=mimeType.includes('mp4')?'m4a':mimeType.includes('ogg')?'ogg':'webm';
+        const recorded=new File([blob],`audio-${Date.now()}.${extension}`,{type:mimeType});
+        stopRecorderTracks();
+        setRecording(false);
+        selectFile(recorded,'Áudio recebido. Já estou organizando.');
+        void interpret(recorded);
+      };
+      recorder.start();
+      setRecording(true);
+      setNotice('Pode falar do seu jeito. Quando terminar, toque em “Terminar áudio”.');
+    }catch{
+      stopRecorderTracks();
+      setRecording(false);
+      setError('Não consegui acessar o microfone. Você pode enviar um áudio já gravado.');
+    }
+  }
+
+  function stopRecording(){
+    if(!recording) return;
+    const recorder=recorderRef.current;
+    if(recorder&&recorder.state!=='inactive') recorder.stop();
+    else{
+      stopRecorderTracks();
+      setRecording(false);
+    }
   }
 
   function applySourceText(sourceText: string, documentDerived = false) {
@@ -126,20 +221,22 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setNotice('Li a imagem com inteligência visual. Confira antes de guardar.');
   }
 
-  async function interpret() {
+  async function interpret(overrideFile?:File) {
     setError('');
     setNotice('');
     setAmountChoices([]);
     setDirectionChoice(false);
 
-    if (text.trim()) {
+    const activeFile=overrideFile??file;
+
+    if (!overrideFile&&text.trim()) {
       try { applySourceText(text); }
-      catch { setError('Diga pelo menos o que aconteceu e, se souber, o valor.'); }
+      catch { setError('Conte o que aconteceu e, se souber, o valor.'); }
       return;
     }
 
-    if (!file) {
-      setError('Escreva o que aconteceu ou envie um documento.');
+    if (!activeFile) {
+      setError('Escreva, fale, cole um print ou escolha um arquivo.');
       return;
     }
 
@@ -148,7 +245,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     try {
       let evidenceId = preparedEvidenceId;
       if (!evidenceId) {
-        const evidence = await ingestEvidence(householdId, file, progress => setUpload(progress));
+        const evidence = await ingestEvidence(householdId, activeFile, progress => setUpload(progress));
         evidenceId = evidence.canonicalEvidenceId;
         setPreparedEvidenceId(evidenceId);
       }
@@ -161,6 +258,14 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         try{
           const ai=await analyzeEvidenceAi(householdId,evidenceId);
           setAiAnalysis(ai);
+          if(ai.kind==='image'&&ai.movementList&&ai.parsedInterpretations?.length){
+            setInterpretations(ai.parsedInterpretations);
+            const unresolved=ai.parsedInterpretations.filter(item=>item.needsReview.includes('direction')).length;
+            setNotice(unresolved
+              ? `Encontrei ${ai.parsedInterpretations.length} movimentações. Só ${unresolved} precisa${unresolved===1?'':'m'} que você diga se entrou ou saiu.`
+              : `Encontrei ${ai.parsedInterpretations.length} movimentações e organizei a lista. Confira e guarde.`);
+            return;
+          }
           if(ai.kind==='audio'){
             const transcript=ai.transcript?.trim()||'';
             if(!transcript||!ai.parsedInterpretations?.length){
@@ -199,7 +304,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         return;
       }
 
-      const suggestion = suggestCaptureFromDocument(file.name, result.signals);
+      if(/\.csv$/i.test(activeFile.name)&&result.text){
+        const csv=parseFinancialCsv(result.text);
+        if(csv.state==='parsed'){
+          setInterpretations(csv.items);
+          const attention=csv.items.filter(item=>item.needsReview.length>0).length;
+          setNotice(attention
+            ? `Importei ${csv.items.length} movimentações do arquivo. Só ${attention} precisa${attention===1?'':'m'} de uma conferência rápida.`
+            : `Importei ${csv.items.length} movimentações do arquivo. Tudo pronto para guardar.`);
+          return;
+        }
+      }
+
+      const suggestion = suggestCaptureFromDocument(activeFile.name, result.signals);
       if (suggestion.state === 'suggested') {
         applySourceText(suggestion.sourceText, true);
         setNotice('Li o texto do documento sem IA. Confira antes de guardar.');
@@ -239,8 +356,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     prepareAiReview(pendingAi.extraction,pendingAi.amountMinor,direction);
   }
 
+  function chooseImportedDirection(index:number,direction:ConfirmedDirection){
+    setInterpretations(items=>items.map((item,itemIndex)=>
+      itemIndex===index?resolveImportedMovementDirection(item,direction):item
+    ));
+  }
+
   async function confirm() {
     if (!interpretations.length) return;
+    const unresolved=interpretations.filter(item=>item.needsReview.includes('direction')).length;
+    if(unresolved){
+      setError(`Só falta dizer o que aconteceu em ${unresolved} item${unresolved===1?'':'s'}.`);
+      return;
+    }
     setSaving(true);
     setUpload(null);
     setError('');
@@ -275,16 +403,26 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     }
   }
 
-  const reviewCount = interpretations.filter(x => x.confidence !== 'high').length;
+  const indexedInterpretations=interpretations.map((item,index)=>({item,index}));
+  const attentionInterpretations=indexedInterpretations.filter(({item})=>item.confidence!=='high'||item.needsReview.includes('direction'));
+  const readyInterpretations=indexedInterpretations.filter(({item})=>item.confidence==='high'&&!item.needsReview.includes('direction'));
+  const reviewCount = attentionInterpretations.length;
+  const unresolvedDirectionCount=interpretations.filter(x=>x.needsReview.includes('direction')).length;
+  const visibleInterpretations=showAllReview
+    ? indexedInterpretations
+    : attentionInterpretations.length
+      ? attentionInterpretations
+      : indexedInterpretations.slice(0,3);
+  const hiddenReadyCount=showAllReview?0:Math.max(0,interpretations.length-visibleInterpretations.length);
   const organizedLabel = interpretations.length === 1
     ? (interpretations[0].kind === 'commitment'
-        ? 'Conta a pagar'
+        ? 'Conta para pagar'
         : interpretations[0].direction === 'income'
-          ? 'Entrada'
+          ? 'Dinheiro que entrou'
           : interpretations[0].direction === 'transfer'
-            ? 'Transferência'
-            : 'Saída')
-    : `${interpretations.length} itens financeiros`;
+            ? 'Dinheiro entre suas contas'
+            : 'Dinheiro que saiu')
+    : `${interpretations.length} coisas organizadas`;
 
   return <>
     {showTrigger&&<button className="capture-fab" onClick={() => setOpen(true)} aria-label={t.add}>＋ <span>{t.add}</span></button>}
@@ -292,39 +430,71 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       <section className="capture-sheet" role="dialog" aria-modal="true" aria-label={t.captureTitle}>
         {!interpretations.length ? <>
           <div className="sheet-handle" />
-          <div className="eyebrow">Entrada universal</div>
-          <h2>{t.captureTitle}</h2>
-          <p>{t.captureHint}</p>
+          <div className="eyebrow">Jogue aqui. A gente organiza.</div>
+          <h2>O que aconteceu?</h2>
+          <p>Escreva, fale, mande um print ou um arquivo. Você não precisa decidir antes se foi dinheiro que entrou, saiu ou uma conta para pagar.</p>
+
+          <div className="capture-quick-actions" aria-label="Como você quer contar">
+            <button type="button" disabled={working} onClick={()=>textRef.current?.focus()}>
+              <strong>Escrever</strong><span>Conte do seu jeito</span>
+            </button>
+            <button type="button" className={recording?'recording':''} disabled={saving||analyzing} onClick={()=>recording?stopRecording():void startRecording()}>
+              <strong>{recording?'Terminar áudio':'Falar'}</strong><span>{recording?'Estou ouvindo…':'Grave na hora'}</span>
+            </button>
+            <button type="button" disabled={working} onClick={()=>imageInputRef.current?.click()}>
+              <strong>Print ou foto</strong><span>Galeria ou câmera</span>
+            </button>
+            <button type="button" disabled={working} onClick={()=>fileInputRef.current?.click()}>
+              <strong>Arquivo</strong><span>PDF, CSV ou áudio</span>
+            </button>
+          </div>
+
+          <div className="capture-paste-hint">No computador, você também pode <strong>colar um print</strong> direto aqui.</div>
+
+          <input
+            ref={imageInputRef}
+            className="sr-only"
+            type="file"
+            accept="image/*"
+            disabled={working}
+            onChange={e=>{
+              const selected=e.target.files?.[0];
+              if(!selected) return;
+              selectFile(selected,'Imagem recebida. Já estou organizando.');
+              void interpret(selected);
+              e.currentTarget.value='';
+            }}
+          />
+          <input
+            ref={fileInputRef}
+            className="sr-only"
+            type="file"
+            accept="image/*,.pdf,text/plain,text/csv,audio/*"
+            disabled={working}
+            onChange={e=>{
+              const selected=e.target.files?.[0];
+              if(!selected) return;
+              selectFile(selected,'Arquivo recebido. Já estou organizando.');
+              void interpret(selected);
+              e.currentTarget.value='';
+            }}
+          />
 
           <label className="sr-only" htmlFor="universal-capture-text">Conte o que aconteceu</label>
           <textarea
+            ref={textRef}
             id="universal-capture-text"
-            autoFocus
             value={text}
             disabled={working}
             onChange={e=>setText(e.target.value)}
-            placeholder={'Ex.: Internet 119,90 dia 10 todo mês\nCarro 1286 dia 18\nEscola 780 dia 25'}
+            placeholder={'Ex.: Paguei 119,90 da internet\nRecebi 2.500 do trabalho\nGeladeira em 10x de 189'}
           />
 
-          <label className="file-drop">
-            <input
-              type="file"
-              accept="image/*,.pdf,text/plain,text/csv,audio/*"
-              disabled={working}
-              onChange={e=>{
-                setFile(e.target.files?.[0] ?? null);
-                setPreparedEvidenceId(null);
-                setAnalysis(null);
-                setAiAnalysis(null);
-                setPendingAi(null);
-                setAmountChoices([]);
-                setDirectionChoice(false);
-                setNotice('');
-                setError('');
-              }}
-            />
-            {file ? file.name : 'Imagem, PDF, TXT, CSV ou áudio'}
-          </label>
+          {file&&<div className="capture-selected-source">
+            <span>Recebido</span>
+            <strong>{file.name}</strong>
+            {!working&&<button type="button" onClick={()=>{setFile(null);setPreparedEvidenceId(null);setAnalysis(null);setAiAnalysis(null);setNotice('');}}>Trocar</button>}
+          </div>}
 
           {upload && <div className="upload-status" role="status" aria-live="polite">
             <div><span>{upload.phase === 'uploading' ? 'Guardando original…' : 'Conferindo arquivo…'}</span><b>{upload.percent}%</b></div>
@@ -342,11 +512,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           {directionChoice && <div className="direction-choice-panel">
             <span>O que aconteceu com esse dinheiro?</span>
             <div>
-              <button type="button" onClick={()=>chooseDirection('expense')}>Saiu</button>
-              <button type="button" onClick={()=>chooseDirection('income')}>Entrou</button>
-              <button type="button" onClick={()=>chooseDirection('transfer')}>Entre minhas contas</button>
+              <button type="button" onClick={()=>chooseDirection('expense')}>Eu paguei</button>
+              <button type="button" onClick={()=>chooseDirection('income')}>Eu recebi</button>
+              <button type="button" onClick={()=>chooseDirection('transfer')}>Só mudou de conta</button>
             </div>
-            <small>Transferências entre suas contas não entram como gasto nem como renda.</small>
+            <small>Se só passou de uma conta sua para outra, o NestBalance não trata como dinheiro gasto ou recebido.</small>
           </div>}
 
           {analysis?.state === 'extracted' && !aiAnalysis && <p className="native-analysis-note">Texto lido diretamente do documento · sem IA</p>}
@@ -356,8 +526,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={reset}>{t.cancel}</button>
-            <button className="primary-button" disabled={working || (!text.trim() && !file)} onClick={interpret}>
-              {analyzing ? 'Entendendo…' : 'Entender'}
+            <button className="primary-button" disabled={working || (!text.trim() && !file)} onClick={()=>void interpret()}>
+              {analyzing ? 'Organizando…' : 'Organizar'}
             </button>
           </div>
         </> : <>
@@ -367,32 +537,60 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="evidence-stack" aria-label="Como o NestBalance entendeu">
             <div>
-              <span>ORIGINAL</span>
+              <span>VOCÊ MANDOU</span>
               <strong>{file ? file.name : 'Texto enviado'}</strong>
               <small>{file ? (preparedEvidenceId ? 'Original já guardado e preservado.' : 'O arquivo será preservado sem alterações.') : text.length > 80 ? `${text.slice(0, 80)}…` : text}</small>
             </div>
             <div>
-              <span>ENTENDEMOS</span>
+              <span>O NESTBALANCE ENTENDEU</span>
               <strong>{interpretations.length === 1 ? `${interpretations[0].description} · ${money.format(interpretations[0].money.amountMinor / 100)}` : `${interpretations.length} itens encontrados`}</strong>
               <small>{aiAnalysis ? 'Interpretação por IA; confirme antes de guardar.' : analysis?.state === 'extracted' ? 'Leitura nativa do documento; sem IA.' : reviewCount ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.` : 'Os dados principais estão claros.'}</small>
             </div>
             <div>
-              <span>ORGANIZAMOS COMO</span>
+              <span>VAI FICAR ASSIM</span>
               <strong>{organizedLabel}</strong>
               <small>{file ? 'Documento e registro ficarão ligados entre si.' : 'Você poderá corrigir isso depois sem perder o original.'}</small>
             </div>
           </div>
 
-          <div className="review-list">{interpretations.map((interpretation, index) => <div className="interpretation-card" key={`${interpretation.description}-${index}`}>
+          {interpretations.length>1&&<div className="capture-review-summary">
+            <div><strong>{readyInterpretations.length}</strong><span>já organizado{readyInterpretations.length===1?'':'s'}</span></div>
+            <div className={attentionInterpretations.length?'attention':''}><strong>{attentionInterpretations.length}</strong><span>para conferir</span></div>
+          </div>}
+
+          <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
             <div><strong>{interpretation.description}</strong><b>{money.format(interpretation.money.amountMinor / 100)}</b></div>
             <span>{interpretation.kind === 'commitment'
-              ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta a pagar')
-              : interpretation.direction==='transfer'?'Transferência':'Movimento'}</span>
+              ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta para pagar')
+              : interpretation.needsReview.includes('direction')
+                ? 'Só falta dizer se entrou ou saiu'
+                : interpretation.direction==='income'
+                  ? 'Dinheiro que entrou'
+                  : interpretation.direction==='transfer'
+                    ? 'Só mudou de conta'
+                    : 'Dinheiro que saiu'}
+              {interpretation.occurredOn?` · ${new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit'}).format(new Date(interpretation.occurredOn+'T12:00:00'))}`:''}
+            </span>
             {interpretation.installment && <span>Parcela {interpretation.installment.current} de {interpretation.installment.total}</span>}
-            {interpretation.confidence !== 'high' && <em>Confira este item</em>}
+            {interpretation.needsReview.includes('direction')
+              ? <div className="inline-direction-choice">
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'expense')}>Eu paguei</button>
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'income')}>Eu recebi</button>
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'transfer')}>Mudou de conta</button>
+                </div>
+              : interpretation.confidence !== 'high' && <em>Confira este item</em>}
           </div>)}</div>
 
-          {reviewCount > 0 && <p className="confidence-note">Revise o que veio do documento. O NestBalance não confirma sozinho quando existe dúvida.</p>}
+          {hiddenReadyCount>0&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(true)}>
+            Ver {hiddenReadyCount} item{hiddenReadyCount===1?'':'s'} já organizado{hiddenReadyCount===1?'':'s'}
+          </button>}
+          {showAllReview&&interpretations.length>3&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(false)}>
+            Mostrar só o que importa
+          </button>}
+
+          {reviewCount > 0 && <p className="confidence-note">{unresolvedDirectionCount
+            ? `Só ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' precisa':'s precisam'} de uma resposta rápida. O restante já está organizado.`
+            : 'O que estava claro já foi organizado. Confira apenas os itens sinalizados.'}</p>}
           {upload && <div className="upload-status" role="status" aria-live="polite">
             <div><span>{upload.phase === 'uploading' ? 'Guardando original…' : 'Conferindo arquivo…'}</span><b>{upload.percent}%</b></div>
             <progress max="100" value={upload.percent}>{upload.percent}%</progress>
@@ -401,8 +599,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           {error && <p className="error-copy" role="alert">{error}</p>}
 
           <div className="sheet-actions">
-            <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>{t.cancel}</button>
-            <button className="primary-button" disabled={working} onClick={confirm}>{saving ? (upload?.phase === 'verifying' ? 'Conferindo…' : 'Guardando…') : t.confirm}</button>
+            <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>Corrigir</button>
+            <button className="primary-button" disabled={working||unresolvedDirectionCount>0} onClick={confirm}>{saving
+              ? (upload?.phase === 'verifying' ? 'Conferindo…' : 'Guardando…')
+              : unresolvedDirectionCount
+                ? `Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`
+                : 'Guardar'}</button>
           </div>
         </>}
       </section>

@@ -11,9 +11,9 @@ type Filter='all'|'income'|'cash_expense'|'card'|'transfer';
 function label(row:HomeRow){
   if(row.source==='credit_card_invoice') return 'Compra no cartão';
   if(row.source==='credit_card_invoice_payment') return 'Fatura paga';
-  if(row.direction==='income') return 'Entrada';
-  if(row.direction==='transfer') return 'Transferência';
-  return 'Saída';
+  if(row.direction==='income') return row.source==='open_finance'?'Recebido pelo banco':'Dinheiro que entrou';
+  if(row.direction==='transfer') return 'Só mudou de conta';
+  return row.source==='open_finance'?'Pago pelo banco':'Dinheiro que saiu';
 }
 
 function matchesFilter(row:HomeRow,filter:Filter){
@@ -60,10 +60,10 @@ export function MovementsScreen({householdId}:{householdId:string}){
 
   const filters:{value:Filter;label:string}[]=[
     {value:'all',label:'Todos'},
-    {value:'income',label:'Entradas'},
-    {value:'cash_expense',label:'Saídas'},
+    {value:'income',label:'Recebi'},
+    {value:'cash_expense',label:'Paguei'},
     {value:'card',label:'Cartão'},
-    {value:'transfer',label:'Transferências'}
+    {value:'transfer',label:'Entre contas'}
   ];
 
   return <main className="app-shell movements-shell">
@@ -72,16 +72,16 @@ export function MovementsScreen({householdId}:{householdId:string}){
     </header>
 
     <section className="area-hero">
-      <span>Timeline financeira</span>
-      <h1>Tudo que aconteceu, sem misturar conceitos.</h1>
-      <p>Compras no cartão, saídas em dinheiro, entradas e transferências continuam separadas para você entender o que realmente aconteceu.</p>
+      <span>Seu histórico</span>
+      <h1>Tudo que aconteceu com seu dinheiro.</h1>
+      <p>O NestBalance separa o que você recebeu, o que pagou, o que foi para o cartão e o que só mudou de uma conta sua para outra.</p>
     </section>
 
     <section className="movement-summary-grid">
-      <article><span>Entrou</span><strong>{money.format(summary.income/100)}</strong></article>
-      <article><span>Saiu da conta</span><strong>{money.format(summary.cashExpense/100)}</strong></article>
+      <article><span>Recebi</span><strong>{money.format(summary.income/100)}</strong></article>
+      <article><span>Paguei</span><strong>{money.format(summary.cashExpense/100)}</strong></article>
       <article><span>No cartão</span><strong>{money.format(summary.card/100)}</strong></article>
-      <article><span>Transferido</span><strong>{money.format(summary.transfers/100)}</strong></article>
+      <article><span>Entre contas</span><strong>{money.format(summary.transfers/100)}</strong></article>
     </section>
 
     <section className="movement-controls">

@@ -11,13 +11,13 @@ function localIsoDate() {
 
 export type CommitResult = { status: 'created' | 'duplicate'; id: string; evidenceId?: string | null };
 
-async function commitOnServer(householdId: string, sourceText: string, evidenceId?: string | null): Promise<CommitResult> {
+async function commitOnServer(householdId: string, sourceText: string, observedOn: string, evidenceId?: string | null): Promise<CommitResult> {
   const token = await auth?.currentUser?.getIdToken();
   if (!token) throw new Error('AUTH_REQUIRED');
   const response = await fetch('/api/capture/commit', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-    body: JSON.stringify({ householdId, sourceText, evidenceId: evidenceId || null, observedOn: localIsoDate() })
+    body: JSON.stringify({ householdId, sourceText, evidenceId: evidenceId || null, observedOn })
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(json.error || 'CAPTURE_COMMIT_FAILED');
@@ -38,5 +38,5 @@ export async function commitInterpretation(args: {
     const evidence = await ingestEvidence(householdId, file, onUploadProgress);
     evidenceId = evidence.canonicalEvidenceId;
   }
-  return commitOnServer(householdId, interpretation.sourceText, evidenceId);
+  return commitOnServer(householdId, interpretation.sourceText, interpretation.occurredOn || localIsoDate(), evidenceId);
 }
