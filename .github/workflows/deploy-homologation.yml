@@ -75,43 +75,8 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: Bootstrap dedicated runtime identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          RUNTIME_NAME="${NESTBALANCE_RUNTIME_SERVICE_ACCOUNT%@*}"
-
-          if ! gcloud iam service-accounts describe "$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
-            gcloud iam service-accounts create "$RUNTIME_NAME" \
-              --project "$GCP_PROJECT_ID" \
-              --display-name "NestBalance Runtime"
-          fi
-
-          gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
-            --member "serviceAccount:$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
-            --role "roles/datastore.user" \
-            --condition=None \
-            --quiet >/dev/null
-
-          gcloud storage buckets add-iam-policy-binding "gs://$FIREBASE_STORAGE_BUCKET" \
-            --member "serviceAccount:$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
-            --role "roles/storage.objectAdmin" \
-            --quiet >/dev/null
-
-          gcloud iam service-accounts add-iam-policy-binding "$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
-            --project "$GCP_PROJECT_ID" \
-            --member "serviceAccount:$GCP_DEPLOY_SERVICE_ACCOUNT" \
-            --role "roles/iam.serviceAccountUser" \
-            --quiet >/dev/null
-
-          if [[ -n "${OPENAI_SECRET_NAME:-}" ]]; then
-            gcloud secrets describe "$OPENAI_SECRET_NAME" --project "$GCP_PROJECT_ID" >/dev/null
-            gcloud secrets add-iam-policy-binding "$OPENAI_SECRET_NAME" \
-              --project "$GCP_PROJECT_ID" \
-              --member "serviceAccount:$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
-              --role "roles/secretmanager.secretAccessor" \
-              --quiet >/dev/null
-          fi
+      - name: Runtime IAM boundary
+        run: echo "NestBalance runtime identity and IAM are centrally bootstrapped by MillionsNest infrastructure."
 
       - name: Deploy NestBalance API
         shell: bash
