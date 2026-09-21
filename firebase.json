@@ -7,7 +7,7 @@
     "rules": "storage.rules"
   },
   "hosting": {
-    "target": "nestbalance",
+    "target": "nestbalance-homologation",
     "public": "out",
     "ignore": [
       "firebase.json",
