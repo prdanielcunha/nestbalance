@@ -1,7 +1,7 @@
 'use client';
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
+import { AppNav } from '@/src/features/navigation/app-nav';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const time=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -42,10 +42,7 @@ export function AssistantScreen({householdId}:{householdId:string}){
         <div className="eyebrow">NestBalance</div>
         <span className="topbar-subtitle">Assistente</span>
       </div>
-      <div className="topbar-actions">
-        <Link className="text-link" href="/">Início</Link>
-        <Link className="text-link" href="/vault">Cofre</Link>
-      </div>
+<div className="avatar-dot" aria-hidden="true" />
     </header>
 
     <section className="assistant-hero">
@@ -137,5 +134,7 @@ export function AssistantScreen({householdId}:{householdId:string}){
       <strong>Sem chute financeiro.</strong>
       <p>Essa primeira camada não usa opinião nem aconselhamento de investimento. Ela calcula e explica o que já existe nos seus dados.</p>
     </section>
+
+    <AppNav/>
   </main>;
 }
