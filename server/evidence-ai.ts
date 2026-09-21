@@ -4,7 +4,7 @@ import { FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import { detectDocumentSignals } from '../src/core/document-signals.js';
 import { parseFinancialList } from '../src/core/text-parser.js';
 import { extractFinancialImage } from './ai/financial-image.js';
-import { buildImportedMovements } from '../src/core/movement-import.js';
+import { buildImportedMovements, type ImportedMovementList } from '../src/core/movement-import.js';
 import { transcribeFinancialAudio } from './ai/audio-transcription.js';
 import { isOpenAiConfigured } from './ai/openai-client.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
@@ -121,8 +121,8 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     if(kind==='image'){
       const result=await extractFinancialImage(bytes,mimeType);
       const screenMovements=result.extraction.screen?.movements||[];
-      const movementList=screenMovements.length?{
-        documentType:(result.extraction.screen?.screenType==='transaction_list'?'transaction_list':'bank_screenshot') as const,
+      const movementList:ImportedMovementList|null=screenMovements.length?{
+        documentType:result.extraction.screen?.screenType==='transaction_list'?'transaction_list':'bank_screenshot',
         institution:result.extraction.screen?.institution||result.extraction.institution,
         overallConfidence:result.extraction.overallConfidence,
         ambiguities:result.extraction.ambiguities,
