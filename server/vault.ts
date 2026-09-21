@@ -1,8 +1,7 @@
-import { createHash } from 'node:crypto';
 import type { Request, Response } from 'express';
-import { MAX_EVIDENCE_BYTES, signatureMatchesMime } from '../src/core/evidence.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { verifyVaultPreviewBytes } from './vault-verifier.js';
 
 const EXTRACTION_VERSION='native-text-v1';
 
@@ -118,15 +117,11 @@ export async function previewVaultEvidence(req:Request,res:Response){
     const expectedMime=String(resolved.data.mimeType||resolved.data.declaredMimeType||'');
     const expectedHash=String(resolved.data.sha256||'');
     const storagePath=String(resolved.data.storagePath||'');
-    if(!storagePath||!expectedHash||!expectedMime||expectedSize<=0||expectedSize>MAX_EVIDENCE_BYTES){
-      return error(res,409,'EVIDENCE_PREVIEW_UNAVAILABLE');
-    }
+    if(!storagePath) return error(res,409,'EVIDENCE_PREVIEW_UNAVAILABLE');
 
     const [bytes]=await adminBucket.file(storagePath).download();
-    if(bytes.length!==expectedSize) return error(res,409,'EVIDENCE_SIZE_MISMATCH');
-    if(!signatureMatchesMime(expectedMime,new Uint8Array(bytes.subarray(0,4096)))) return error(res,409,'EVIDENCE_SIGNATURE_MISMATCH');
-    const hash=createHash('sha256').update(bytes).digest('hex');
-    if(hash!==expectedHash) return error(res,409,'EVIDENCE_HASH_MISMATCH');
+    const verification=verifyVaultPreviewBytes({size:expectedSize,mimeType:expectedMime,sha256:expectedHash},bytes);
+    if(!verification.ok) return error(res,409,`EVIDENCE_${verification.reason.toUpperCase()}`);
 
     const safeName=String(resolved.data.originalName||'documento').replace(/[\r\n"]/g,' ').slice(0,160);
     res.setHeader('Content-Type',expectedMime);
