@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import type { HomeCreditCard } from '@/src/lib/repositories/home';
 import { ingestEvidence, analyzeEvidenceText, type UploadProgress } from '@/src/lib/repositories/evidence';
-import { commitInvoice, previewInvoice, type InvoicePreviewResponse } from '@/src/lib/repositories/invoices';
+import { analyzeInvoiceImage, commitInvoice, previewInvoice, type InvoicePreviewResponse } from '@/src/lib/repositories/invoices';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const date=new Intl.DateTimeFormat('pt-BR');
@@ -32,6 +32,7 @@ export function InvoiceImportSheet({
 
   const clearItems=useMemo(()=>result?.preview.items.filter(item=>item.needsReview.length===0)??[],[result]);
   const reviewItems=useMemo(()=>result?.preview.items.filter(item=>item.needsReview.length>0)??[],[result]);
+  const globalReview=useMemo(()=>result?.preview.globalNeedsReview??[],[result]);
 
   const visibleItems=useMemo(()=>{
     if(!result) return [];
@@ -48,9 +49,21 @@ export function InvoiceImportSheet({
     try{
       const evidence=await ingestEvidence(householdId,file,setProgress);
       const analysis=await analyzeEvidenceText(householdId,evidence.canonicalEvidenceId);
-      if(analysis.state!=='extracted'){
-        throw new Error(analysis.state==='needs_ai'?'INVOICE_REQUIRES_VISUAL_AI':'INVOICE_TEXT_UNAVAILABLE');
+      if(analysis.state==='needs_ai'){
+        if(file.type.startsWith('image/')){
+          const visual=await analyzeInvoiceImage({
+            householdId,
+            cardId:card.id,
+            evidenceId:evidence.canonicalEvidenceId
+          });
+          setResult(visual);
+          setProgress(null);
+          return;
+        }
+        throw new Error('INVOICE_TEXT_UNAVAILABLE');
       }
+      if(analysis.state!=='extracted') throw new Error('INVOICE_TEXT_UNAVAILABLE');
+
       const preview=await previewInvoice({
         householdId,
         cardId:card.id,
@@ -60,8 +73,12 @@ export function InvoiceImportSheet({
       setProgress(null);
     }catch(err:any){
       const code=String(err?.message||'');
-      if(code==='INVOICE_REQUIRES_VISUAL_AI'){
-        setError('Esta fatura parece ser uma imagem. A leitura visual de faturas será conectada na próxima camada; prefira o PDF original por enquanto.');
+      if(code==='AI_NOT_CONFIGURED'){
+        setError('A leitura visual inteligente não está conectada neste ambiente. O original foi preservado.');
+      }else if(code==='AI_ANALYSIS_IN_PROGRESS'){
+        setError('Essa imagem já está sendo analisada. Tente entender a fatura novamente em instantes.');
+      }else if(code==='INVOICE_IMAGE_TYPE_REQUIRED'||code==='INVOICE_IMAGE_TOO_LARGE'){
+        setError('Não consegui usar essa imagem como fatura. Confira o formato e o tamanho.');
       }else if(code==='INVOICE_TEXT_UNAVAILABLE'||code==='EVIDENCE_ANALYSIS_REQUIRED'){
         setError('Não encontrei texto financeiro suficiente nessa fatura.');
       }else{
@@ -114,11 +131,11 @@ export function InvoiceImportSheet({
         <label className="file-drop invoice-file-drop">
           <input
             type="file"
-            accept=".pdf,text/plain,text/csv,application/pdf"
+            accept="image/*,.pdf,text/plain,text/csv,application/pdf"
             disabled={working}
             onChange={e=>{setFile(e.target.files?.[0]??null);setError('');}}
           />
-          {file?file.name:'PDF, TXT ou CSV da fatura'}
+          {file?file.name:'Screenshot, foto, PDF, TXT ou CSV da fatura'}
         </label>
 
         {progress&&<div className="upload-status" role="status" aria-live="polite">
@@ -152,6 +169,23 @@ export function InvoiceImportSheet({
           <div><span>Parcelas futuras</span><strong>{money.format(result.preview.futureInstallmentsMinor/100)}</strong></div>
         </div>
 
+        {result.preview.statementTotalMinor!==null&&<div className={result.preview.reconciliationDeltaMinor===0?'invoice-reconciliation ok':'invoice-reconciliation review'}>
+          <div><span>Total visível da fatura</span><strong>{money.format(result.preview.statementTotalMinor/100)}</strong></div>
+          <div><span>Itens reconhecidos</span><strong>{money.format(result.preview.observedMinor/100)}</strong></div>
+          <small>{result.preview.reconciliationDeltaMinor===0
+            ? 'A soma dos itens reconhecidos bate com o total visível.'
+            : 'A soma não fecha com o total da fatura. A liquidação ficará bloqueada até a revisão.'}</small>
+        </div>}
+
+        {globalReview.length>0&&<div className="invoice-global-review" role="status">
+          <strong>Há uma conferência geral da fatura.</strong>
+          <span>{globalReview.includes('statement_total_mismatch')
+            ? 'O total visível não bate com a soma das compras reconhecidas.'
+            : globalReview.includes('no_invoice_items')
+              ? 'Não encontrei linhas de compra suficientes nessa imagem.'
+              : 'A imagem tem trechos que precisam de uma conferência antes de fechar a fatura.'}</span>
+        </div>}
+
         {result.preview.items.length===0
           ? <div className="invoice-empty"><strong>Não encontrei compras confiáveis.</strong><span>O original ficou preservado, mas nada será criado automaticamente.</span></div>
           : <>
@@ -175,8 +209,8 @@ export function InvoiceImportSheet({
             </>}
 
         <p className="confidence-note">
-          {reviewItems.length
-            ? <>{clearItems.length} item{clearItems.length===1?'':'s'} claro{clearItems.length===1?'':'s'} pode{clearItems.length===1?'':'m'} ser confirmado{clearItems.length===1?'':'s'} agora. {reviewItems.length} fica{reviewItems.length===1?'':'m'} pendente{reviewItems.length===1?'':'s'} para revisão.</>
+          {reviewItems.length||globalReview.length
+            ? <>{clearItems.length} item{clearItems.length===1?'':'s'} claro{clearItems.length===1?'':'s'} pode{clearItems.length===1?'':'m'} ser confirmado{clearItems.length===1?'':'s'} agora. O que ficou ambíguo não será fechado automaticamente.</>
             : <>Tudo que foi identificado está claro. A confirmação cria os lançamentos uma única vez e mantém as parcelas ligadas ao mesmo plano.</>}
         </p>
         {error&&<p className="error-copy" role="alert">{error}</p>}
