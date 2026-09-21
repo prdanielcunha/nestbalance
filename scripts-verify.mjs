@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 
 const read=(path)=>readFileSync(new URL(path,import.meta.url),'utf8');
@@ -69,7 +70,7 @@ function sourceFiles(root){
   return out;
 }
 
-const browserSources=sourceFiles(new URL('./src',import.meta.url));
+const browserSources=sourceFiles(fileURLToPath(new URL('./src',import.meta.url)));
 for(const path of browserSources){
   const source=readFileSync(path,'utf8');
   assert.ok(!source.includes('firebase/firestore'),`Browser source must not import Firestore: ${path}`);
