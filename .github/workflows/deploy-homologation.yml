@@ -173,16 +173,24 @@ jobs:
       - name: Deploy NestBalance Hosting only
         run: npx firebase deploy --only hosting:nestbalance --project "$GCP_PROJECT_ID"
 
-      - name: Smoke check API and Hosting
+      - name: Smoke check public Hosting and API rewrite
         shell: bash
         run: |
           set -euo pipefail
           API_URL="$(gcloud run services describe nestbalance-api --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format='value(status.url)')"
           test -n "$API_URL"
-          curl --fail --silent --show-error "$API_URL/healthz" | grep -q '"ok":true'
 
           HOSTING_URL="https://$FIREBASE_HOSTING_SITE.web.app"
-          curl --fail --silent --show-error "$HOSTING_URL/" | grep -q 'NestBalance'
 
+          curl --fail --silent --show-error --location \
+            --retry 12 --retry-delay 3 --retry-all-errors \
+            "$HOSTING_URL/api/healthz" | grep -q '"ok":true'
+
+          curl --fail --silent --show-error --location \
+            --retry 12 --retry-delay 3 --retry-all-errors \
+            "$HOSTING_URL/" | grep -q 'NestBalance'
+
+          DIRECT_API_STATUS="$(curl --silent --show-error --location -o /tmp/nestbalance-direct-health.json -w '%{http_code}' "$API_URL/healthz" || true)"
+          echo "NESTBALANCE_DIRECT_API_STATUS=$DIRECT_API_STATUS"
           echo "NESTBALANCE_API_URL=$API_URL"
           echo "NESTBALANCE_HOMOLOG_URL=$HOSTING_URL"
