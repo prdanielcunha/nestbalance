@@ -645,7 +645,7 @@
 
 .personal-pill{display:inline-flex;margin-left:7px;padding:3px 7px;border-radius:999px;background:rgba(94,106,210,.1);color:var(--iris);font-size:10px;font-style:normal;font-weight:800;letter-spacing:.02em;vertical-align:middle}
 
-.scope-view-switch{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--line);background:var(--surface);border-radius:999px;margin:0 0 18px;position:relative;z-index:1}.scope-view-switch button{border:0;background:transparent;color:var(--muted);border-radius:999px;padding:8px 13px;font-size:12px;font-weight:750}.scope-view-switch button.active{background:var(--surface-strong);color:var(--ink);box-shadow:0 2px 10px rgba(11,16,32,.08)}@media(max-width:520px){.scope-view-switch{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.scope-view-switch button{padding:9px 6px}}
+.scope-view-switch{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--line);background:var(--surface);border-radius:999px;margin:0 0 18px;position:relative;z-index:1}.scope-view-switch button{border:0;background:transparent;color:var(--muted);border-radius:999px;padding:8px 13px;font-size:12px;font-weight:750;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}.scope-view-switch button strong{font-size:12px;color:inherit}.scope-view-switch button span{font-size:8px;font-weight:650;color:var(--muted);white-space:nowrap}.scope-view-switch button.active{background:var(--surface-strong);color:var(--ink);box-shadow:0 2px 10px rgba(11,16,32,.08)}@media(max-width:520px){.scope-view-switch{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.scope-view-switch button{padding:9px 6px}}
 
 .card-suggestion-block{margin:14px 0 18px;padding:16px;border:1px solid rgba(94,106,210,.22);border-radius:22px;background:linear-gradient(145deg,rgba(94,106,210,.06),var(--surface-strong))}
 .card-suggestion-block>div:first-child{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
@@ -654,3 +654,9 @@
 .card-suggestion-block>div:first-child>small{color:var(--muted);font-size:11px;line-height:1.45}
 .card-suggestion-block .recognized-card .section-action{margin-top:10px;width:100%}
 .open-finance-security .connect-bank-button{margin-top:12px;text-decoration:none;text-align:center}
+
+.local-card-reader{display:grid;grid-template-columns:1fr auto;gap:10px 14px;align-items:center;margin:16px 0;padding:14px;border:1px solid rgba(94,106,210,.22);border-radius:18px;background:linear-gradient(145deg,rgba(94,106,210,.07),var(--surface-strong))}
+.local-card-reader>div{display:flex;flex-direction:column;gap:3px}.local-card-reader strong{font-size:13px}.local-card-reader span,.local-card-reader small{font-size:10px;line-height:1.45;color:var(--muted)}
+.local-card-reader button{border:1px solid rgba(94,106,210,.28);border-radius:14px;background:var(--paper);color:var(--ink);font-weight:800;padding:10px 12px;white-space:nowrap}
+.local-card-reader>small{grid-column:1/-1}
+@media(max-width:560px){.local-card-reader{grid-template-columns:1fr}.local-card-reader button{width:100%}.local-card-reader>small{grid-column:auto}}

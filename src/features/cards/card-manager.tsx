@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CARD_BRANDS, invoiceCycleForPurchase, type CardBrand } from '@/src/core/cards';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { createHouseholdCreditCard } from '@/src/lib/repositories/cards';
@@ -8,6 +8,7 @@ import { InvoicePaymentSheet } from '@/src/features/cards/invoice-payment-sheet'
 import type { HomeAccount, HomeCardSnapshot, HomeCreditCard, HomeInvoiceImport } from '@/src/lib/repositories/home';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import type { FinancialScope } from '@/src/core/privacy';
+import { readCardImageLocally } from '@/src/lib/local-card-reader';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const brandLabel:Record<CardBrand,string>={
@@ -61,10 +62,48 @@ export function CreditCardManager({
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
   const [prefillNote,setPrefillNote]=useState('');
+  const [localReading,setLocalReading]=useState(false);
+  const [localReadPercent,setLocalReadPercent]=useState(0);
+  const cardImageInputRef=useRef<HTMLInputElement|null>(null);
   const [scope,setScope]=useState<FinancialScope>(defaultScope);
   useEffect(()=>{if(!open)setScope(defaultScope);},[defaultScope,open]);
   const [invoiceCard,setInvoiceCard]=useState<HomeCreditCard|null>(null);
   const [paymentTarget,setPaymentTarget]=useState<{card:HomeCreditCard;invoice:HomeInvoiceImport}|null>(null);
+
+  async function readLocalImage(file:File){
+    if(localReading) return;
+    setLocalReading(true);
+    setLocalReadPercent(0);
+    setError('');
+    setPrefillNote('');
+    try{
+      const result=await readCardImageLocally(file,progress=>setLocalReadPercent(progress.percent));
+      if(result.cardName) setName(result.cardName);
+      if(result.brand!=='other') setBrand(result.brand);
+      if(result.last4) setLast4(result.last4);
+      if(result.closingDay!==null) setClosingDay(String(result.closingDay));
+      if(result.dueDay!==null) setDueDay(String(result.dueDay));
+      if(result.totalLimitMinor!==null) setLimit((result.totalLimitMinor/100).toFixed(2).replace('.',','));
+
+      const found=[
+        result.cardName?'banco/nome':null,
+        result.brand!=='other'?'bandeira':null,
+        result.last4?'últimos 4':null,
+        result.closingDay!==null?'fechamento':null,
+        result.dueDay!==null?'vencimento':null,
+        result.totalLimitMinor!==null?'limite':null
+      ].filter(Boolean);
+
+      setPrefillNote(found.length
+        ? `Lido neste aparelho: ${found.join(', ')}. Confira antes de guardar. A imagem e o número completo não foram enviados ao NestBalance.`
+        : 'Não consegui identificar dados suficientes nessa imagem. Você pode preencher manualmente; nada foi enviado ao NestBalance.');
+    }catch{
+      setError('Não conseguimos ler essa imagem localmente. Você pode tentar outro print ou preencher manualmente.');
+    }finally{
+      setLocalReading(false);
+      setLocalReadPercent(0);
+    }
+  }
 
   async function save(){
     const closing=Number(closingDay);
@@ -237,7 +276,31 @@ export function CreditCardManager({
         <p>Sem número completo do cartão. Só guardamos o necessário para organizar fechamento, vencimento, compras e parcelas.</p>
         {prefillNote&&<p className="notice-copy" role="status">{prefillNote}</p>}
 
-        <ScopeChoice value={scope} onChange={setScope} disabled={saving}/>
+        <div className="local-card-reader">
+          <div>
+            <strong>Tem um print ou foto do cartão?</strong>
+            <span>Lemos no seu aparelho para tentar preencher banco, bandeira, últimos 4, vencimento e limite. A imagem não é enviada neste passo.</span>
+          </div>
+          <button type="button" disabled={saving||localReading} onClick={()=>cardImageInputRef.current?.click()}>
+            {localReading?`Lendo no aparelho… ${localReadPercent}%`:'Ler foto ou print'}
+          </button>
+          <input
+            ref={cardImageInputRef}
+            className="sr-only"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            disabled={saving||localReading}
+            onChange={e=>{
+              const selected=e.target.files?.[0];
+              if(selected) void readLocalImage(selected);
+              e.currentTarget.value='';
+            }}
+          />
+          <small>Na primeira leitura, o navegador pode baixar o mecanismo de OCR. O processamento da imagem acontece localmente.</small>
+        </div>
+
+        <ScopeChoice value={scope} onChange={setScope} disabled={saving||localReading}/>
 
         <label className="field-label" htmlFor="card-name">Nome do cartão</label>
         <input id="card-name" className="premium-input" value={name} onChange={e=>{const next=e.target.value;setName(next);const detected=inferBrand(next);if(detected!=='other')setBrand(detected);}} placeholder="Ex.: Nubank Ultravioleta" maxLength={60}/>
@@ -270,8 +333,8 @@ export function CreditCardManager({
 
         {error&&<p className="error-copy" role="alert">{error}</p>}
         <div className="sheet-actions">
-          <button className="ghost-button" disabled={saving} onClick={()=>{setOpen(false);setPrefillNote('');}}>Cancelar</button>
-          <button className="primary-button" disabled={saving} onClick={save}>{saving?'Guardando…':'Guardar cartão'}</button>
+          <button className="ghost-button" disabled={saving||localReading} onClick={()=>{setOpen(false);setPrefillNote('');}}>Cancelar</button>
+          <button className="primary-button" disabled={saving||localReading} onClick={save}>{saving?'Guardando…':'Guardar cartão'}</button>
         </div>
       </section>
     </div>}
