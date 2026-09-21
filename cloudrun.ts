@@ -11,7 +11,7 @@ import { analyzeEvidenceWithAi } from './server/evidence-ai.js';
 import { bootstrapSession } from './server/session.js';
 import { getHomeData } from './server/home.js';
 import { answerFinanceAssistant } from './server/assistant.js';
-import { completeOpenFinanceConnection, listOpenFinanceConnections, startOpenFinanceConnection, syncOpenFinanceConnection } from './server/open-finance.js';
+import { completeOpenFinanceConnection, disconnectOpenFinanceConnection, listOpenFinanceConnections, startOpenFinanceConnection, syncOpenFinanceConnection } from './server/open-finance.js';
 import { completeOpenFinanceConnection, listOpenFinanceConnections, startOpenFinanceConnection, syncOpenFinanceConnection } from './server/open-finance.js';
 
 const app = express();
@@ -28,6 +28,7 @@ app.post('/api/open-finance/list', listOpenFinanceConnections);
 app.post('/api/open-finance/start', startOpenFinanceConnection);
 app.post('/api/open-finance/complete', completeOpenFinanceConnection);
 app.post('/api/open-finance/sync', syncOpenFinanceConnection);
+app.post('/api/open-finance/disconnect', disconnectOpenFinanceConnection);
 app.post('/api/open-finance/list', listOpenFinanceConnections);
 app.post('/api/open-finance/start', startOpenFinanceConnection);
 app.post('/api/open-finance/complete', completeOpenFinanceConnection);
