@@ -24,6 +24,18 @@ export type HomeAccount={
   status:string;
 };
 
+export type HomeCardPurchase={
+  id:string;
+  cardId:string;
+  description:string;
+  amountMinor:number;
+  currency:string;
+  observedOn:string|null;
+  invoiceDueOn:string|null;
+  installment:{current:number;total:number}|null;
+  status:string;
+};
+
 export type HomeCreditCard={
   id:string;
   name:string;
@@ -51,6 +63,7 @@ export async function loadHomeData(householdId:string){
     ok:true;
     accounts:HomeAccount[];
     cards:HomeCreditCard[];
+    cardPurchases:HomeCardPurchase[];
     transactions:HomeRow[];
     commitments:HomeRow[];
     refreshedAt:string;
