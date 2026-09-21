@@ -1,44 +1,64 @@
 # NestBalance Runtime Readiness
 
-The application code is designed so the browser uses Firebase only for Authentication.
+NestBalance uses the official MillionsNest Firebase/GCP project:
 
-Financial data, household bootstrap, accounts, Home reads, document metadata, AI analysis and Vault access are server-mediated through `nestbalance-api`. Evidence bytes are uploaded to the API and written to Cloud Storage by the backend.
+- Firebase/GCP project: `millionsnest`
+- project number: `555464791734`
+- Cloud Run region: `us-central1`
+- private evidence bucket: `millionsnest.firebasestorage.app`
+- dedicated Hosting site: `mn-nestbalance-555464791734`
+- deploy identity: `mn-web-deployer@millionsnest.iam.gserviceaccount.com`
+- runtime identity: `nestbalance-runtime@millionsnest.iam.gserviceaccount.com`
 
-## Why this matters
+The Firebase Web configuration is public application configuration and is shared with the existing MillionsNest Hub. Secrets remain server-side.
 
-The `millionsnest` Firebase/GCP project is shared. This repository MUST NOT deploy its standalone `firestore.rules` or `storage.rules` files over the shared project's global rules. They remain useful for emulator/security certification, but the homologation workflow intentionally deploys only:
+## Browser boundary
+
+The browser uses Firebase only for Authentication.
+
+Household bootstrap, Home data, accounts, financial commits, evidence metadata, uploads, document analysis, AI analysis and Vault access are mediated by `nestbalance-api`.
+
+Evidence bytes are uploaded to the API. The backend validates household membership, declared size, MIME, file signature and SHA-256 before the object becomes an accepted immutable evidence asset.
+
+## Shared Firebase safety
+
+The `millionsnest` project is shared by the ecosystem.
+
+This repository MUST NOT deploy its standalone `firestore.rules` or `storage.rules` over the shared project. Those local rules are deny-by-default contracts used by the Emulator security suite to prove that the browser does not depend on direct financial-data access.
+
+The homologation workflow intentionally deploys only:
 
 - Cloud Run service `nestbalance-api`
-- the dedicated NestBalance Firebase Hosting site
+- dedicated Firebase Hosting site `mn-nestbalance-555464791734`
 
-## Homologation environment variables
+## Automatic homologation
 
-Configure these as GitHub Environment variables under `homologation`:
+Every certified push to `main` runs **Deploy NestBalance Homologation**.
 
-- `GCP_PROJECT_ID`
-- `GCP_REGION`
-- `GCP_WIF_PROVIDER`
-- `GCP_DEPLOY_SERVICE_ACCOUNT`
-- `NESTBALANCE_RUNTIME_SERVICE_ACCOUNT`
-- `FIREBASE_HOSTING_SITE` — must be a dedicated site whose name contains `nestbalance`
-- `FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
+The workflow:
 
-Optional:
+1. runs the complete test, security, Rules Emulator, typecheck and build gates;
+2. authenticates to the official MillionsNest GCP project through Workload Identity Federation;
+3. ensures the dedicated `nestbalance-runtime` service account exists;
+4. applies only the minimum Firestore/Storage runtime permissions required by the API;
+5. deploys `nestbalance-api` to Cloud Run with bounded scale;
+6. ensures the dedicated Firebase Hosting site exists;
+7. preserves existing Firebase Auth authorized domains and adds the NestBalance `.web.app` host only when necessary;
+8. deploys Hosting only — never standalone Firestore or Storage Rules;
+9. smoke-tests Cloud Run and the hosted NestBalance page.
 
-- `OPENAI_SECRET_NAME` — Google Secret Manager secret containing the server-only OpenAI API key
-- `OPENAI_VISION_MODEL`
-- `OPENAI_TRANSCRIBE_MODEL`
+A manual `workflow_dispatch` remains available for an explicit redeploy of `main`.
 
-The Workload Identity Provider must explicitly authorize this repository and the homologation workflow context. Do not relax a production-only provider merely to make the workflow pass; use an appropriate homologation trust condition.
+## AI
 
-## Deployment safety
+OpenAI remains optional at deployment time.
 
-Deployment is manual only. Run **Deploy NestBalance Homologation** from `main` and type the exact confirmation token requested by the workflow.
+When `OPENAI_SECRET_NAME` is configured, the runtime service account receives Secret Manager accessor only for that secret and Cloud Run receives it as `OPENAI_API_KEY`.
 
-The workflow refuses generic/shared Hosting site names, requires separate deploy/runtime service accounts, runs the complete validation suite first, deploys Cloud Run with bounded scale, binds the dedicated Hosting target at runtime, deploys Hosting only, and finishes with a Cloud Run health check.
+Without the secret, deterministic text/PDF parsing, accounts, Home, commitments, Vault and the rest of the non-AI product continue to work. Image/audio intelligence fails closed with a human message instead of exposing a key or inventing data.
 
-Firestore and Storage rules are intentionally not deployed by this workflow.
+## Expected homologation URL
+
+`https://mn-nestbalance-555464791734.web.app`
+
+The workflow smoke test is the deployment authority: the URL is considered ready only after Hosting and `/healthz` both pass.
