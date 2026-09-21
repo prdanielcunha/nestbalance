@@ -21,6 +21,9 @@ const serverAuth=read('./server/auth.ts');
 const authGate=read('./src/features/auth/auth-gate.tsx');
 const deployWorkflow=read('./.github/workflows/deploy-homologation.yml');
 const runtimePreflight=read('./scripts/runtime-preflight.mjs');
+const openFinanceSource=read('./server/open-finance.ts');
+const belvoSource=read('./server/open-finance/belvo.ts');
+const openFinanceCore=read('./src/core/open-finance.ts');
 
 assert.match(firestore,/match \/households\/\{hid\}/);
 assert.match(firestore,/allow read, write: if false;/);
@@ -69,6 +72,17 @@ assert.match(authGate,/getIdToken\(true\)/);
 assert.match(authGate,/authSessionProblem/);
 assert.match(authGate,/signOut/);
 
+assert.match(openFinanceSource,/requireHouseholdMember/);
+assert.match(openFinanceSource,/OPEN_FINANCE_LINK_MISMATCH/);
+assert.match(openFinanceSource,/deleteBelvoLink/);
+assert.match(openFinanceSource,/preservedTransactionHistory:true/);
+assert.ok(!openFinanceSource.includes('password:req.body'),'Bank passwords must never be accepted by NestBalance.');
+assert.match(belvoSource,/process\.env\.BELVO_SECRET_ID/);
+assert.match(belvoSource,/process\.env\.BELVO_SECRET_PASSWORD/);
+assert.match(belvoSource,/consent_link_creation/);
+assert.match(openFinanceCore,/nestbalance\.millionsnest\.com/);
+assert.match(openFinanceCore,/mn-nestbalance-555464791734\.web\.app/);
+
 function sourceFiles(root){
   const out=[];
   for(const entry of readdirSync(root)){
@@ -86,6 +100,7 @@ for(const path of browserSources){
   assert.ok(!source.includes('firebase/firestore'),`Browser source must not import Firestore: ${path}`);
   assert.ok(!source.includes('firebase/storage'),`Browser source must not import Storage: ${path}`);
   assert.ok(!source.includes('OPENAI_API_KEY'),`Browser source must not reference OpenAI key: ${path}`);
+  assert.ok(!source.includes('BELVO_SECRET_ID')&&!source.includes('BELVO_SECRET_PASSWORD'),`Browser source must not reference Open Finance provider secrets: ${path}`);
 }
 
 const rawRoute=cloudrun.indexOf("app.post('/api/evidence/upload'");
