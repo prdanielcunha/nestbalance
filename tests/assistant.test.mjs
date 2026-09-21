@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { answerAssistantQuestion, classifyAssistantIntent } from '../.core-dist/core/assistant.js';
+import { answerAssistantQuestion, assistantEvidenceQuery, classifyAssistantIntent } from '../.core-dist/core/assistant.js';
 
 const base={
   accounts:[{id:'a1',name:'Conta principal',balanceMinor:200000,status:'active'}],
@@ -21,6 +21,8 @@ test('classifica perguntas humanas suportadas',()=>{
   assert.equal(classifyAssistantIntent('Dá para gastar R$ 500?'),'spending_simulation');
   assert.equal(classifyAssistantIntent('Se eu gastar 350 reais, como fica?'),'spending_simulation');
   assert.equal(classifyAssistantIntent('Quais parcelas terminam logo?'),'ending_installments');
+  assert.equal(classifyAssistantIntent('Ache o comprovante do IPTU'),'evidence_lookup');
+  assert.equal(classifyAssistantIntent('Onde está meu recibo da luz?'),'evidence_lookup');
 });
 
 test('responde quanto falta pagar sem somar fatura paga',()=>{
@@ -39,6 +41,28 @@ test('saldo disponível vem só das contas conhecidas',()=>{
   const answer=answerAssistantQuestion({...base,question:'Quanto tenho disponível?'});
   assert.equal(answer.intent,'available_now');
   assert.equal(answer.answerMinor,200000);
+});
+
+test('limpa linguagem de busca de comprovante antes de consultar o Cofre',()=>{
+  assert.equal(assistantEvidenceQuery('Ache o comprovante do IPTU'),'iptu');
+  assert.equal(assistantEvidenceQuery('Onde está meu recibo da luz de setembro?'),'luz setembro');
+});
+
+test('responde busca de evidência somente com resultados do Cofre',()=>{
+  const found=answerAssistantQuestion({
+    ...base,
+    question:'Ache o comprovante do IPTU',
+    evidenceMatches:[{id:'ev1',label:'comprovante.pdf',detail:'IPTU apartamento · Março'}]
+  });
+  assert.equal(found.intent,'evidence_lookup');
+  assert.equal(found.answerMinor,null);
+  assert.equal(found.sources.length,1);
+  assert.equal(found.sources[0].kind,'evidence');
+  assert.equal(found.sources[0].id,'ev1');
+
+  const missing=answerAssistantQuestion({...base,question:'Ache o comprovante do seguro',evidenceMatches:[]});
+  assert.equal(missing.intent,'evidence_lookup');
+  assert.match(missing.title,/Não encontrei/);
 });
 
 test('simula gasto com saldo menos obrigações conhecidas',()=>{
