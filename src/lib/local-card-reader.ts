@@ -14,9 +14,9 @@ export async function readCardImageLocally(
   if(!file.type.startsWith('image/')) throw new Error('CARD_IMAGE_REQUIRED');
   onProgress?.({phase:'loading',percent:5});
 
-  const {createWorker}=await import('tesseract.js');
+  const {createWorker,OEM}=await import('tesseract.js');
   onProgress?.({phase:'loading',percent:20});
-  const worker=await createWorker('eng',1,{
+  const worker=await createWorker('eng',OEM.LSTM_ONLY,{
     logger(message:any){
       if(message?.status==='recognizing text'&&typeof message.progress==='number'){
         onProgress?.({phase:'reading',percent:Math.max(25,Math.min(95,Math.round(25+message.progress*70)))});
