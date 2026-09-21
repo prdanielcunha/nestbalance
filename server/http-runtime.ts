@@ -24,6 +24,16 @@ function actorKey(req:Request){
   return createHash('sha256').update(forwarded||'anonymous').digest('hex').slice(0,24);
 }
 
+export function runtimeIdentity(){
+  const service=String(process.env.K_SERVICE||'');
+  const environment=process.env.NESTBALANCE_ENV||(
+    service==='nestbalance-api-prod'?'production':
+    service==='nestbalance-api'?'homologation':'local'
+  );
+  const release=String(process.env.NESTBALANCE_RELEASE_SHA||process.env.K_REVISION||'').slice(0,48)||null;
+  return {environment,release};
+}
+
 export function securityHeaders(_req:Request,res:Response,next:NextFunction){
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Referrer-Policy','no-referrer');
@@ -46,8 +56,7 @@ export function requestTelemetry(req:Request,res:Response,next:NextFunction){
       path:req.path,
       status:res.statusCode,
       durationMs:Math.round(durationMs),
-      environment:process.env.NESTBALANCE_ENV||'unknown',
-      release:String(process.env.NESTBALANCE_RELEASE_SHA||'').slice(0,12)||null
+      ...runtimeIdentity()
     }));
   });
   next();
