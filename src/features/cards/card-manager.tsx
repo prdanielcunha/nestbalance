@@ -138,7 +138,7 @@ export function CreditCardManager({
               const openInvoice=openInvoices[0]||null;
               return <article className="credit-card-tile" key={card.id}>
                 <div className="credit-card-top">
-                  <span>{brandLabel[card.brand as CardBrand]||'Cartão'}</span>
+                  <span>{brandLabel[card.brand as CardBrand]||'Cartão'}{card.scope==='personal'&&<em className="personal-pill">Só para mim</em>}</span>
                   <b>{card.last4?'•••• '+card.last4:'Crédito'}</b>
                 </div>
                 <h3>{card.name}</h3>
