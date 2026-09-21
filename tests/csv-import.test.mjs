@@ -30,3 +30,12 @@ test('formato desconhecido não é chutado',()=>{
   const csv='foo;bar\na;b';
   assert.deepEqual(parseFinancialCsv(csv),{state:'unsupported',reason:'required_columns_not_found'});
 });
+
+
+test('CSV rejeita data impossível e pede conferência em vez de mudar o dia',()=>{
+  const csv='Data;Descrição;Valor;Tipo\n31/02/2026;Loja;50,00;Débito';
+  const result=parseFinancialCsv(csv);
+  assert.equal(result.state,'parsed');
+  assert.equal(result.items[0].occurredOn,undefined);
+  assert.ok(result.items[0].needsReview.includes('date'));
+});
