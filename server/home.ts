@@ -33,6 +33,23 @@ function cardDto(doc:any){
   };
 }
 
+function cardPurchaseDto(doc:any){
+  const data=doc.data();
+  return {
+    id:doc.id,
+    cardId:String(data.cardId||''),
+    description:String(data.description||'Compra'),
+    amountMinor:Number(data.amountMinor||0),
+    currency:String(data.currency||'BRL'),
+    observedOn:data.observedOn||null,
+    invoiceDueOn:data.invoiceDueOn||null,
+    installment:data.installment&&Number.isInteger(data.installment.current)&&Number.isInteger(data.installment.total)
+      ? {current:data.installment.current,total:data.installment.total}
+      : null,
+    status:String(data.status||'confirmed')
+  };
+}
+
 function movementDto(doc:any){
   const data=doc.data();
   return {
@@ -60,9 +77,10 @@ export async function getHomeData(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid);
 
     const household=adminDb.collection('households').doc(householdId);
-    const [accounts,cards,transactions,commitments]=await Promise.all([
+    const [accounts,cards,cardPurchases,transactions,commitments]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
+      household.collection('creditCardPurchases').orderBy('createdAt','desc').limit(250).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(100).get()
     ]);
@@ -71,6 +89,7 @@ export async function getHomeData(req:Request,res:Response){
       ok:true,
       accounts:accounts.docs.map(accountDto),
       cards:cards.docs.map(cardDto),
+      cardPurchases:cardPurchases.docs.map(cardPurchaseDto),
       transactions:transactions.docs.map(movementDto),
       commitments:commitments.docs.map(movementDto),
       refreshedAt:new Date().toISOString()
