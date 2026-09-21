@@ -37,6 +37,7 @@ export async function ingestEvidence(householdId: string, file: File, onProgress
       const percent=event.lengthComputable&&event.total>0?Math.round((event.loaded/event.total)*100):0;
       onProgress?.({phase:'uploading',percent});
     };
+    xhr.upload.onload=()=>onProgress?.({phase:'verifying',percent:100});
     xhr.onerror=()=>reject(new Error('EVIDENCE_UPLOAD_FAILED'));
     xhr.onload=()=>{
       const json=xhr.response||{};
@@ -44,7 +45,6 @@ export async function ingestEvidence(householdId: string, file: File, onProgress
         reject(new Error(json.error||'EVIDENCE_UPLOAD_FAILED'));
         return;
       }
-      onProgress?.({phase:'verifying',percent:100});
       resolve(json);
     };
     xhr.send(file);
