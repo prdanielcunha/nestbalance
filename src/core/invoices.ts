@@ -29,7 +29,9 @@ export type InvoicePreview={
 };
 
 const moneyPattern=/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})(?!\d)/gi;
-const installmentPattern=/\b(?:parc(?:ela)?\s*)?(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/i;\nconst explicitInstallmentPattern=/\bparc(?:ela)?\s*(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/i;\nconst genericInstallmentPattern=/\b(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/gi;
+const installmentPattern=/\b(?:parc(?:ela)?\s*)?(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/i;
+const explicitInstallmentPattern=/\bparc(?:ela)?\s*(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/i;
+const genericInstallmentPattern=/\b(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/gi;
 const fullDatePattern=/\b(\d{2})[\/.\-](\d{2})[\/.\-](\d{2,4})\b/;
 const shortDatePattern=/\b(\d{2})[\/.\-](\d{2})\b/;
 
