@@ -13,7 +13,7 @@ import { getHomeData } from './server/home.js';
 import { answerFinanceAssistant } from './server/assistant.js';
 import { commitFinancialScreen } from './server/financial-screen.js';
 import { findCommitmentPaymentMatches, findCommitmentPaymentMatchesBatch, payCommitment, undoCommitmentPayment } from './server/commitment-payments.js';
-import { completeOpenFinanceConnection, disconnectOpenFinanceConnection, listOpenFinanceConnections, startOpenFinanceConnection, syncOpenFinanceConnection } from './server/open-finance.js';
+import { completeOpenFinanceConnection, disconnectOpenFinanceConnection, listOpenFinanceConnections, startOpenFinanceConnection, syncOpenFinanceConnection } from './server/open-finance.js';\nimport { selectHousehold } from './server/session.js';\nimport { acceptHouseholdInvite, createHouseholdInvite, getHouseholdSettings, removeHouseholdMember, renameHousehold, updateHouseholdMemberRole } from './server/household.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -22,7 +22,7 @@ app.get('/healthz', healthz);
 app.get('/api/healthz', healthz);
 app.post('/api/evidence/upload', express.raw({ type: '*/*', limit: '20mb' }), uploadEvidence);
 app.use(express.json({ limit: '128kb' }));
-app.post('/api/session/bootstrap', bootstrapSession);
+app.post('/api/session/bootstrap', bootstrapSession);\napp.post('/api/session/select-household', selectHousehold);\napp.post('/api/household/settings', getHouseholdSettings);\napp.post('/api/household/rename', renameHousehold);\napp.post('/api/household/invite', createHouseholdInvite);\napp.post('/api/household/invite/accept', acceptHouseholdInvite);\napp.post('/api/household/member/role', updateHouseholdMemberRole);\napp.post('/api/household/member/remove', removeHouseholdMember);
 app.post('/api/home', getHomeData);
 app.post('/api/assistant/answer', answerFinanceAssistant);
 app.post('/api/financial-screen/commit', commitFinancialScreen);
