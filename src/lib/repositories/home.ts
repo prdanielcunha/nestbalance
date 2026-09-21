@@ -24,6 +24,18 @@ export type HomeAccount={
   status:string;
 };
 
+export type HomeCreditCard={
+  id:string;
+  name:string;
+  brand:string;
+  closingDay:number;
+  dueDay:number;
+  last4:string|null;
+  limitMinor:number|null;
+  currency:string;
+  status:string;
+};
+
 export async function loadHomeData(householdId:string){
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');
@@ -38,6 +50,7 @@ export async function loadHomeData(householdId:string){
   return json as {
     ok:true;
     accounts:HomeAccount[];
+    cards:HomeCreditCard[];
     transactions:HomeRow[];
     commitments:HomeRow[];
     refreshedAt:string;
