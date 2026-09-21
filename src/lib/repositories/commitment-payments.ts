@@ -40,6 +40,7 @@ export async function findCommitmentPaymentMatches(input:{
   amountMinor:number;
   description?:string|null;
   observedOn?:string|null;
+  visibility?:'household'|'personal';
 }){
   return api<{
     ok:true;
@@ -67,6 +68,7 @@ export async function payCommitment(input:{
 
 export async function findCommitmentPaymentMatchesBatch(input:{
   householdId:string;
+  visibility?:'household'|'personal';
   items:Array<{
     index:number;
     amountMinor:number;
