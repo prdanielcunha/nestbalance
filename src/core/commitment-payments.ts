@@ -6,6 +6,7 @@ export type PayableCommitment={
   recurring?:boolean;
   recurrence?:string|null;
   dueDay?:number|null;
+  installment?:{current:number;total:number}|null;
 };
 
 export type PaymentMatchInput={
@@ -98,8 +99,12 @@ export function matchPayableCommitments(
     .slice(0,5);
 }
 
-export function commitmentPaymentPeriod(commitment:PayableCommitment,paidOn:string){
-  if(commitment.recurring===true&&commitment.recurrence==='monthly'){
+export function commitmentPaymentPeriod(commitment:PayableCommitment&{installment?:{current:number;total:number}|null},paidOn:string){
+  const installment=commitment.installment;
+  if(
+    commitment.recurring===true&&commitment.recurrence==='monthly' ||
+    Boolean(installment&&Number.isInteger(installment.current)&&Number.isInteger(installment.total)&&installment.total>=installment.current)
+  ){
     return periodKeyForDate(paidOn);
   }
   return 'once';
