@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { getVaultDetail, getVaultPreview, listVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
+import { getVaultDetail, getVaultPreview, listVault, searchVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
@@ -42,6 +42,10 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   const [previewUrl,setPreviewUrl]=useState<string|null>(null);
   const [previewLoading,setPreviewLoading]=useState(false);
   const [view,setView]=useState<FinancialView>('household');
+  const [query,setQuery]=useState('');
+  const [searching,setSearching]=useState(false);
+  const [searchResults,setSearchResults]=useState<VaultItem[]|null>(null);
+  const [searchError,setSearchError]=useState('');
 
   async function load() {
     setLoading(true); setError('');
@@ -51,6 +55,28 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   }
 
   useEffect(()=>{ void load(); },[householdId]);
+
+  useEffect(()=>{
+    const normalized=query.trim();
+    if(normalized.length<2){
+      setSearchResults(null);
+      setSearching(false);
+      setSearchError('');
+      return;
+    }
+
+    let cancelled=false;
+    setSearching(true);
+    setSearchError('');
+    const timer=window.setTimeout(()=>{
+      void searchVault(householdId,normalized,view)
+        .then(result=>{if(!cancelled)setSearchResults(result.items);})
+        .catch(()=>{if(!cancelled){setSearchResults([]);setSearchError('Não conseguimos pesquisar seu Cofre agora.');}})
+        .finally(()=>{if(!cancelled)setSearching(false);});
+    },350);
+
+    return ()=>{cancelled=true;window.clearTimeout(timer);};
+  },[householdId,query,view]);
 
   useEffect(()=>()=>{ if(previewUrl) URL.revokeObjectURL(previewUrl); },[previewUrl]);
 
@@ -75,6 +101,8 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   }
 
   const visibleItems=useMemo(()=>items.filter(item=>inFinancialView(item.scope,view)),[items,view]);
+  const displayItems=searchResults??visibleItems;
+  const normalizedQuery=query.trim();
 
   const summary=useMemo(()=>{
     const signals=detail?.understood?.signals?.candidates||[];
