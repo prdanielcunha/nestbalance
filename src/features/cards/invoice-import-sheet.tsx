@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import type { HomeCreditCard } from '@/src/lib/repositories/home';
 import { ingestEvidence, analyzeEvidenceText, type UploadProgress } from '@/src/lib/repositories/evidence';
-import { previewInvoice, type InvoicePreviewResponse } from '@/src/lib/repositories/invoices';
+import { commitInvoice, previewInvoice, type InvoicePreviewResponse } from '@/src/lib/repositories/invoices';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const date=new Intl.DateTimeFormat('pt-BR');
@@ -15,11 +15,13 @@ function formatDate(value:string|null){
 export function InvoiceImportSheet({
   householdId,
   card,
-  onClose
+  onClose,
+  onCommitted
 }:{
   householdId:string;
   card:HomeCreditCard;
   onClose:()=>void;
+  onCommitted?:()=>void;
 }){
   const [file,setFile]=useState<File|null>(null);
   const [working,setWorking]=useState(false);
@@ -27,6 +29,9 @@ export function InvoiceImportSheet({
   const [error,setError]=useState('');
   const [result,setResult]=useState<InvoicePreviewResponse|null>(null);
   const [showAll,setShowAll]=useState(false);
+
+  const clearItems=useMemo(()=>result?.preview.items.filter(item=>item.needsReview.length===0)??[],[result]);
+  const reviewItems=useMemo(()=>result?.preview.items.filter(item=>item.needsReview.length>0)??[],[result]);
 
   const visibleItems=useMemo(()=>{
     if(!result) return [];
@@ -61,6 +66,37 @@ export function InvoiceImportSheet({
         setError('Não encontrei texto financeiro suficiente nessa fatura.');
       }else{
         setError('Não consegui entender essa fatura agora. O arquivo original não será duplicado.');
+      }
+    }finally{
+      setWorking(false);
+    }
+  }
+
+  async function confirmClearItems(){
+    if(!result||working||clearItems.length===0) return;
+    setWorking(true);
+    setError('');
+    try{
+      const committed=await commitInvoice({
+        householdId,
+        cardId:card.id,
+        evidenceId:result.evidenceId,
+        itemIds:clearItems.map(item=>item.id)
+      });
+      if(committed.created===0&&committed.duplicates>0){
+        setError('Esses itens já estavam registrados. Nenhuma cópia foi criada.');
+        return;
+      }
+      onCommitted?.();
+      onClose();
+    }catch(err:any){
+      const code=String(err?.message||'');
+      if(code==='INVOICE_REVIEW_REQUIRED'){
+        setError('Há item que ainda precisa de conferência. Só confirmamos o que está claro.');
+      }else if(code==='INVALID_INVOICE_SELECTION'){
+        setError('A fatura mudou durante a revisão. Entenda o arquivo novamente antes de confirmar.');
+      }else{
+        setError('Não conseguimos confirmar essa fatura agora. Nada foi marcado como concluído.');
       }
     }finally{
       setWorking(false);
@@ -138,10 +174,17 @@ export function InvoiceImportSheet({
               </div>
             </>}
 
-        <p className="confidence-note">Prévia segura: nenhuma despesa foi criada ainda. O próximo passo será confirmar somente os itens revisados.</p>
+        <p className="confidence-note">
+          {reviewItems.length
+            ? <>{clearItems.length} item{clearItems.length===1?'':'s'} claro{clearItems.length===1?'':'s'} pode{clearItems.length===1?'':'m'} ser confirmado{clearItems.length===1?'':'s'} agora. {reviewItems.length} fica{reviewItems.length===1?'':'m'} pendente{reviewItems.length===1?'':'s'} para revisão.</>
+            : <>Tudo que foi identificado está claro. A confirmação cria os lançamentos uma única vez e mantém as parcelas ligadas ao mesmo plano.</>}
+        </p>
+        {error&&<p className="error-copy" role="alert">{error}</p>}
         <div className="sheet-actions">
-          <button className="ghost-button" onClick={()=>{setResult(null);setFile(null);setError('');}}>Trocar arquivo</button>
-          <button className="primary-button" onClick={onClose}>Fechar prévia</button>
+          <button className="ghost-button" disabled={working} onClick={()=>{setResult(null);setFile(null);setError('');}}>Trocar arquivo</button>
+          <button className="primary-button" disabled={working||clearItems.length===0} onClick={confirmClearItems}>
+            {working?'Confirmando…':clearItems.length===0?'Nada claro para confirmar':<>Confirmar {clearItems.length} item{clearItems.length===1?'':'s'}</>}
+          </button>
         </div>
       </>}
     </section>
