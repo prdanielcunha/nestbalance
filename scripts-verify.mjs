@@ -188,7 +188,7 @@ assert.match(adminFirebase, /millionsnest\.firebasestorage\.app/);
 assert.match(deployMillionsNest, /GCP_PROJECT_ID: millionsnest/);
 assert.match(deployMillionsNest, /GCP_PROJECT_NUMBER: "555464791734"/);
 assert.match(deployMillionsNest, /GCP_REGION: us-central1/);
-assert.match(deployMillionsNest, /FIREBASE_HOSTING_SITE: mn-nestbalance-555464791734/);
+assert.match(deployMillionsNest, /FIREBASE_HOSTING_SITE: mn-nb-homol-555464791734/);
 assert.match(deployMillionsNest, /mn-web-deployer@millionsnest\.iam\.gserviceaccount\.com/);
 assert.match(deployMillionsNest, /nestbalance-runtime@millionsnest\.iam\.gserviceaccount\.com/);
 assert.match(deployMillionsNest, /millionsnest-web\/nestbalance-api/);
