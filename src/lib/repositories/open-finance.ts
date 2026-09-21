@@ -64,6 +64,8 @@ export async function completeOpenFinanceConnection(input:{
     institutionName:string;
     synced:number;
     skipped:number;
+    syncedTransactions:number;
+    skippedTransactions:number;
     status:string;
   }>('/api/open-finance/complete',input);
 }
@@ -77,6 +79,20 @@ export async function syncOpenFinanceConnection(input:{
     connectionId:string;
     synced:number;
     skipped:number;
+    syncedTransactions:number;
+    skippedTransactions:number;
     status:string;
   }>('/api/open-finance/sync',input);
+}
+
+export async function disconnectOpenFinanceConnection(input:{
+  householdId:string;
+  connectionId:string;
+}){
+  return api<{
+    ok:true;
+    status:'disconnected';
+    connectionId:string;
+    disconnectedAccounts:number;
+  }>('/api/open-finance/disconnect',input);
 }
