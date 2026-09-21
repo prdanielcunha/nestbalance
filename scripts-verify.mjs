@@ -90,3 +90,27 @@ assert.match(runtimePreflight,/dedicated NestBalance site/);
 assert.match(runtimePreflight,/Deploy and runtime service accounts must be different/);
 
 console.log('Static security/runtime invariants: PASS');
+
+const firebaseClient = readFileSync(new URL('./src/lib/firebase/client.ts', import.meta.url),'utf8');
+const adminFirebase = readFileSync(new URL('./server/firebase-admin.ts', import.meta.url),'utf8');
+const deployMillionsNest = readFileSync(new URL('./.github/workflows/deploy-homologation.yml', import.meta.url),'utf8');
+
+assert.match(firebaseClient, /AIzaSyAhXY8TV8qoXz8Pd2u5jFHUTVssZmi3kMs/);
+assert.match(firebaseClient, /millionsnest\.firebaseapp\.com/);
+assert.match(firebaseClient, /1:555464791734:web:3059e8ac2b8089a1767817/);
+assert.match(adminFirebase, /millionsnest\.firebasestorage\.app/);
+
+assert.match(deployMillionsNest, /GCP_PROJECT_ID: millionsnest/);
+assert.match(deployMillionsNest, /GCP_PROJECT_NUMBER: "555464791734"/);
+assert.match(deployMillionsNest, /GCP_REGION: us-central1/);
+assert.match(deployMillionsNest, /FIREBASE_HOSTING_SITE: mn-nestbalance-555464791734/);
+assert.match(deployMillionsNest, /mn-web-deployer@millionsnest\.iam\.gserviceaccount\.com/);
+assert.match(deployMillionsNest, /nestbalance-runtime@millionsnest\.iam\.gserviceaccount\.com/);
+assert.match(deployMillionsNest, /roles\/datastore\.user/);
+assert.match(deployMillionsNest, /roles\/storage\.objectAdmin/);
+assert.ok(!deployMillionsNest.includes('roles/owner'));
+assert.ok(!deployMillionsNest.includes('roles/editor'));
+assert.match(deployMillionsNest, /identitytoolkit\.googleapis\.com\/admin\/v2\/projects/);
+assert.match(deployMillionsNest, /updateMask=authorizedDomains/);
+assert.match(deployMillionsNest, /push:\s*\n\s*branches:\s*\n\s*- main/);
+assert.ok(!/firebase deploy[^\n]*(firestore|storage)/.test(deployMillionsNest));
