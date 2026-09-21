@@ -1,6 +1,7 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { CardBrand } from '@/src/core/cards';
+import type { FinancialScope } from '@/src/core/privacy';
 
 export async function createHouseholdCreditCard(input:{
   householdId:string;
@@ -10,6 +11,7 @@ export async function createHouseholdCreditCard(input:{
   dueDay:number;
   last4?:string;
   limitMinor?:number|null;
+  scope?:FinancialScope;
 }){
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');

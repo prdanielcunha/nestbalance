@@ -239,6 +239,8 @@ export function HouseholdSettings({
         </div>}
       </section>}
 
+      <section className="household-panel privacy-entry-card"><div><div className="eyebrow">Privacidade</div><h2>Lar, Pessoal e seus dados</h2><p>Veja o que é compartilhado, exporte seus dados ou controle exclusões.</p></div><Link href="/privacy" className="primary-button privacy-entry-link">Abrir privacidade</Link></section>
+
       <section className="household-safety-note">
         <strong>Seu papel: {roleLabel[data.currentRole]}</strong>
         <p>O servidor valida seu acesso em cada operação. Trocar botões na tela não concede permissão financeira.</p>

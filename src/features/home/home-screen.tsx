@@ -10,6 +10,7 @@ import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import { messages } from '@/src/i18n/messages';
 import type { HouseholdRole } from '@/src/core/household';
+import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -30,6 +31,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
   const [accountCreated,setAccountCreated]=useState(0);
   const [cardCreated,setCardCreated]=useState(0);
+  const [view,setView]=useState<FinancialView>('household');
 
   async function refreshHome(silent=false){
     if(!silent) setLoadingHome(true);
@@ -58,28 +60,35 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
   }, [householdId, accountCreated, cardCreated]);
 
+  const viewAccounts=useMemo(()=>accounts.filter(item=>inFinancialView(item.scope,view)),[accounts,view]);
+  const viewCards=useMemo(()=>cards.filter(item=>inFinancialView(item.scope,view)),[cards,view]);
+  const viewTransactions=useMemo(()=>transactions.filter(item=>inFinancialView(item.scope,view)),[transactions,view]);
+  const viewCommitments=useMemo(()=>commitments.filter(item=>inFinancialView(item.scope,view)),[commitments,view]);
+  const viewInstallmentPlans=useMemo(()=>installmentPlans.filter(item=>inFinancialView(item.scope,view)),[installmentPlans,view]);
+  const viewInvoiceImports=useMemo(()=>invoiceImports.filter(item=>inFinancialView(item.scope,view)),[invoiceImports,view]);
+
   const currentMonthKey=useMemo(()=>{
     const now=new Date();
     return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   },[]);
   const monthTransactions=useMemo(
-    ()=>transactions.filter(item=>typeof item.observedOn==='string'&&item.observedOn.startsWith(currentMonthKey)),
-    [transactions,currentMonthKey]
+    ()=>viewTransactions.filter(item=>typeof item.observedOn==='string'&&item.observedOn.startsWith(currentMonthKey)),
+    [viewTransactions,currentMonthKey]
   );
 
   const currentMonthCommitments=useMemo(
-    ()=>commitments.filter(item=>!item.paidThisMonth),
-    [commitments]
+    ()=>viewCommitments.filter(item=>!item.paidThisMonth),
+    [viewCommitments]
   );
 
   const cashView=useMemo(()=>deriveCashView({
     transactions:monthTransactions,
     commitments:currentMonthCommitments,
-    invoices:invoiceImports
-  }),[monthTransactions,currentMonthCommitments,invoiceImports]);
+    invoices:viewInvoiceImports
+  }),[monthTransactions,currentMonthCommitments,viewInvoiceImports]);
 
   const snapshot = useMemo(() => {
-    const availableMinor = accounts
+    const availableMinor = viewAccounts
       .filter(account=>account.connectedProductType!=='investment')
       .reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
     return deriveHomeSnapshot({
@@ -89,25 +98,28 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       futureCommitmentsMinor:cashView.futureCommitmentsMinor,
       dueSoonMinor:cashView.futureCommitmentsMinor
     });
-  }, [accounts, cashView]);
+  }, [viewAccounts, cashView]);
 
-  const futureMonths=useMemo(()=>projectHouseholdFuture(commitments,installmentPlans,new Date(),3),[commitments,installmentPlans]);
+  const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
-  const hasData = transactions.length + commitments.length + installmentPlans.length + invoiceImports.length > 0;
+  const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
+  const defaultCreateScope=view==='personal'?'personal':'household';
+  const viewLabel=view==='household'?'do Lar':view==='personal'?'Pessoal':'na sua visão completa';
 
   return <main className="app-shell">
     <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><Link href="/household" className="avatar-dot" aria-label="Lar e acessos" /></header>
+    <ScopeViewSwitch value={view} onChange={setView}/>
 
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
     {loadingHome && <div className="home-loading-line" aria-label="Atualizando visão financeira" />}
     <section className="hero-balance">
-      <span>{accounts.length ? t.availableNow : 'saldo disponível'}</span>
-      <strong>{accounts.length ? money.format(snapshot.availableMinor/100) : '—'}</strong>
-      <p>{accounts.length ? (snapshot.futureCommitmentsMinor > 0 ? `${money.format(snapshot.futureCommitmentsMinor/100)} ainda estão comprometidos.` : 'Sem contas pendentes registradas.') : 'Adicione uma conta ou saldo para vermos quanto está realmente disponível.'}</p>
+      <span>{viewAccounts.length ? `${t.availableNow} ${viewLabel}` : `saldo ${viewLabel}`}</span>
+      <strong>{viewAccounts.length ? money.format(snapshot.availableMinor/100) : '—'}</strong>
+      <p>{viewAccounts.length ? (snapshot.futureCommitmentsMinor > 0 ? `${money.format(snapshot.futureCommitmentsMinor/100)} ainda estão comprometidos ${viewLabel}.` : `Sem contas pendentes ${viewLabel}.`) : `Ainda não há saldo ${viewLabel}.`}</p>
     </section>
 
-    {accounts.length===0 && canManage && <AccountOnboarding householdId={householdId} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
-    <MonthlyPayments householdId={householdId} commitments={commitments} canContribute={canContribute} onChanged={()=>void refreshHome(true)} />
+    {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
+    <MonthlyPayments householdId={householdId} commitments={viewCommitments} canContribute={canContribute} onChanged={()=>void refreshHome(true)} />
 
     <section className="month-section">
       <div className="section-title"><h2>{t.month}</h2></div>
@@ -115,15 +127,16 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         <div><span>Entrou</span><strong>{money.format(monthTransactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)/100)}</strong></div>
         <div><span>Já saiu</span><strong>{money.format(snapshot.paidExpenseMinor/100)}</strong></div>
         <div><span>Ainda vai sair</span><strong>{money.format(snapshot.futureCommitmentsMinor/100)}</strong></div>
-        <div className="projected"><span>Deve sobrar</span><strong>{accounts.length ? money.format(snapshot.projectedRemainderMinor/100) : '—'}</strong></div>
+        <div className="projected"><span>Deve sobrar</span><strong>{viewAccounts.length ? money.format(snapshot.projectedRemainderMinor/100) : '—'}</strong></div>
       </div>
     </section>
 
     <CreditCardManager
       householdId={householdId}
-      cards={cards}
-      accounts={accounts}
-      invoiceImports={invoiceImports}
+      cards={viewCards}
+      accounts={viewAccounts}
+      invoiceImports={viewInvoiceImports}
+      defaultScope={defaultCreateScope}
       canManage={canManage}
       onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
     />
@@ -149,7 +162,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
 
     <section className="timeline-section">
       <div className="section-title"><h2>Movimentos</h2><span>Timeline</span></div>
-      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?'No cartão':x.source==='credit_card_invoice_payment'?'Fatura paga':x.source==='open_finance'?'Sincronizado':x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
+      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?'No cartão':x.source==='credit_card_invoice_payment'?'Fatura paga':x.source==='open_finance'?'Sincronizado':x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
     </section>
 
     <AppNav canContribute={canContribute}/>

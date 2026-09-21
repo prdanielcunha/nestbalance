@@ -11,6 +11,7 @@ export type VaultItem = {
   createdAtMs:number|null;
   extractionState:string;
   lastExtractionVersion:string|null;
+  scope?:'household'|'personal';
 };
 
 export type VaultDetail = {

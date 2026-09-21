@@ -17,6 +17,7 @@ import {
 } from '../src/core/invoice-review.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertScopedAccess, requestedScope } from './privacy.js';
 
 const EXTRACTION_VERSION='native-text-v1';
 const INVOICE_VISION_VERSION='invoice-vision-v1';
@@ -95,6 +96,7 @@ async function loadInvoiceContext(input:{
 
   if(!cardSnap.exists) fail('CARD_NOT_FOUND',404);
   const card=cardSnap.data()!;
+  assertScopedAccess(card,userUid);
   if(card.status!=='active') fail('CARD_NOT_ACTIVE',409);
 
   if(!evidenceSnap.exists) fail('EVIDENCE_NOT_FOUND',404);
@@ -105,6 +107,10 @@ async function loadInvoiceContext(input:{
     if(!canonical.exists) fail('CANONICAL_EVIDENCE_NOT_FOUND',404);
     evidence=canonical.data()!;
   }
+  assertScopedAccess(evidence,userUid);
+  const cardScope=requestedScope(card.scope);
+  const evidenceScope=requestedScope(evidence.scope);
+  if(cardScope!==evidenceScope) fail('PRIVACY_SCOPE_MISMATCH',409);
   if(evidence.status!=='accepted'||evidence.immutable!==true) fail('EVIDENCE_NOT_READY',409);
 
   const evidenceRef=household.collection('evidenceAssets').doc(evidenceId);
@@ -209,7 +215,7 @@ export async function previewCreditCardInvoice(req:Request,res:Response){
     });
   }catch(err:any){
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','PRIVACY_SCOPE_MISMATCH',
       'INVALID_CARD','INVALID_EVIDENCE','CARD_NOT_FOUND','CARD_NOT_ACTIVE',
       'EVIDENCE_NOT_FOUND','CANONICAL_EVIDENCE_NOT_FOUND','EVIDENCE_NOT_READY',
       'EVIDENCE_ANALYSIS_REQUIRED','INVOICE_TEXT_UNAVAILABLE','CARD_CYCLE_INVALID',
@@ -319,7 +325,7 @@ export async function reviewCreditCardInvoice(req:Request,res:Response){
     });
   }catch(err:any){
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','PRIVACY_SCOPE_MISMATCH',
       'INVALID_CARD','INVALID_EVIDENCE','CARD_NOT_FOUND','CARD_NOT_ACTIVE',
       'EVIDENCE_NOT_FOUND','CANONICAL_EVIDENCE_NOT_FOUND','EVIDENCE_NOT_READY',
       'EVIDENCE_ANALYSIS_REQUIRED','CARD_CYCLE_INVALID',
@@ -343,6 +349,8 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
     if(itemIds.length>120) return error(res,400,'INVOICE_SELECTION_TOO_LARGE');
 
     const context=await loadInvoiceContext({householdId,cardId,evidenceId,referenceDate,userUid:user.uid});
+    const scope=requestedScope(context.card.scope);
+    const ownerUid=scope==='personal'?user.uid:null;
     const byId=new Map(context.preview.items.map(item=>[item.id,item]));
     const selected=itemIds.map(id=>byId.get(id)).filter((item):item is InvoicePreviewItem=>Boolean(item));
     if(selected.length!==itemIds.length) return error(res,400,'INVALID_INVOICE_SELECTION');
@@ -403,6 +411,8 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
           currency:'BRL',
           direction:'expense',
           source:'credit_card_invoice',
+          scope,
+          ownerUid,
           sourceText:entry.item.sourceLine,
           confidence:entry.item.confidence,
           needsReview:[],
@@ -449,6 +459,8 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
         const current=Math.max(previous,observed.installment.current);
         const planData={
           cardId,
+          scope,
+          ownerUid,
           description:observed.description,
           amountMinor:observed.amountMinor,
           currency:'BRL',
@@ -482,6 +494,8 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
       const existingPaid=Number.isSafeInteger(importData.paidAmountMinor)?Number(importData.paidAmountMinor):0;
       tx.set(importRef,{
         cardId,
+        scope,
+        ownerUid,
         evidenceId:context.evidenceId,
         invoiceKey:context.preview.invoiceKey,
         dueOn:context.preview.dueOn,
@@ -499,6 +513,7 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
 
       tx.create(auditRef,{
         type:'credit_card_invoice.committed',
+        scope,
         actorUid:user.uid,
         cardId,
         evidenceId:context.evidenceId,
@@ -528,7 +543,7 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
     });
   }catch(err:any){
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','PRIVACY_SCOPE_MISMATCH',
       'INVALID_CARD','INVALID_EVIDENCE','CARD_NOT_FOUND','CARD_NOT_ACTIVE',
       'EVIDENCE_NOT_FOUND','CANONICAL_EVIDENCE_NOT_FOUND','EVIDENCE_NOT_READY',
       'EVIDENCE_ANALYSIS_REQUIRED','INVOICE_TEXT_UNAVAILABLE','CARD_CYCLE_INVALID',
@@ -574,6 +589,12 @@ export async function payCreditCardInvoice(req:Request,res:Response){
 
       const invoice=importSnap.data()!;
       const account=accountSnap.data()!;
+      assertScopedAccess(invoice,user.uid);
+      assertScopedAccess(account,user.uid);
+      const scope=requestedScope(invoice.scope);
+      const ownerUid=scope==='personal'?user.uid:null;
+      const accountScope=requestedScope(account.scope);
+      const exposeFundingAccount=scope==='personal'||accountScope===scope;
       if(account.status!=='active') fail('ACCOUNT_NOT_ACTIVE',409);
       if(invoice.status!=='confirmed') fail('INVOICE_NOT_CONFIRMABLE',409);
 
@@ -595,7 +616,10 @@ export async function payCreditCardInvoice(req:Request,res:Response){
         direction:'transfer',
         transferKind:'liability_settlement',
         source:'credit_card_invoice_payment',
-        fromAccountId:accountId,
+        scope,
+        ownerUid,
+        fromAccountId:exposeFundingAccount?accountId:null,
+        privateFundingSource:scope==='household'&&accountScope==='personal',
         cardId:String(invoice.cardId||''),
         invoiceImportId,
         invoiceKey:String(invoice.invoiceKey||''),
@@ -621,18 +645,21 @@ export async function payCreditCardInvoice(req:Request,res:Response){
         paidAmountMinor:amountMinor,
         paidOn,
         paymentTransactionId:paymentRef.id,
-        paidFromAccountId:accountId,
+        paidFromAccountId:exposeFundingAccount?accountId:null,
+        paidFromPrivateAccount:scope==='household'&&accountScope==='personal',
         paidBy:user.uid,
         updatedAt:FieldValue.serverTimestamp()
       });
 
       tx.create(auditRef,{
         type:'credit_card_invoice.paid',
+        scope,
         actorUid:user.uid,
         cardId:String(invoice.cardId||''),
         invoiceImportId,
         invoiceKey:String(invoice.invoiceKey||''),
-        accountId,
+        accountId:exposeFundingAccount?accountId:null,
+        privateFundingSource:scope==='household'&&accountScope==='personal',
         amountMinor,
         paymentTransactionId:paymentRef.id,
         createdAt:FieldValue.serverTimestamp()
@@ -644,7 +671,7 @@ export async function payCreditCardInvoice(req:Request,res:Response){
     return res.status(result.status==='paid'?201:200).json({ok:true,...result,invoiceImportId,paidOn});
   }catch(err:any){
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','PRIVACY_SCOPE_MISMATCH',
       'INVALID_INVOICE_IMPORT','INVALID_ACCOUNT','INVOICE_IMPORT_NOT_FOUND',
       'ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE','INVOICE_NOT_CONFIRMABLE','INVOICE_AMOUNT_INVALID'
     ];

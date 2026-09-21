@@ -9,6 +9,7 @@ import {
 } from '../src/core/commitment-payments.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertScopedAccess, requestedScope, visibleDocs } from './privacy.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -83,7 +84,7 @@ export async function findCommitmentPaymentMatches(req:Request,res:Response){
       paidRecurringIdsForMonth(householdId,monthKey)
     ]);
 
-    const commitments=commitmentsSnap.docs
+    const commitments=visibleDocs(commitmentsSnap.docs,user.uid)
       .map(dto)
       .filter(item=>!paidIds.has(item.id));
 
@@ -103,7 +104,7 @@ export async function findCommitmentPaymentMatches(req:Request,res:Response){
       }))
     });
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'PAYMENT_MATCH_FAILED');
   }
 }
@@ -125,6 +126,7 @@ export async function payCommitment(req:Request,res:Response){
     const commitmentSnap=await commitmentRef.get();
     if(!commitmentSnap.exists) return error(res,404,'COMMITMENT_NOT_FOUND');
 
+    assertScopedAccess(commitmentSnap.data(),user.uid);
     const commitment=dto(commitmentSnap);
     if(commitment.status==='cancelled') return error(res,409,'COMMITMENT_CANCELLED');
     if(commitment.status==='paid'&&!commitment.recurring) {
@@ -139,6 +141,8 @@ export async function payCommitment(req:Request,res:Response){
       const evidenceSnap=await household.collection('evidenceAssets').doc(evidenceId).get();
       if(!evidenceSnap.exists) return error(res,400,'EVIDENCE_NOT_FOUND');
       const data=evidenceSnap.data()!;
+      assertScopedAccess(data,user.uid);
+      if(requestedScope(data.scope)!==requestedScope(commitmentSnap.data()?.scope)) return error(res,409,'PRIVACY_SCOPE_MISMATCH');
       if(!['accepted','duplicate'].includes(String(data.status||''))) return error(res,409,'EVIDENCE_NOT_READY');
       canonicalEvidenceId=String(data.canonicalEvidenceId||evidenceId);
     }
@@ -157,6 +161,9 @@ export async function payCommitment(req:Request,res:Response){
       const freshCommitment=await tx.get(commitmentRef);
       if(!freshCommitment.exists) fail('COMMITMENT_NOT_FOUND',404);
       const fresh=freshCommitment.data()!;
+      assertScopedAccess(fresh,user.uid);
+      const scope=requestedScope(fresh.scope);
+      const ownerUid=scope==='personal'?user.uid:null;
       if(fresh.status==='cancelled') fail('COMMITMENT_CANCELLED',409);
       if(fresh.status==='paid'&&!fresh.recurring) {
         return {status:'duplicate' as const,transactionId:String(fresh.paymentTransactionId||'')};
@@ -168,6 +175,8 @@ export async function payCommitment(req:Request,res:Response){
         currency:String(fresh.currency||'BRL'),
         direction:'expense',
         source:'commitment_payment',
+        scope,
+        ownerUid,
         commitmentId,
         commitmentPeriodKey:periodKey,
         evidenceIds:canonicalEvidenceId?[canonicalEvidenceId]:[],
@@ -183,6 +192,8 @@ export async function payCommitment(req:Request,res:Response){
 
       tx.create(paymentRef,{
         commitmentId,
+        scope,
+        ownerUid,
         periodKey,
         amountMinor:Number(fresh.amountMinor||0),
         currency:String(fresh.currency||'BRL'),
@@ -234,6 +245,7 @@ export async function payCommitment(req:Request,res:Response){
 
       tx.create(auditRef,{
         type:'commitment.paid',
+        scope,
         actorUid:user.uid,
         commitmentId,
         periodKey,
@@ -256,9 +268,9 @@ export async function payCommitment(req:Request,res:Response){
     });
   }catch(err:any){
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED',
       'INVALID_COMMITMENT','COMMITMENT_NOT_FOUND','COMMITMENT_CANCELLED',
-      'INVALID_PAYMENT_DATE','EVIDENCE_NOT_FOUND','EVIDENCE_NOT_READY'
+      'INVALID_PAYMENT_DATE','EVIDENCE_NOT_FOUND','EVIDENCE_NOT_READY','PRIVACY_SCOPE_MISMATCH'
     ];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'COMMITMENT_PAYMENT_FAILED');
   }
@@ -285,7 +297,7 @@ export async function findCommitmentPaymentMatchesBatch(req:Request,res:Response
 
     const household=adminDb.collection('households').doc(householdId);
     const commitmentsSnap=await household.collection('commitments').where('status','==','pending').limit(100).get();
-    const commitments=commitmentsSnap.docs.map(dto);
+    const commitments=visibleDocs(commitmentsSnap.docs,user.uid).map(dto);
 
     const monthKeys=[...new Set(items.map((item:any)=>periodKeyForDate(item.observedOn)).filter(Boolean))] as string[];
     const paidByMonth=new Map<string,Set<string>>();
@@ -313,7 +325,7 @@ export async function findCommitmentPaymentMatchesBatch(req:Request,res:Response
 
     return res.json({ok:true,matches});
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'PAYMENT_MATCH_FAILED');
   }
 }
@@ -344,6 +356,8 @@ export async function undoCommitmentPayment(req:Request,res:Response){
 
     if(!paymentSnap.exists) return error(res,404,'PAYMENT_NOT_FOUND');
     if(!commitmentSnap.exists) return error(res,404,'COMMITMENT_NOT_FOUND');
+    assertScopedAccess(paymentSnap.data(),user.uid);
+    assertScopedAccess(commitmentSnap.data(),user.uid);
 
     const payment=paymentSnap.data()!;
     if(String(payment.status||'paid')==='reversed'){
@@ -425,7 +439,7 @@ export async function undoCommitmentPayment(req:Request,res:Response){
     return res.json({ok:true,status:'reversed',commitmentId,periodKey});
   }catch(err:any){
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED',
       'INVALID_COMMITMENT','INVALID_PAYMENT_PERIOD','PAYMENT_NOT_FOUND',
       'COMMITMENT_NOT_FOUND','PAYMENT_UNDO_BLOCKED_BY_LATER_PAYMENT'
     ];

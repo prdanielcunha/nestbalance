@@ -1,11 +1,13 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CARD_BRANDS, invoiceCycleForPurchase, type CardBrand } from '@/src/core/cards';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { createHouseholdCreditCard } from '@/src/lib/repositories/cards';
 import { InvoiceImportSheet } from '@/src/features/cards/invoice-import-sheet';
 import { InvoicePaymentSheet } from '@/src/features/cards/invoice-payment-sheet';
 import type { HomeAccount, HomeCreditCard, HomeInvoiceImport } from '@/src/lib/repositories/home';
+import { ScopeChoice } from '@/src/features/privacy/scope-choice';
+import type { FinancialScope } from '@/src/core/privacy';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const brandLabel:Record<CardBrand,string>={
@@ -27,7 +29,8 @@ export function CreditCardManager({
   accounts,
   invoiceImports,
   onCreated,
-  canManage=true
+  canManage=true,
+  defaultScope='household'
 }:{
   householdId:string;
   cards:HomeCreditCard[];
@@ -35,6 +38,7 @@ export function CreditCardManager({
   invoiceImports:HomeInvoiceImport[];
   onCreated?:()=>void;
   canManage?:boolean;
+  defaultScope?:FinancialScope;
 }){
   const [open,setOpen]=useState(false);
   const [name,setName]=useState('');
@@ -45,6 +49,8 @@ export function CreditCardManager({
   const [limit,setLimit]=useState('');
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
+  const [scope,setScope]=useState<FinancialScope>(defaultScope);
+  useEffect(()=>{if(!open)setScope(defaultScope);},[defaultScope,open]);
   const [invoiceCard,setInvoiceCard]=useState<HomeCreditCard|null>(null);
   const [paymentTarget,setPaymentTarget]=useState<{card:HomeCreditCard;invoice:HomeInvoiceImport}|null>(null);
 
@@ -84,7 +90,8 @@ export function CreditCardManager({
         closingDay:closing,
         dueDay:due,
         last4:last4.trim()||undefined,
-        limitMinor
+        limitMinor,
+        scope
       });
       setOpen(false);
       setName('');
@@ -93,6 +100,7 @@ export function CreditCardManager({
       setClosingDay('7');
       setDueDay('14');
       setLimit('');
+      setScope(defaultScope);
       onCreated?.();
     }catch(err:any){
       const code=String(err?.message||'');
@@ -133,7 +141,7 @@ export function CreditCardManager({
               const openInvoice=openInvoices[0]||null;
               return <article className="credit-card-tile" key={card.id}>
                 <div className="credit-card-top">
-                  <span>{brandLabel[card.brand as CardBrand]||'Cartão'}</span>
+                  <span>{brandLabel[card.brand as CardBrand]||'Cartão'}{card.scope==='personal'&&<em className="personal-pill">Só para mim</em>}</span>
                   <b>{card.last4?'•••• '+card.last4:'Crédito'}</b>
                 </div>
                 <h3>{card.name}</h3>
@@ -179,6 +187,8 @@ export function CreditCardManager({
         <div className="eyebrow">Cartão de crédito</div>
         <h2>Como funciona essa fatura?</h2>
         <p>Sem número completo do cartão. Só guardamos o necessário para organizar fechamento, vencimento, compras e parcelas.</p>
+
+        <ScopeChoice value={scope} onChange={setScope} disabled={saving}/>
 
         <label className="field-label" htmlFor="card-name">Nome do cartão</label>
         <input id="card-name" className="premium-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Ex.: Nubank Ultravioleta" maxLength={60}/>

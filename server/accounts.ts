@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { validateAccountDraft } from '../src/core/accounts.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertScopedAccess, scopeFields } from './privacy.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -15,6 +16,7 @@ export async function createAccount(req:Request,res:Response){
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
     await requireHouseholdMember(householdId,user.uid,'manage_finance');
+    const privacy=scopeFields(req.body?.scope,user.uid);
     const validated=validateAccountDraft({
       name:req.body?.name,
       type:req.body?.type,
@@ -22,7 +24,7 @@ export async function createAccount(req:Request,res:Response){
     });
     if(!validated.ok) return error(res,400,validated.reason);
 
-    const keyHash=createHash('sha256').update(validated.dedupKey).digest('hex');
+    const keyHash=createHash('sha256').update(privacy.scope+'|'+(privacy.ownerUid||'')+'|'+validated.dedupKey).digest('hex');
     const accountRef=adminDb.collection('households').doc(householdId).collection('accounts').doc();
     const keyRef=adminDb.doc(`households/${householdId}/accountKeys/${keyHash}`);
     const auditRef=adminDb.collection('households').doc(householdId).collection('auditEvents').doc();
@@ -40,7 +42,8 @@ export async function createAccount(req:Request,res:Response){
         balanceMinor:validated.value.balanceMinor,
         amountMinor:validated.value.balanceMinor,
         currency:'BRL',
-        scope:'household',
+        scope:privacy.scope,
+        ownerUid:privacy.ownerUid,
         status:'active',
         createdBy:user.uid,
         createdAt:FieldValue.serverTimestamp(),
@@ -51,6 +54,8 @@ export async function createAccount(req:Request,res:Response){
       tx.create(keyRef,{accountId:accountRef.id,createdAt:FieldValue.serverTimestamp()});
       tx.create(auditRef,{
         type:'account.created',
+        scope:privacy.scope,
+        ownerUid:privacy.ownerUid,
         actorUid:user.uid,
         entityType:'account',
         entityId:accountRef.id,
@@ -89,6 +94,7 @@ export async function updateAccountBalance(req:Request,res:Response){
       const snap=await tx.get(accountRef);
       if(!snap.exists) throw Object.assign(new Error('ACCOUNT_NOT_FOUND'),{statusCode:404});
       const data=snap.data()!;
+      assertScopedAccess(data,user.uid);
       if(data.status!=='active') throw Object.assign(new Error('ACCOUNT_NOT_ACTIVE'),{statusCode:409});
       if(data.readOnlySync===true||data.source==='open_finance') throw Object.assign(new Error('ACCOUNT_SYNC_READ_ONLY'),{statusCode:409});
       previousBalanceMinor=Number(data.balanceMinor??data.amountMinor??0);
@@ -102,6 +108,8 @@ export async function updateAccountBalance(req:Request,res:Response){
       });
       tx.create(auditRef,{
         type:'account.balance_updated',
+        scope:data.scope==='personal'?'personal':'household',
+        ownerUid:data.scope==='personal'?user.uid:null,
         actorUid:user.uid,
         entityType:'account',
         entityId:accountId,
@@ -113,7 +121,7 @@ export async function updateAccountBalance(req:Request,res:Response){
 
     return res.json({ok:true,accountId,previousBalanceMinor,balanceMinor});
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE','ACCOUNT_SYNC_READ_ONLY'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE','ACCOUNT_SYNC_READ_ONLY'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'ACCOUNT_BALANCE_UPDATE_FAILED');
   }
 }

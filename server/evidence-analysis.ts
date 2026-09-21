@@ -4,6 +4,7 @@ import { detectDocumentSignals } from '../src/core/document-signals.js';
 import { extractNativeDocumentText, DOCUMENT_NATIVE_TEXT_MAX_BYTES } from './document-text.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertScopedAccess, requestedScope } from './privacy.js';
 
 const EXTRACTION_VERSION='native-text-v1';
 
@@ -49,6 +50,7 @@ export async function analyzeEvidenceText(req:Request,res:Response) {
       if (!evidenceSnap.exists) return error(res,404,'CANONICAL_EVIDENCE_NOT_FOUND');
       evidence=evidenceSnap.data()!;
     }
+    assertScopedAccess(evidence,user.uid);
     if (evidence.status!=='accepted'||evidence.immutable!==true) return error(res,409,'EVIDENCE_NOT_READY');
 
     const extractionRef=evidenceRef.collection('extractions').doc(EXTRACTION_VERSION);
@@ -112,6 +114,8 @@ export async function analyzeEvidenceText(req:Request,res:Response) {
       tx.create(auditRef,{
         type:'evidence.native_text_analyzed',
         actorUid:user.uid,
+        scope:requestedScope(evidence.scope),
+        ownerUid:requestedScope(evidence.scope)==='personal'?user.uid:null,
         evidenceId,
         extractionVersion:EXTRACTION_VERSION,
         state:result.state,
@@ -123,7 +127,7 @@ export async function analyzeEvidenceText(req:Request,res:Response) {
 
     return res.json(publicResult(finalData));
   } catch (err:any) {
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'EVIDENCE_ANALYSIS_FAILED');
   }
 }

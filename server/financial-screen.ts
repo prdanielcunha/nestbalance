@@ -7,6 +7,7 @@ import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
 import type { AiFinancialScreenSnapshot } from '../src/core/ai-financial.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertScopedAccess, requestedScope } from './privacy.js';
 
 const ANALYSIS_VERSION='vision-v2';
 
@@ -47,7 +48,7 @@ async function resolveEvidence(householdId:string,evidenceId:string){
     data=snap.data()!;
   }
   if(data.status!=='accepted'||data.immutable!==true) return null;
-  return {evidenceId,ref};
+  return {evidenceId,ref,data};
 }
 
 export async function commitFinancialScreen(req:Request,res:Response){
@@ -60,6 +61,9 @@ export async function commitFinancialScreen(req:Request,res:Response){
 
     const resolved=await resolveEvidence(householdId,requestedEvidenceId);
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
+    assertScopedAccess(resolved.data,user.uid);
+    const scope=requestedScope(resolved.data.scope);
+    const ownerUid=scope==='personal'?user.uid:null;
 
     const extractionSnap=await resolved.ref.collection('extractions').doc(ANALYSIS_VERSION).get();
     if(!extractionSnap.exists) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
@@ -81,7 +85,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         skipped++;
         continue;
       }
-      const key=hash(['screen_account',screen.institution||'',item.productType,item.name,item.last4||''].join('|'));
+      const key=hash([scope,ownerUid||'','screen_account',screen.institution||'',item.productType,item.name,item.last4||''].join('|'));
       const ref=household.collection('accounts').doc(key.slice(0,40));
       batch.set(ref,{
         name:safeName(item.name,screen.institution||'Conta'),
@@ -90,7 +94,8 @@ export async function commitFinancialScreen(req:Request,res:Response){
         balanceMinor:item.balanceMinor,
         amountMinor:item.balanceMinor,
         currency:item.currency,
-        scope:'household',
+        scope,
+        ownerUid,
         status:'active',
         source:'screen_import',
         institutionName:screen.institution||null,
@@ -109,7 +114,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         skipped++;
         continue;
       }
-      const key=hash(['screen_pot',screen.institution||'',item.name].join('|'));
+      const key=hash([scope,ownerUid||'','screen_pot',screen.institution||'',item.name].join('|'));
       const ref=household.collection('savingsPots').doc(key.slice(0,40));
       batch.set(ref,{
         name:safeName(item.name,'Dinheiro guardado'),
@@ -118,6 +123,8 @@ export async function commitFinancialScreen(req:Request,res:Response){
         currency:item.currency,
         institutionName:screen.institution||null,
         source:'screen_import',
+        scope,
+        ownerUid,
         status:'active',
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         updatedAt:FieldValue.serverTimestamp(),
@@ -132,7 +139,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         skipped++;
         continue;
       }
-      const key=hash(['screen_card',screen.institution||'',item.name,item.last4||''].join('|'));
+      const key=hash([scope,ownerUid||'','screen_card',screen.institution||'',item.name,item.last4||''].join('|'));
       const ref=household.collection('cardSnapshots').doc(key.slice(0,40));
       batch.set(ref,{
         name:safeName(item.name,'Cartão'),
@@ -143,6 +150,8 @@ export async function commitFinancialScreen(req:Request,res:Response){
         totalLimitMinor:Number.isSafeInteger(item.totalLimitMinor)?item.totalLimitMinor:null,
         institutionName:screen.institution||null,
         source:'screen_import',
+        scope,
+        ownerUid,
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         updatedAt:FieldValue.serverTimestamp(),
         importedBy:user.uid,
@@ -156,7 +165,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         skipped++;
         continue;
       }
-      const key=hash(['screen_commitment',item.description,String(item.amountMinor),item.dueOn||'',String(item.installment?.current||''),String(item.installment?.total||'')].join('|'));
+      const key=hash([scope,ownerUid||'','screen_commitment',item.description,String(item.amountMinor),item.dueOn||'',String(item.installment?.current||''),String(item.installment?.total||'')].join('|'));
       const ref=household.collection('commitments').doc(key.slice(0,40));
       batch.set(ref,{
         description:safeName(item.description,'Conta para pagar'),
@@ -164,6 +173,8 @@ export async function commitFinancialScreen(req:Request,res:Response){
         currency:'BRL',
         direction:'expense',
         source:'screen_import',
+        scope,
+        ownerUid,
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         status:'pending',
         dueDay:dueDay(item.dueOn),
@@ -195,7 +206,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         }
         const observedOn=item.occurredOn||new Date().toISOString().slice(0,10);
         const fingerprint=fingerprintForInterpretation(item,observedOn);
-        const id=hash(['screen_movement',resolved.evidenceId,String(index),fingerprint].join('|')).slice(0,40);
+        const id=hash([scope,ownerUid||'','screen_movement',resolved.evidenceId,String(index),fingerprint].join('|')).slice(0,40);
         const ref=household.collection('transactions').doc(id);
         batch.set(ref,{
           description:item.description,
@@ -203,6 +214,8 @@ export async function commitFinancialScreen(req:Request,res:Response){
           currency:item.money.currency,
           direction:item.direction,
           source:'screen_import',
+          scope,
+          ownerUid,
           sourceText:item.sourceText,
           confidence:item.confidence,
           needsReview:item.needsReview,
@@ -224,6 +237,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
     }
     batch.create(household.collection('auditEvents').doc(),{
       type:'financial_screen.committed',
+      scope,
       actorUid:user.uid,
       evidenceId:resolved.evidenceId,
       screenType:screen.screenType,
@@ -241,7 +255,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
       counts:{accounts,pots,cards,commitments,movements,skipped}
     });
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','EVIDENCE_NOT_FOUND','SCREEN_ANALYSIS_REQUIRED','SCREEN_SNAPSHOT_UNAVAILABLE'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','EVIDENCE_NOT_FOUND','SCREEN_ANALYSIS_REQUIRED','SCREEN_SNAPSHOT_UNAVAILABLE'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'FINANCIAL_SCREEN_COMMIT_FAILED');
   }
 }

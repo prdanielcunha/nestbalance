@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { MAX_EVIDENCE_BYTES, signatureMatchesMime, validateEvidenceDeclaration } from '../src/core/evidence.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { requestedScope, scopeFields, scopedHashId } from './privacy.js';
 
 const now = () => FieldValue.serverTimestamp();
 
@@ -21,7 +22,6 @@ async function completeEvidence(args:{
 }){
   const {householdId,evidenceId,userUid,verified}=args;
   const evidenceRef=adminDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`);
-  const hashRef=adminDb.doc(`households/${householdId}/evidenceHashes/${verified.sha256}`);
   let uploadPath='';
   let result:{status:'accepted'|'duplicate';canonicalEvidenceId:string}={status:'accepted',canonicalEvidenceId:evidenceId};
 
@@ -37,6 +37,8 @@ async function completeEvidence(args:{
     }
     if(current.status!=='awaiting_upload') throw Object.assign(new Error('EVIDENCE_NOT_FINALIZABLE'),{statusCode:409});
 
+    const scope=requestedScope(current.scope);
+    const hashRef=adminDb.doc(`households/${householdId}/evidenceHashes/${scopedHashId(verified.sha256,scope,userUid)}`);
     const existingHash=await tx.get(hashRef);
     if(existingHash.exists){
       const canonicalEvidenceId=String(existingHash.data()?.evidenceId||'');
@@ -70,6 +72,8 @@ async function completeEvidence(args:{
     tx.create(auditRef,{
       type:`evidence.${result.status}`,
       actorUid:userUid,
+      scope:requestedScope(current.scope),
+      ownerUid:requestedScope(current.scope)==='personal'?userUid:null,
       evidenceId,
       canonicalEvidenceId:result.canonicalEvidenceId,
       createdAt:now()
@@ -95,6 +99,7 @@ export async function startEvidence(req: Request, res: Response) {
     });
     if (!validation.ok) return error(res, 400, validation.reason);
 
+    const privacy=scopeFields(req.body?.scope,user.uid);
     const evidenceRef = adminDb.collection('households').doc(householdId).collection('evidenceAssets').doc();
     const uploadPath = `nestbalance/households/${householdId}/evidence/${evidenceRef.id}/original`;
     await evidenceRef.create({
@@ -102,6 +107,8 @@ export async function startEvidence(req: Request, res: Response) {
       status: 'awaiting_upload',
       immutable: false,
       uploadedBy: user.uid,
+      scope:privacy.scope,
+      ownerUid:privacy.ownerUid,
       originalName: validation.normalizedName,
       declaredMimeType: validation.mimeType,
       declaredSize: validation.size,
