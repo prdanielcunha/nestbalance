@@ -2,12 +2,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { deriveHomeSnapshot } from '@/src/core/summary';
-import { projectFutureCommitments } from '@/src/core/future-projection';
+import { projectHouseholdFuture } from '@/src/core/future-projection';
 import { UniversalCapture } from '@/src/features/capture/universal-capture';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { messages } from '@/src/i18n/messages';
-import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeRow } from '@/src/lib/repositories/home';
+import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeRow } from '@/src/lib/repositories/home';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
@@ -18,6 +18,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   const [commitments, setCommitments] = useState<HomeRow[]>([]);
   const [accounts, setAccounts] = useState<HomeAccount[]>([]);
   const [cards, setCards] = useState<HomeCreditCard[]>([]);
+  const [installmentPlans,setInstallmentPlans]=useState<HomeInstallmentPlan[]>([]);
   const [loadingHome,setLoadingHome]=useState(true);
   const [homeError,setHomeError]=useState('');
   const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
@@ -32,6 +33,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
       setCards(data.cards||[]);
       setTransactions(data.transactions);
       setCommitments(data.commitments);
+      setInstallmentPlans(data.installmentPlans||[]);
       setHomeError('');
     }catch{
       setHomeError('Não conseguimos atualizar sua visão financeira agora.');
@@ -56,9 +58,9 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
     return deriveHomeSnapshot({availableMinor, incomeMinor:0, paidExpenseMinor, futureCommitmentsMinor, dueSoonMinor: futureCommitmentsMinor});
   }, [transactions, commitments, accounts]);
 
-  const futureMonths=useMemo(()=>projectFutureCommitments(commitments,new Date(),3),[commitments]);
+  const futureMonths=useMemo(()=>projectHouseholdFuture(commitments,installmentPlans,new Date(),3),[commitments,installmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
-  const hasData = transactions.length + commitments.length > 0;
+  const hasData = transactions.length + commitments.length + installmentPlans.length > 0;
 
   return <main className="app-shell">
     <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="topbar-actions"><Link className="text-link" href="/vault">Cofre</Link><div className="avatar-dot" aria-hidden="true" /></div></header>
