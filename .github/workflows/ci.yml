@@ -49,5 +49,3 @@ jobs:
 
       - name: Build Cloud Run API
         run: npm run build:cloudrun
-
-# Validation workflow bootstrapped on main.
