@@ -153,6 +153,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         updatedAt:FieldValue.serverTimestamp(),
         importedBy:user.uid,
+        ...privacyFields(visibility,user.uid),
         schemaVersion:1
       },{merge:true});
       cards++;
@@ -180,6 +181,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         installment:item.installment,
         updatedAt:FieldValue.serverTimestamp(),
         importedBy:user.uid,
+        ...privacyFields(visibility,user.uid),
         schemaVersion:2
       },{merge:true});
       commitments++;
