@@ -17,7 +17,8 @@ import {
   getBelvoLink,
   isBelvoConfigured,
   listBelvoAccounts,
-  listBelvoBalances
+  listBelvoBalances,
+  listBelvoTransactions
 } from './open-finance/belvo.js';
 
 const SESSION_TTL_MS=15*60*1000;
@@ -100,14 +101,18 @@ async function syncConnection(householdId:string,connectionId:string,actorUid:st
   const linkId=String(connection.linkId||'');
   if(!validUuid(linkId)) fail('OPEN_FINANCE_LINK_INVALID',409);
 
-  const [accounts,balances]=await Promise.all([
+  const [accounts,balances,transactions]=await Promise.all([
     listBelvoAccounts(linkId),
-    listBelvoBalances(linkId).catch(()=>[])
+    listBelvoBalances(linkId).catch(()=>[]),
+    listBelvoTransactions(linkId).catch(()=>[])
   ]);
   const balancesByAccount=balanceMap(balances);
 
   let synced=0;
   let skipped=0;
+  let syncedTransactions=0;
+  let skippedTransactions=0;
+  const localAccountsByExternalId=new Map<string,string>();
   const batch=adminDb.batch();
 
   for(const external of accounts.slice(0,100)){
@@ -146,6 +151,8 @@ async function syncConnection(householdId:string,connectionId:string,actorUid:st
         : 'Conta';
     const name=rawName||`${institutionLabel(institutionCode)} · ${fallback}`;
 
+    localAccountsByExternalId.set(externalId,accountId);
+
     batch.set(accountRef,{
       name:name.slice(0,60),
       type:normalizedType==='investment'?'bank':'bank',
@@ -170,10 +177,60 @@ async function syncConnection(householdId:string,connectionId:string,actorUid:st
     synced++;
   }
 
+  for(const external of transactions.slice(0,250)){
+    const externalId=String(external?.id||'');
+    const accountExternalId=String(external?.account?.id||'');
+    const localAccountId=localAccountsByExternalId.get(accountExternalId);
+    const amountMinor=decimalToMinor(external?.amount);
+    const providerType=String(external?.type||'').toUpperCase();
+
+    if(!validUuid(externalId)||!localAccountId||amountMinor===null||amountMinor<=0||!['INFLOW','OUTFLOW'].includes(providerType)){
+      skippedTransactions++;
+      continue;
+    }
+
+    const observedOn=String(external?.value_date||external?.accounting_date||'');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(observedOn)){
+      skippedTransactions++;
+      continue;
+    }
+
+    const transactionId=hash(`belvo_ofda_transaction|${connectionId}|${externalId}`);
+    const transactionRef=household.collection('transactions').doc(transactionId);
+    const description=String(external?.description||external?.merchant?.name||'Movimentação bancária')
+      .normalize('NFKC').replace(/\s+/g,' ').trim().slice(0,120);
+
+    batch.set(transactionRef,{
+      description:description||'Movimentação bancária',
+      amountMinor,
+      currency:String(external?.currency||'BRL'),
+      direction:providerType==='INFLOW'?'income':'expense',
+      source:'open_finance',
+      provider:'belvo_ofda',
+      connectionId,
+      accountId:localAccountId,
+      externalTransactionId:externalId,
+      providerStatus:String(external?.status||'PROCESSED'),
+      status:String(external?.status||'').toUpperCase()==='PENDING'?'pending':'confirmed',
+      observedOn,
+      createdAt:FieldValue.serverTimestamp(),
+      updatedAt:FieldValue.serverTimestamp(),
+      readOnlySync:true,
+      recurring:false,
+      recurrence:null,
+      dueDay:null,
+      installment:null,
+      schemaVersion:2
+    },{merge:true});
+    syncedTransactions++;
+  }
+
   batch.set(connectionRef,{
     status:synced>0?'ready':'syncing',
     accountCount:synced,
     skippedAccountCount:skipped,
+    transactionCount:syncedTransactions,
+    skippedTransactionCount:skippedTransactions,
     lastSyncAt:FieldValue.serverTimestamp(),
     lastSyncStatus:synced>0?'success':'waiting_for_provider_data',
     updatedAt:FieldValue.serverTimestamp()
@@ -186,11 +243,19 @@ async function syncConnection(householdId:string,connectionId:string,actorUid:st
     provider:'belvo_ofda',
     syncedAccountCount:synced,
     skippedAccountCount:skipped,
+    syncedTransactionCount:syncedTransactions,
+    skippedTransactionCount:skippedTransactions,
     createdAt:FieldValue.serverTimestamp()
   });
 
   await batch.commit();
-  return {synced,skipped,status:synced>0?'ready':'syncing'};
+  return {
+    synced,
+    skipped,
+    syncedTransactions,
+    skippedTransactions,
+    status:synced>0?'ready':'syncing'
+  };
 }
 
 export async function listOpenFinanceConnections(req:Request,res:Response){
@@ -363,7 +428,8 @@ export async function completeOpenFinanceConnection(req:Request,res:Response){
       });
     });
 
-    const sync=await syncConnection(householdId,connectionId,user.uid).catch(()=>({synced:0,skipped:0,status:'syncing'}));
+    const sync=await syncConnection(householdId,connectionId,user.uid)
+      .catch(()=>({synced:0,skipped:0,syncedTransactions:0,skippedTransactions:0,status:'syncing'}));
     return res.status(201).json({ok:true,connectionId,institutionName,...sync});
   }catch(err:any){
     return error(res,err.statusCode||500,safeProviderError(err));
