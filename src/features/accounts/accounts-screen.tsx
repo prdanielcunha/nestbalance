@@ -177,7 +177,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       onCreated={refreshed}
     />}
 
-    <AppNav/>
+    <AppNav canContribute={role!=='read_only'}/>
 
     {canManage&&editingAccount&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!savingBalance&&setEditingAccount(null)}>
       <section className="capture-sheet balance-update-sheet" role="dialog" aria-modal="true" aria-label="Atualizar saldo">
