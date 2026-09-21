@@ -11,7 +11,7 @@ export type FinancialInterpretation = {
   kind: InterpretationKind;
   description: string;
   money: Money;
-  direction: "expense" | "income";
+  direction: "expense" | "income" | "transfer";
   occurredOn?: string;
   dueDay?: number;
   recurring: boolean;
