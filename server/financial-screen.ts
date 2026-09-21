@@ -7,6 +7,7 @@ import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
 import type { AiFinancialScreenSnapshot } from '../src/core/ai-financial.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertCanViewFinancialRecord, normalizeFinancialVisibility, privacyFields } from './privacy.js';
 
 const ANALYSIS_VERSION='vision-v2';
 
@@ -47,7 +48,7 @@ async function resolveEvidence(householdId:string,evidenceId:string){
     data=snap.data()!;
   }
   if(data.status!=='accepted'||data.immutable!==true) return null;
-  return {evidenceId,ref};
+  return {evidenceId,ref,data};
 }
 
 export async function commitFinancialScreen(req:Request,res:Response){
@@ -60,6 +61,10 @@ export async function commitFinancialScreen(req:Request,res:Response){
 
     const resolved=await resolveEvidence(householdId,requestedEvidenceId);
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
+    assertCanViewFinancialRecord(resolved.data,user.uid);
+    const visibility=normalizeFinancialVisibility(req.body?.visibility);
+    const evidenceVisibility=normalizeFinancialVisibility(resolved.data.scope);
+    if(visibility!==evidenceVisibility) return error(res,409,'PRIVACY_SCOPE_MISMATCH');
 
     const extractionSnap=await resolved.ref.collection('extractions').doc(ANALYSIS_VERSION).get();
     if(!extractionSnap.exists) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
@@ -99,6 +104,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         updatedAt:FieldValue.serverTimestamp(),
         importedBy:user.uid,
+        ...privacyFields(visibility,user.uid),
         schemaVersion:2
       },{merge:true});
       accounts++;
@@ -122,6 +128,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         updatedAt:FieldValue.serverTimestamp(),
         importedBy:user.uid,
+        ...privacyFields(visibility,user.uid),
         schemaVersion:1
       },{merge:true});
       pots++;
@@ -217,6 +224,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
           dueDay:null,
           installment:item.installment??null,
           fingerprint,
+          ...privacyFields(visibility,user.uid),
           schemaVersion:2
         },{merge:true});
         movements++;
@@ -241,7 +249,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
       counts:{accounts,pots,cards,commitments,movements,skipped}
     });
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','EVIDENCE_NOT_FOUND','SCREEN_ANALYSIS_REQUIRED','SCREEN_SNAPSHOT_UNAVAILABLE'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED','EVIDENCE_NOT_FOUND','SCREEN_ANALYSIS_REQUIRED','SCREEN_SNAPSHOT_UNAVAILABLE'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'FINANCIAL_SCREEN_COMMIT_FAILED');
   }
 }
