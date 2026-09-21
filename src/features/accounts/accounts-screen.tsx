@@ -122,7 +122,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
                 const connected=account.source==='open_finance';
                 const investment=account.connectedProductType==='investment';
                 return <article className={connected?'account-balance-tile connected':'account-balance-tile'} key={account.id}>
-                  <span>{investment?'Investimento':connected?'Conta conectada':typeLabel[account.type]||'Conta'}</span>
+                  <span>{investment?'Investimento':connected?'Conta conectada':typeLabel[account.type]||'Conta'}{account.scope==='personal'&&<em className="personal-pill">Só para mim</em>}</span>
                   <h3>{account.name}</h3>
                   <strong>{money.format(account.balanceMinor/100)}</strong>
                   {account.automaticallyInvestedMinor&&account.automaticallyInvestedMinor>0
@@ -145,7 +145,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       <div className="section-title"><div><h2>Dinheiro guardado</h2><span>{money.format(savedTotal/100)} separado do saldo para gastar</span></div></div>
       <div className="savings-pot-grid">
         {savingsPots.map(pot=><article className="savings-pot-card" key={pot.id}>
-          <span>{pot.institutionName||'Importado de um print'}</span>
+          <span>{pot.institutionName||'Importado de um print'}{pot.scope==='personal'&&<em className="personal-pill">Só para mim</em>}</span>
           <h3>{pot.name}</h3>
           <strong>{money.format(pot.balanceMinor/100)}</strong>
           {pot.goalMinor&&pot.goalMinor>0?<small>Meta {money.format(pot.goalMinor/100)}</small>:<small>Valor identificado na tela</small>}
@@ -157,7 +157,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       <div className="section-title"><div><h2>Cartões reconhecidos</h2><span>informações vistas nos seus prints</span></div></div>
       <div className="recognized-card-grid">
         {cardSnapshots.map(card=><article className="recognized-card" key={card.id}>
-          <span>{card.institutionName||'Cartão'}</span>
+          <span>{card.institutionName||'Cartão'}{card.scope==='personal'&&<em className="personal-pill">Só para mim</em>}</span>
           <h3>{card.name}{card.last4?' · '+card.last4:''}</h3>
           {card.statementAmountMinor!==null&&<strong>{money.format(card.statementAmountMinor/100)}</strong>}
           {card.dueOn&&<small>Vence em {new Intl.DateTimeFormat('pt-BR').format(new Date(card.dueOn+'T12:00:00'))}</small>}
