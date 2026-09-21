@@ -43,7 +43,6 @@ export function AccountsScreen({householdId}:{householdId:string}){
 
   function refreshed(){
     setRefreshKey(value=>value+1);
-    void load(true);
   }
 
   function openBalance(account:HomeAccount){
@@ -107,13 +106,13 @@ export function AccountsScreen({householdId}:{householdId:string}){
             </div>}
     </section>
 
-    <CreditCardManager
+    {!loading&&<CreditCardManager
       householdId={householdId}
       cards={cards}
       accounts={accounts}
       invoiceImports={invoiceImports}
       onCreated={refreshed}
-    />
+    />}
 
     <AppNav/>
 
