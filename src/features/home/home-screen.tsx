@@ -55,11 +55,20 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
     return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
   }, [householdId, accountCreated, cardCreated]);
 
+  const currentMonthKey=useMemo(()=>{
+    const now=new Date();
+    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  },[]);
+  const monthTransactions=useMemo(
+    ()=>transactions.filter(item=>typeof item.observedOn==='string'&&item.observedOn.startsWith(currentMonthKey)),
+    [transactions,currentMonthKey]
+  );
+
   const cashView=useMemo(()=>deriveCashView({
-    transactions,
+    transactions:monthTransactions,
     commitments,
     invoices:invoiceImports
-  }),[transactions,commitments,invoiceImports]);
+  }),[monthTransactions,commitments,invoiceImports]);
 
   const snapshot = useMemo(() => {
     const availableMinor = accounts
@@ -91,13 +100,13 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
 
     {accounts.length===0 && <AccountOnboarding householdId={householdId} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
 
-    <ConnectedBanks householdId={householdId} onSynced={()=>void refreshHome(true)} />
+    <ConnectedBanks householdId={householdId} accounts={accounts} onSynced={()=>void refreshHome(true)} />
     {commitments[0] && <section><div className="section-title"><h2>{t.attention}</h2></div><article className="spotlight-card"><div><span>{commitments[0].dueDay ? `Vence dia ${commitments[0].dueDay}` : 'Próximo compromisso'}</span><h3>{commitments[0].description}</h3></div><strong>{money.format(commitments[0].amountMinor/100)}</strong></article></section>}
 
     <section className="month-section">
       <div className="section-title"><h2>{t.month}</h2></div>
       <div className="month-grid">
-        <div><span>Entrou</span><strong>{money.format(transactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)/100)}</strong></div>
+        <div><span>Entrou</span><strong>{money.format(monthTransactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)/100)}</strong></div>
         <div><span>Já saiu</span><strong>{money.format(snapshot.paidExpenseMinor/100)}</strong></div>
         <div><span>Ainda vai sair</span><strong>{money.format(snapshot.futureCommitmentsMinor/100)}</strong></div>
         <div className="projected"><span>Deve sobrar</span><strong>{accounts.length ? money.format(snapshot.projectedRemainderMinor/100) : '—'}</strong></div>
