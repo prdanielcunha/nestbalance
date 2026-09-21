@@ -76,7 +76,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   const hasData = transactions.length + commitments.length + installmentPlans.length + invoiceImports.length > 0;
 
   return <main className="app-shell">
-    <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="topbar-actions"><Link className="text-link" href="/vault">Cofre</Link><div className="avatar-dot" aria-hidden="true" /></div></header>
+    <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="topbar-actions"><Link className="text-link" href="/assistant">Assistente</Link><Link className="text-link" href="/vault">Cofre</Link><div className="avatar-dot" aria-hidden="true" /></div></header>
 
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
     {loadingHome && <div className="home-loading-line" aria-label="Atualizando visão financeira" />}
