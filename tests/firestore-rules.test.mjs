@@ -100,5 +100,9 @@ test('owner identity, not mutable role, controls household deletion', async () =
   await assertFails((await import('firebase/firestore')).deleteDoc(target));
   const ownerTarget = doc(ownerDb, 'households', 'house_delete');
   await assertSucceeds((await import('firebase/firestore')).deleteDoc(ownerTarget));
-  assert.equal((await env.withSecurityRulesDisabled(ctx => getDoc(doc(ctx.firestore(), 'households', 'house_delete')))).exists(), false);
+  let existsAfterDelete = true;
+  await env.withSecurityRulesDisabled(async context => {
+    existsAfterDelete = (await getDoc(doc(context.firestore(), 'households', 'house_delete'))).exists();
+  });
+  assert.equal(existsAfterDelete, false);
 });
