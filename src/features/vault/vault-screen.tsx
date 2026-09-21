@@ -103,7 +103,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
         <div className="vault-file-mark">{typeLabel(item.mimeType).slice(0,1)}</div>
         <div className="vault-row-copy">
           <strong>{item.originalName}</strong>
-          <span>{typeLabel(item.mimeType)} · {sizeLabel(item.size)} · {understandingLabel(item.extractionState)}</span>
+          <span>{typeLabel(item.mimeType)} · {sizeLabel(item.size)} · {understandingLabel(item.extractionState)}{item.visibility==='personal'?' · Só eu':''}</span>
         </div>
         <span className="vault-row-date">{item.createdAtMs ? new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(item.createdAtMs) : ''}</span>
       </button>)}
@@ -116,7 +116,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
         <div className="sheet-handle" />
         <div className="eyebrow">ORIGINAL</div>
         <h2>{selected.originalName}</h2>
-        <p>{typeLabel(selected.mimeType)} · {sizeLabel(selected.size)}</p>
+        <p>{typeLabel(selected.mimeType)} · {sizeLabel(selected.size)}{selected.visibility==='personal'?' · Só eu':''}</p>
 
         {detailLoading ? <div className="vault-detail-skeleton" /> : detail && <>
           <div className="evidence-stack">
