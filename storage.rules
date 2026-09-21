@@ -12,7 +12,7 @@ service firebase.storage {
       ];
     }
     match /nestbalance/households/{hid}/evidence/{evidenceId}/original {
-      allow read: if member(hid) && evidence(hid, evidenceId).status in ['accepted','duplicate'];
+      allow read: if false;
       allow create: if member(hid)
                     && evidence(hid, evidenceId).status == 'awaiting_upload'
                     && evidence(hid, evidenceId).uploadedBy == request.auth.uid
