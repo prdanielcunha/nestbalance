@@ -9,6 +9,7 @@ import { transcribeFinancialAudio } from './ai/audio-transcription.js';
 import { isOpenAiConfigured } from './ai/openai-client.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertCanViewFinancialRecord } from './privacy.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
 
 const LOCK_TTL_MS=2*60*1000;
@@ -23,18 +24,20 @@ function privateJson(res:Response){
   res.setHeader('X-Content-Type-Options','nosniff');
 }
 
-async function resolveEvidence(householdId:string,evidenceId:string){
+async function resolveEvidence(householdId:string,evidenceId:string,userUid:string){
   if(!/^[A-Za-z0-9_-]{6,128}$/.test(evidenceId)) return null;
   let ref=adminDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`);
   let snap=await ref.get();
   if(!snap.exists) return null;
   let data=snap.data()!;
+  assertCanViewFinancialRecord(data,userUid);
   if(data.status==='duplicate'&&data.canonicalEvidenceId){
     evidenceId=String(data.canonicalEvidenceId);
     ref=adminDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`);
     snap=await ref.get();
     if(!snap.exists) return null;
     data=snap.data()!;
+    assertCanViewFinancialRecord(data,userUid);
   }
   if(data.status!=='accepted'||data.immutable!==true) return null;
   return {evidenceId,ref,snap,data};
@@ -66,7 +69,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid,'contribute');
 
     if(!isOpenAiConfigured()) return error(res,503,'AI_NOT_CONFIGURED');
-    const resolved=await resolveEvidence(householdId,requestedId);
+    const resolved=await resolveEvidence(householdId,requestedId,user.uid);
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
 
     const mimeType=String(resolved.data.mimeType||resolved.data.declaredMimeType||'');
@@ -214,7 +217,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
       'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','AI_NOT_CONFIGURED',
       'AI_IMAGE_TYPE_REQUIRED','AI_IMAGE_TOO_LARGE','AI_AUDIO_TYPE_REQUIRED','AI_AUDIO_TOO_LARGE',
       'EVIDENCE_STORAGE_UNAVAILABLE','EVIDENCE_INVALID_METADATA','EVIDENCE_SIZE_MISMATCH',
-      'EVIDENCE_SIGNATURE_MISMATCH','EVIDENCE_HASH_MISMATCH'
+      'EVIDENCE_SIGNATURE_MISMATCH','EVIDENCE_HASH_MISMATCH','FINANCIAL_PRIVACY_DENIED'
     ];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'AI_ANALYSIS_FAILED');
   }
