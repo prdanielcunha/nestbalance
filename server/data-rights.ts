@@ -169,6 +169,18 @@ export async function deletePersonalData(req:Request,res:Response){
     for(const path of evidencePaths) await adminBucket.file(path).delete({ignoreNotFound:true}).catch(()=>undefined);
     for(const docs of Object.values(byCollection)) await deleteRefs(docs.map(doc=>doc.ref));
 
+    const auditDocs=await allDocs(household.collection('auditEvents'));
+    const personalAudit=auditDocs.filter(doc=>{
+      const data=doc.data();
+      if(data.scope==='personal'&&data.ownerUid===user.uid) return true;
+      const linked=[
+        data.entityId,data.evidenceId,data.canonicalEvidenceId,data.transactionId,data.paymentTransactionId,
+        data.commitmentId,data.cardId,data.accountId,data.invoiceImportId
+      ].map(value=>String(value||'')).filter(Boolean);
+      return linked.some(id=>deletedIds.has(id));
+    });
+    await deleteRefs(personalAudit.map(doc=>doc.ref));
+
     const indexCollections=['captureFingerprints','accountKeys','creditCardKeys','evidenceHashes','invoiceItemKeys','invoicePaymentKeys'];
     const batch=adminDb.batch(); let batchOps=0;
     for(const collection of indexCollections){
@@ -182,9 +194,9 @@ export async function deletePersonalData(req:Request,res:Response){
     if(batchOps) await batch.commit();
 
     await adminDb.collection('users').doc(user.uid).collection('privacyEvents').add({
-      type:'privacy.personal_data_deleted',householdId,counts:Object.fromEntries(Object.entries(byCollection).map(([k,v])=>[k,v.length])),createdAt:FieldValue.serverTimestamp()
+      type:'privacy.personal_data_deleted',householdId,counts:{...Object.fromEntries(Object.entries(byCollection).map(([k,v])=>[k,v.length])),auditEvents:personalAudit.length},createdAt:FieldValue.serverTimestamp()
     });
-    return res.json({ok:true,counts:Object.fromEntries(Object.entries(byCollection).map(([k,v])=>[k,v.length]))});
+    return res.json({ok:true,counts:{...Object.fromEntries(Object.entries(byCollection).map(([k,v])=>[k,v.length])),auditEvents:personalAudit.length}});
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'PERSONAL_DATA_DELETE_FAILED');
