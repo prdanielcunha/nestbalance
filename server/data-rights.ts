@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { canAccessScopedRecord } from '../src/core/privacy.js';
@@ -8,7 +8,7 @@ import { deleteBelvoLink } from './open-finance/belvo.js';
 const PRIVACY_VERSION='nestbalance-privacy-v1';
 const EXPORT_COLLECTIONS=[
   'accounts','creditCards','transactions','commitments','installmentPlans','invoiceImports',
-  'commitmentPayments','savingsPots','cardSnapshots','evidenceAssets','bankConnections','auditEvents'
+  'commitmentPayments','savingsPots','cardSnapshots','evidenceAssets','bankConnections'
 ] as const;
 const PERSONAL_DELETE_COLLECTIONS=[
   'transactions','commitments','commitmentPayments','installmentPlans','invoiceImports',
@@ -35,6 +35,27 @@ function sanitize(collection:string,data:any){
   return copy;
 }
 function personalOwned(data:any,uid:string){ return data?.scope==='personal'&&data?.ownerUid===uid; }
+
+async function allDocs(ref:FirebaseFirestore.CollectionReference){
+  const out:FirebaseFirestore.QueryDocumentSnapshot[]=[];
+  let cursor:FirebaseFirestore.QueryDocumentSnapshot|null=null;
+  for(;;){
+    let query:FirebaseFirestore.Query=ref.orderBy(FieldPath.documentId()).limit(500);
+    if(cursor) query=query.startAfter(cursor);
+    const snap=await query.get();
+    if(snap.empty) break;
+    out.push(...snap.docs);
+    cursor=snap.docs[snap.docs.length-1];
+    if(snap.size<500) break;
+  }
+  return out;
+}
+
+async function actorAuditEvents(householdRef:FirebaseFirestore.DocumentReference,uid:string){
+  const docs=await allDocs(householdRef.collection('auditEvents'));
+  return docs.filter(doc=>String(doc.data()?.actorUid||'')===uid);
+}
+
 
 export async function getPrivacyStatus(req:Request,res:Response){
   res.setHeader('Cache-Control','private, no-store');
@@ -87,11 +108,14 @@ export async function exportPrivacyData(req:Request,res:Response){
 
     const result:Record<string,any[]>={};
     for(const collection of EXPORT_COLLECTIONS){
-      const snap=await householdRef.collection(collection).limit(1000).get();
-      result[collection]=snap.docs
+      const docs=await allDocs(householdRef.collection(collection));
+      result[collection]=docs
         .filter(doc=>mode==='personal'?personalOwned(doc.data(),user.uid):canAccessScopedRecord(doc.data(),user.uid))
         .map(doc=>({id:doc.id,...sanitize(collection,doc.data())}));
     }
+
+    const ownAudit=await actorAuditEvents(householdRef,user.uid);
+    result.activity=ownAudit.map(doc=>({id:doc.id,...sanitize('auditEvents',doc.data())}));
 
     await householdRef.collection('auditEvents').add({
       type:'privacy.exported',scope:mode==='personal'?'personal':'household',ownerUid:mode==='personal'?user.uid:null,
@@ -131,8 +155,7 @@ export async function deletePersonalData(req:Request,res:Response){
     const evidencePaths:string[]=[];
 
     for(const collection of PERSONAL_DELETE_COLLECTIONS){
-      const snap=await household.collection(collection).where('ownerUid','==',user.uid).limit(500).get();
-      const docs=snap.docs.filter(doc=>personalOwned(doc.data(),user.uid));
+      const docs=(await allDocs(household.collection(collection))).filter(doc=>personalOwned(doc.data(),user.uid));
       byCollection[collection]=docs;
       for(const doc of docs){
         deletedIds.add(doc.id);
@@ -149,8 +172,8 @@ export async function deletePersonalData(req:Request,res:Response){
     const indexCollections=['captureFingerprints','accountKeys','creditCardKeys','evidenceHashes','invoiceItemKeys','invoicePaymentKeys'];
     const batch=adminDb.batch(); let batchOps=0;
     for(const collection of indexCollections){
-      const snap=await household.collection(collection).limit(2000).get();
-      for(const doc of snap.docs){
+      const docs=await allDocs(household.collection(collection));
+      for(const doc of docs){
         const data=doc.data();
         const linked=[data.entityId,data.accountId,data.cardId,data.evidenceId,data.transactionId,data.invoiceImportId].map(String);
         if(linked.some(id=>deletedIds.has(id))){ batch.delete(doc.ref); batchOps++; }
@@ -181,8 +204,8 @@ export async function deleteHousehold(req:Request,res:Response){
     const name=String(householdSnap.data()?.name||'Meu Lar');
     if(String(req.body?.confirmation||'')!==name) return error(res,400,'HOUSEHOLD_DELETE_CONFIRMATION_REQUIRED');
 
-    const connections=await householdRef.collection('bankConnections').limit(50).get();
-    for(const doc of connections.docs){
+    const connections=await allDocs(householdRef.collection('bankConnections'));
+    for(const doc of connections){
       const data=doc.data();
       if(String(data.status||'')==='disconnected') continue;
       const linkId=String(data.linkId||'');
@@ -192,8 +215,8 @@ export async function deleteHousehold(req:Request,res:Response){
       }
     }
 
-    const members=await householdRef.collection('members').limit(100).get();
-    const memberUids=members.docs.map(doc=>doc.id);
+    const members=await allDocs(householdRef.collection('members'));
+    const memberUids=members.map(doc=>doc.id);
     await adminBucket.deleteFiles({prefix:'nestbalance/households/'+householdId+'/'}).catch(()=>undefined);
     await (adminDb as any).recursiveDelete(householdRef);
 
