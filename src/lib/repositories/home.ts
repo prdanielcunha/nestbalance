@@ -24,6 +24,11 @@ export type HomeAccount={
   id:string;
   name:string;
   type:string;
+  connectedProductType?:string|null;
+  source?:string|null;
+  institutionName?:string|null;
+  connectionId?:string|null;
+  automaticallyInvestedMinor?:number|null;
   balanceMinor:number;
   currency:string;
   status:string;
