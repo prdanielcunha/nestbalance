@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
+import { assertScopedAccess, visibleDocs } from './privacy.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -28,7 +29,8 @@ function evidenceDto(doc:any){
     size:Number(data.verifiedSize||data.declaredSize||0),
     createdAtMs:asMillis(data.createdAt),
     extractionState:data.extractionState||'pending',
-    lastExtractionVersion:data.lastExtractionVersion||null
+    lastExtractionVersion:data.lastExtractionVersion||null,
+    scope:data.scope==='personal'?'personal':'household'
   };
 }
 
@@ -57,13 +59,13 @@ export async function listVaultEvidence(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid);
     const snapshot=await adminDb.collection('households').doc(householdId)
       .collection('evidenceAssets').orderBy('createdAt','desc').limit(60).get();
-    const items=snapshot.docs
+    const items=visibleDocs(snapshot.docs,user.uid)
       .filter(doc=>doc.data().status==='accepted'&&doc.data().immutable===true)
       .slice(0,30)
       .map(evidenceDto);
     return res.json({ok:true,items});
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'VAULT_LIST_FAILED');
   }
 }
@@ -77,6 +79,7 @@ export async function getVaultEvidenceDetail(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid);
     const resolved=await resolveAcceptedEvidence(householdId,requestedId);
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
+    assertScopedAccess(resolved.data,user.uid);
 
     const extractionVersion=String(resolved.data.lastExtractionVersion||'native-text-v1');
     const extraction=await resolved.ref.collection('extractions').doc(extractionVersion).get();
@@ -100,7 +103,7 @@ export async function getVaultEvidenceDetail(req:Request,res:Response){
       }:null
     });
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'VAULT_DETAIL_FAILED');
   }
 }
@@ -116,6 +119,7 @@ export async function previewVaultEvidence(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid);
     const resolved=await resolveAcceptedEvidence(householdId,requestedId);
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
+    assertScopedAccess(resolved.data,user.uid);
 
     const expectedSize=Number(resolved.data.verifiedSize||0);
     const expectedMime=String(resolved.data.mimeType||resolved.data.declaredMimeType||'');
@@ -133,7 +137,7 @@ export async function previewVaultEvidence(req:Request,res:Response){
     res.setHeader('Content-Disposition',`inline; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`);
     return res.status(200).send(bytes);
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'VAULT_PREVIEW_FAILED');
   }
 }
