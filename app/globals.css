@@ -511,3 +511,21 @@
 .capture-review-summary strong{font-size:18px;letter-spacing:-.03em}
 .capture-review-summary span{margin-top:2px;color:var(--muted);font-size:10px}
 .capture-show-all{width:100%;margin-top:9px;border:0;background:transparent;color:var(--iris);font-size:11px;font-weight:850;padding:8px}
+
+
+.monthly-payments-section{margin-top:28px}
+.monthly-payment-list{display:grid;gap:8px}
+.monthly-payment-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;padding:15px 16px;border:1px solid var(--line);border-radius:18px;background:var(--surface-strong)}
+.monthly-payment-row.paid{opacity:.68;background:rgba(63,155,106,.035);border-color:rgba(63,155,106,.16)}
+.monthly-payment-main>span{display:block;font-size:10px;font-weight:850;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.monthly-payment-main>strong{display:block;margin-top:4px;font-size:14px}
+.monthly-payment-main>small{display:inline-block;margin:5px 8px 0 0;color:var(--muted);font-size:10px}
+.monthly-payment-action{display:flex;align-items:center;gap:12px}
+.monthly-payment-action>b{font-size:13px;font-variant-numeric:tabular-nums}
+.monthly-payment-action button{border:0;background:var(--ink);color:var(--paper);padding:9px 13px;border-radius:999px;font-size:11px;font-weight:850}
+.monthly-payment-action button:disabled{opacity:.5}
+.paid-pill{padding:7px 10px;border-radius:999px;background:rgba(63,155,106,.1);color:#347f58;font-size:10px;font-weight:850}
+@media(max-width:600px){
+  .monthly-payment-row{grid-template-columns:1fr;gap:10px}
+  .monthly-payment-action{justify-content:space-between}
+}
