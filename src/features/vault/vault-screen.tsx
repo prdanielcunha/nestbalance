@@ -57,6 +57,25 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   useEffect(()=>{ void load(); },[householdId]);
 
   useEffect(()=>{
+    const evidenceId=new URLSearchParams(window.location.search).get('evidence');
+    if(!evidenceId) return;
+    let cancelled=false;
+    if(previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setDetailLoading(true);
+    setError('');
+    void getVaultDetail(householdId,evidenceId)
+      .then(result=>{
+        if(cancelled) return;
+        setSelected(result.evidence);
+        setDetail(result);
+      })
+      .catch(()=>{if(!cancelled)setError('Não conseguimos abrir o documento encontrado.');})
+      .finally(()=>{if(!cancelled)setDetailLoading(false);});
+    return ()=>{cancelled=true;};
+  },[householdId]);
+
+  useEffect(()=>{
     const normalized=query.trim();
     if(normalized.length<2){
       setSearchResults(null);
