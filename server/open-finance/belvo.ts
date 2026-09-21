@@ -75,6 +75,8 @@ export async function createBelvoWidgetAccess(input:{
         default_consent_duration_days:366
       },
       branding:{
+        company_icon:new URL('/nestbalance-icon.svg',input.termsUrl).toString(),
+        company_logo:new URL('/nestbalance-logo.svg',input.termsUrl).toString(),
         company_name:'NestBalance',
         company_terms_url:input.termsUrl
       }
