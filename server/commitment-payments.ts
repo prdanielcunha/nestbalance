@@ -9,6 +9,7 @@ import {
 } from '../src/core/commitment-payments.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertCanViewFinancialRecord, canViewFinancialRecord, normalizeFinancialVisibility, privacyFields } from './privacy.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -50,13 +51,14 @@ function dto(doc:any):PayableCommitment{
   };
 }
 
-async function paidRecurringIdsForMonth(householdId:string,monthKey:string){
+async function paidRecurringIdsForMonth(householdId:string,monthKey:string,userUid:string){
   const snap=await adminDb.collection('households').doc(householdId)
     .collection('commitmentPayments')
     .where('periodKey','==',monthKey)
     .limit(200).get();
   return new Set(
     snap.docs
+      .filter(doc=>canViewFinancialRecord(doc.data(),userUid))
       .filter(doc=>String(doc.data().status||'paid')!=='reversed')
       .map(doc=>String(doc.data().commitmentId||''))
       .filter(Boolean)
@@ -70,6 +72,7 @@ export async function findCommitmentPaymentMatches(req:Request,res:Response){
     const householdId=String(req.body?.householdId||'');
     await requireHouseholdMember(householdId,user.uid,'contribute');
 
+    const visibility=normalizeFinancialVisibility(req.body?.visibility);
     const amountMinor=Number(req.body?.amountMinor);
     if(!Number.isSafeInteger(amountMinor)||amountMinor<=0) return error(res,400,'INVALID_PAYMENT_AMOUNT');
 
@@ -80,10 +83,12 @@ export async function findCommitmentPaymentMatches(req:Request,res:Response){
     const household=adminDb.collection('households').doc(householdId);
     const [commitmentsSnap,paidIds]=await Promise.all([
       household.collection('commitments').where('status','==','pending').limit(100).get(),
-      paidRecurringIdsForMonth(householdId,monthKey)
+      paidRecurringIdsForMonth(householdId,monthKey,user.uid)
     ]);
 
     const commitments=commitmentsSnap.docs
+      .filter(doc=>canViewFinancialRecord(doc.data(),user.uid))
+      .filter(doc=>normalizeFinancialVisibility(doc.data().scope)===visibility)
       .map(dto)
       .filter(item=>!paidIds.has(item.id));
 
@@ -103,7 +108,7 @@ export async function findCommitmentPaymentMatches(req:Request,res:Response){
       }))
     });
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'PAYMENT_MATCH_FAILED');
   }
 }
@@ -125,6 +130,8 @@ export async function payCommitment(req:Request,res:Response){
     const commitmentSnap=await commitmentRef.get();
     if(!commitmentSnap.exists) return error(res,404,'COMMITMENT_NOT_FOUND');
 
+    assertCanViewFinancialRecord(commitmentSnap.data(),user.uid);
+    const commitmentVisibility=normalizeFinancialVisibility(commitmentSnap.data()?.scope);
     const commitment=dto(commitmentSnap);
     if(commitment.status==='cancelled') return error(res,409,'COMMITMENT_CANCELLED');
     if(commitment.status==='paid'&&!commitment.recurring) {
@@ -139,6 +146,8 @@ export async function payCommitment(req:Request,res:Response){
       const evidenceSnap=await household.collection('evidenceAssets').doc(evidenceId).get();
       if(!evidenceSnap.exists) return error(res,400,'EVIDENCE_NOT_FOUND');
       const data=evidenceSnap.data()!;
+      assertCanViewFinancialRecord(data,user.uid);
+      if(normalizeFinancialVisibility(data.scope)!==commitmentVisibility) return error(res,409,'PRIVACY_SCOPE_MISMATCH');
       if(!['accepted','duplicate'].includes(String(data.status||''))) return error(res,409,'EVIDENCE_NOT_READY');
       canonicalEvidenceId=String(data.canonicalEvidenceId||evidenceId);
     }
@@ -157,6 +166,7 @@ export async function payCommitment(req:Request,res:Response){
       const freshCommitment=await tx.get(commitmentRef);
       if(!freshCommitment.exists) fail('COMMITMENT_NOT_FOUND',404);
       const fresh=freshCommitment.data()!;
+      assertCanViewFinancialRecord(fresh,user.uid);
       if(fresh.status==='cancelled') fail('COMMITMENT_CANCELLED',409);
       if(fresh.status==='paid'&&!fresh.recurring) {
         return {status:'duplicate' as const,transactionId:String(fresh.paymentTransactionId||'')};
@@ -178,6 +188,7 @@ export async function payCommitment(req:Request,res:Response){
         dueDay:null,
         installment:fresh.installment??null,
         createdBy:user.uid,
+        ...privacyFields(commitmentVisibility,user.uid),
         createdAt:FieldValue.serverTimestamp()
       });
 
@@ -191,8 +202,9 @@ export async function payCommitment(req:Request,res:Response){
         evidenceId:canonicalEvidenceId,
         status:'paid',
         createdBy:user.uid,
+        ...privacyFields(commitmentVisibility,user.uid),
         createdAt:FieldValue.serverTimestamp(),
-        schemaVersion:1
+        schemaVersion:2
       });
 
       const installment=fresh.installment&&Number.isInteger(fresh.installment.current)&&Number.isInteger(fresh.installment.total)
@@ -256,7 +268,7 @@ export async function payCommitment(req:Request,res:Response){
     });
   }catch(err:any){
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED',
       'INVALID_COMMITMENT','COMMITMENT_NOT_FOUND','COMMITMENT_CANCELLED',
       'INVALID_PAYMENT_DATE','EVIDENCE_NOT_FOUND','EVIDENCE_NOT_READY'
     ];
@@ -285,12 +297,16 @@ export async function findCommitmentPaymentMatchesBatch(req:Request,res:Response
 
     const household=adminDb.collection('households').doc(householdId);
     const commitmentsSnap=await household.collection('commitments').where('status','==','pending').limit(100).get();
-    const commitments=commitmentsSnap.docs.map(dto);
+    const visibility=normalizeFinancialVisibility(req.body?.visibility);
+    const commitments=commitmentsSnap.docs
+      .filter(doc=>canViewFinancialRecord(doc.data(),user.uid))
+      .filter(doc=>normalizeFinancialVisibility(doc.data().scope)===visibility)
+      .map(dto);
 
     const monthKeys=[...new Set(items.map((item:any)=>periodKeyForDate(item.observedOn)).filter(Boolean))] as string[];
     const paidByMonth=new Map<string,Set<string>>();
     await Promise.all(monthKeys.map(async monthKey=>{
-      paidByMonth.set(monthKey,await paidRecurringIdsForMonth(householdId,monthKey));
+      paidByMonth.set(monthKey,await paidRecurringIdsForMonth(householdId,monthKey,user.uid));
     }));
 
     const matches=items.map((item:any)=>{
@@ -313,7 +329,7 @@ export async function findCommitmentPaymentMatchesBatch(req:Request,res:Response
 
     return res.json({ok:true,matches});
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'PAYMENT_MATCH_FAILED');
   }
 }
@@ -344,6 +360,8 @@ export async function undoCommitmentPayment(req:Request,res:Response){
 
     if(!paymentSnap.exists) return error(res,404,'PAYMENT_NOT_FOUND');
     if(!commitmentSnap.exists) return error(res,404,'COMMITMENT_NOT_FOUND');
+    assertCanViewFinancialRecord(paymentSnap.data(),user.uid);
+    assertCanViewFinancialRecord(commitmentSnap.data(),user.uid);
 
     const payment=paymentSnap.data()!;
     if(String(payment.status||'paid')==='reversed'){
@@ -425,7 +443,7 @@ export async function undoCommitmentPayment(req:Request,res:Response){
     return res.json({ok:true,status:'reversed',commitmentId,periodKey});
   }catch(err:any){
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED',
       'INVALID_COMMITMENT','INVALID_PAYMENT_PERIOD','PAYMENT_NOT_FOUND',
       'COMMITMENT_NOT_FOUND','PAYMENT_UNDO_BLOCKED_BY_LATER_PAYMENT'
     ];
