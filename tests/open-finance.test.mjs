@@ -24,10 +24,16 @@ test('origem de retorno aceita somente endereços oficiais do NestBalance',()=>{
   assert.equal(isSafeOpenFinanceOrigin('https://evil.example/'),false);
 });
 
-test('Mercado Pago é prioridade e usa instituição OFDA conhecida',()=>{
+test('bancos prioritários usam instituições OFDA específicas',()=>{
   const mp=institutionFor('mercado_pago');
+  const nubank=institutionFor('nubank');
+  const itau=institutionFor('itau');
+  const santander=institutionFor('santander');
   assert.equal(mp.priority,1);
   assert.equal(mp.belvoInstitution,'ofmercadopago_br_retail');
+  assert.equal(nubank.belvoInstitution,'ofnubank_br_retail');
+  assert.equal(itau.belvoInstitution,'ofitau_br_retail');
+  assert.equal(santander.belvoInstitution,'ofsantander_br_retail');
   assert.ok(mp.capabilities.includes('balances'));
 });
 
