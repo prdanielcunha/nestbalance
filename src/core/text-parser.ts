@@ -17,7 +17,7 @@ function cleanDescription(text: string): string {
     .replace(dueDayPattern, " ")
     .replace(installmentPattern, " ")
     .replace(/\b(todo mês|mensal|mensalmente|recorrente)\b/gi, " ")
-    .replace(/\b(paguei|recebi|gastei|comprei|pagar|receber)\b/gi, " ")
+    .replace(/\b(paguei|recebi|gastei|comprei|pagar|receber|transferi|transferência|transferencia)\b/gi, " ")
     .replace(/[·|]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -30,8 +30,9 @@ export function parseFinancialText(input: string): FinancialInterpretation {
   const amountMatch = text.match(currencyNumber);
   const dueMatch = text.match(dueDayPattern);
   const installmentMatch = text.match(installmentPattern);
-  const isIncome = /\b(recebi|receber|entrada|sal[aá]rio|caiu)\b/i.test(text);
-  const isPaid = /\b(paguei|pago|gastei|comprei)\b/i.test(text);
+  const isTransfer = /\b(transferi|transfer[eê]ncia|transferencia|entre minhas contas)\b/i.test(text);
+  const isIncome = !isTransfer && /\b(recebi|receber|entrada|sal[aá]rio|caiu)\b/i.test(text);
+  const isPaid = !isTransfer && /\b(paguei|pago|gastei|comprei)\b/i.test(text);
   const recurring = /\b(todo mês|mensal|mensalmente|recorrente)\b/i.test(text);
   const needsReview: string[] = [];
 
@@ -58,7 +59,7 @@ export function parseFinancialText(input: string): FinancialInterpretation {
 
   const description = cleanDescription(text) || "Movimento";
   const kind: FinancialInterpretation["kind"] = recurring || dueDay ? "commitment" : "transaction";
-  if (!isPaid && !isIncome && kind === "transaction") needsReview.push("direction");
+  if (!isPaid && !isIncome && !isTransfer && kind === "transaction") needsReview.push("direction");
   if (dueMatch && !recurring && !installment) needsReview.push("recurrence");
 
   const confidenceScore = Math.max(0, 1 - needsReview.length * 0.22);
@@ -68,7 +69,7 @@ export function parseFinancialText(input: string): FinancialInterpretation {
     kind,
     description,
     money: { currency: "BRL", amountMinor },
-    direction: isIncome ? "income" : "expense",
+    direction: isTransfer ? "transfer" : isIncome ? "income" : "expense",
     dueDay,
     recurring,
     recurrence: recurring ? "monthly" : undefined,
