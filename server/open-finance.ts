@@ -14,6 +14,7 @@ import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import {
   createBelvoWidgetAccess,
+  deleteBelvoLink,
   getBelvoLink,
   isBelvoConfigured,
   listBelvoAccounts,
@@ -447,6 +448,73 @@ export async function syncOpenFinanceConnection(req:Request,res:Response){
 
     const result=await syncConnection(householdId,connectionId,user.uid);
     return res.json({ok:true,connectionId,...result});
+  }catch(err:any){
+    return error(res,err.statusCode||500,safeProviderError(err));
+  }
+}
+
+
+export async function disconnectOpenFinanceConnection(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    const connectionId=String(req.body?.connectionId||'');
+    await requireHouseholdMember(householdId,user.uid);
+    if(!/^[a-f0-9]{40}$/.test(connectionId)) return error(res,400,'OPEN_FINANCE_CONNECTION_NOT_FOUND');
+
+    const household=adminDb.collection('households').doc(householdId);
+    const connectionRef=household.collection('bankConnections').doc(connectionId);
+    const connectionSnap=await connectionRef.get();
+    if(!connectionSnap.exists) return error(res,404,'OPEN_FINANCE_CONNECTION_NOT_FOUND');
+
+    const connection=connectionSnap.data()!;
+    if(connection.status==='disconnected'){
+      return res.json({ok:true,status:'disconnected',connectionId});
+    }
+
+    const linkId=String(connection.linkId||'');
+    if(!validUuid(linkId)) return error(res,409,'OPEN_FINANCE_LINK_INVALID');
+
+    await deleteBelvoLink(linkId);
+
+    const accountSnap=await household.collection('accounts')
+      .where('connectionId','==',connectionId)
+      .limit(100).get();
+
+    const batch=adminDb.batch();
+    batch.update(connectionRef,{
+      status:'disconnected',
+      disconnectedBy:user.uid,
+      disconnectedAt:FieldValue.serverTimestamp(),
+      updatedAt:FieldValue.serverTimestamp(),
+      lastSyncStatus:'revoked'
+    });
+
+    for(const doc of accountSnap.docs){
+      batch.update(doc.ref,{
+        status:'disconnected',
+        updatedAt:FieldValue.serverTimestamp()
+      });
+    }
+
+    batch.create(household.collection('auditEvents').doc(),{
+      type:'open_finance.disconnected',
+      actorUid:user.uid,
+      connectionId,
+      provider:'belvo_ofda',
+      preservedTransactionHistory:true,
+      disconnectedAccountCount:accountSnap.size,
+      createdAt:FieldValue.serverTimestamp()
+    });
+
+    await batch.commit();
+    return res.json({
+      ok:true,
+      status:'disconnected',
+      connectionId,
+      disconnectedAccounts:accountSnap.size
+    });
   }catch(err:any){
     return error(res,err.statusCode||500,safeProviderError(err));
   }
