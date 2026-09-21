@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { CARD_BRANDS, invoiceCycleForPurchase, type CardBrand } from '@/src/core/cards';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { createHouseholdCreditCard } from '@/src/lib/repositories/cards';
+import { StatementImporter } from '@/src/features/cards/statement-importer';
+import type { CardInvoiceProjection } from '@/src/core/card-purchase-projection';
 import type { HomeCreditCard } from '@/src/lib/repositories/home';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
@@ -22,10 +24,12 @@ function todayIso(){
 export function CreditCardManager({
   householdId,
   cards,
+  invoiceProjections,
   onCreated
 }:{
   householdId:string;
   cards:HomeCreditCard[];
+  invoiceProjections:CardInvoiceProjection[];
   onCreated?:()=>void;
 }){
   const [open,setOpen]=useState(false);
@@ -111,6 +115,9 @@ export function CreditCardManager({
             {cards.map(card=>{
               let cycle:{closingOn:string;dueOn:string;invoiceKey:string}|null=null;
               try{cycle=invoiceCycleForPurchase(todayIso(),card.closingDay,card.dueDay);}catch{}
+              const nextInvoice=invoiceProjections.find(item=>item.cardId===card.id&&item.dueOn>=todayIso())
+                || invoiceProjections.find(item=>item.cardId===card.id)
+                || null;
               return <article className="credit-card-tile" key={card.id}>
                 <div className="credit-card-top">
                   <span>{brandLabel[card.brand as CardBrand]||'Cartão'}</span>
@@ -122,7 +129,13 @@ export function CreditCardManager({
                   <div><span>Vence</span><strong>dia {card.dueDay}</strong></div>
                   <div><span>Limite</span><strong>{card.limitMinor===null?'Não informado':money.format(card.limitMinor/100)}</strong></div>
                 </div>
+                {nextInvoice&&<div className="card-invoice-now">
+                  <span>Próxima fatura conhecida</span>
+                  <strong>{money.format(nextInvoice.totalMinor/100)}</strong>
+                  <small>vence {new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(new Date(nextInvoice.dueOn+'T12:00:00'))} · {nextInvoice.itemCount} compra{nextInvoice.itemCount===1?'':'s'}</small>
+                </div>}
                 {cycle&&<small>Compras de hoje entram na fatura com vencimento em {new Intl.DateTimeFormat('pt-BR').format(new Date(cycle.dueOn+'T12:00:00'))}.</small>}
+                <StatementImporter householdId={householdId} card={card} onImported={onCreated}/>
               </article>;
             })}
           </div>}
