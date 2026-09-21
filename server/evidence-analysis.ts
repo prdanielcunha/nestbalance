@@ -4,6 +4,7 @@ import { detectDocumentSignals } from '../src/core/document-signals.js';
 import { extractNativeDocumentText, DOCUMENT_NATIVE_TEXT_MAX_BYTES } from './document-text.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertCanViewFinancialRecord } from './privacy.js';
 
 const EXTRACTION_VERSION='native-text-v1';
 
@@ -41,6 +42,7 @@ export async function analyzeEvidenceText(req:Request,res:Response) {
     let evidenceSnap=await evidenceRef.get();
     if (!evidenceSnap.exists) return error(res,404,'EVIDENCE_NOT_FOUND');
     let evidence=evidenceSnap.data()!;
+    assertCanViewFinancialRecord(evidence,user.uid);
 
     if (evidence.status==='duplicate' && evidence.canonicalEvidenceId) {
       evidenceId=String(evidence.canonicalEvidenceId);
@@ -48,6 +50,7 @@ export async function analyzeEvidenceText(req:Request,res:Response) {
       evidenceSnap=await evidenceRef.get();
       if (!evidenceSnap.exists) return error(res,404,'CANONICAL_EVIDENCE_NOT_FOUND');
       evidence=evidenceSnap.data()!;
+      assertCanViewFinancialRecord(evidence,user.uid);
     }
     if (evidence.status!=='accepted'||evidence.immutable!==true) return error(res,409,'EVIDENCE_NOT_READY');
 
@@ -123,7 +126,7 @@ export async function analyzeEvidenceText(req:Request,res:Response) {
 
     return res.json(publicResult(finalData));
   } catch (err:any) {
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'EVIDENCE_ANALYSIS_FAILED');
   }
 }
