@@ -72,6 +72,8 @@ async function completeEvidence(args:{
     tx.create(auditRef,{
       type:`evidence.${result.status}`,
       actorUid:userUid,
+      scope:requestedScope(current.scope),
+      ownerUid:requestedScope(current.scope)==='personal'?userUid:null,
       evidenceId,
       canonicalEvidenceId:result.canonicalEvidenceId,
       createdAt:now()
