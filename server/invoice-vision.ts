@@ -7,6 +7,7 @@ import { isOpenAiConfigured } from './ai/openai-client.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
+import { assertScopedAccess } from './privacy.js';
 
 const ANALYSIS_VERSION='invoice-vision-v1';
 const extractionDocumentId=(cardId:string)=>`${ANALYSIS_VERSION}-${cardId}`;
@@ -78,9 +79,11 @@ export async function analyzeCreditCardInvoiceImage(req:Request,res:Response){
     ]);
 
     if(!cardSnap.exists) return error(res,404,'CARD_NOT_FOUND');
+    assertScopedAccess(cardSnap.data(),user.uid);
     const card=cardSnap.data()!;
     if(card.status!=='active') return error(res,409,'CARD_NOT_ACTIVE');
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
+    assertScopedAccess(resolved.data,user.uid);
 
     const closingDay=Number(card.closingDay);
     const dueDay=Number(card.dueDay);
@@ -222,7 +225,7 @@ export async function analyzeCreditCardInvoiceImage(req:Request,res:Response){
     }
 
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','AI_NOT_CONFIGURED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','AI_NOT_CONFIGURED',
       'INVOICE_IMAGE_TYPE_REQUIRED','INVOICE_IMAGE_TOO_LARGE','CARD_NOT_FOUND','CARD_NOT_ACTIVE',
       'CARD_CYCLE_INVALID','EVIDENCE_NOT_FOUND','EVIDENCE_STORAGE_UNAVAILABLE',
       'EVIDENCE_INVALID_METADATA','EVIDENCE_SIZE_MISMATCH','EVIDENCE_SIGNATURE_MISMATCH','EVIDENCE_HASH_MISMATCH'
