@@ -55,7 +55,12 @@ async function paidRecurringIdsForMonth(householdId:string,monthKey:string){
     .collection('commitmentPayments')
     .where('periodKey','==',monthKey)
     .limit(200).get();
-  return new Set(snap.docs.map(doc=>String(doc.data().commitmentId||'')).filter(Boolean));
+  return new Set(
+    snap.docs
+      .filter(doc=>String(doc.data().status||'paid')!=='reversed')
+      .map(doc=>String(doc.data().commitmentId||''))
+      .filter(Boolean)
+  );
 }
 
 export async function findCommitmentPaymentMatches(req:Request,res:Response){
@@ -184,6 +189,7 @@ export async function payCommitment(req:Request,res:Response){
         paidOn,
         transactionId:transactionRef.id,
         evidenceId:canonicalEvidenceId,
+        status:'paid',
         createdBy:user.uid,
         createdAt:FieldValue.serverTimestamp(),
         schemaVersion:1
@@ -309,5 +315,128 @@ export async function findCommitmentPaymentMatchesBatch(req:Request,res:Response
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'PAYMENT_MATCH_FAILED');
+  }
+}
+
+
+export async function undoCommitmentPayment(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    const commitmentId=String(req.body?.commitmentId||'');
+    const periodKey=String(req.body?.periodKey||'');
+
+    await requireHouseholdMember(householdId,user.uid);
+    if(!/^[A-Za-z0-9_-]{6,128}$/.test(commitmentId)) return error(res,400,'INVALID_COMMITMENT');
+    if(!(periodKey==='once'||/^\d{4}-\d{2}$/.test(periodKey))) return error(res,400,'INVALID_PAYMENT_PERIOD');
+
+    const household=adminDb.collection('households').doc(householdId);
+    const commitmentRef=household.collection('commitments').doc(commitmentId);
+    const paymentId=hash(`commitment_payment|${commitmentId}|${periodKey}`).slice(0,40);
+    const paymentRef=household.collection('commitmentPayments').doc(paymentId);
+
+    const [paymentSnap,commitmentSnap,allPaymentsSnap]=await Promise.all([
+      paymentRef.get(),
+      commitmentRef.get(),
+      household.collection('commitmentPayments').where('commitmentId','==',commitmentId).limit(120).get()
+    ]);
+
+    if(!paymentSnap.exists) return error(res,404,'PAYMENT_NOT_FOUND');
+    if(!commitmentSnap.exists) return error(res,404,'COMMITMENT_NOT_FOUND');
+
+    const payment=paymentSnap.data()!;
+    if(String(payment.status||'paid')==='reversed'){
+      return res.json({ok:true,status:'already_reversed',commitmentId,periodKey});
+    }
+
+    const laterPayment=allPaymentsSnap.docs.some(doc=>{
+      if(doc.id===paymentId) return false;
+      const data=doc.data();
+      if(String(data.status||'paid')==='reversed') return false;
+      const otherPeriod=String(data.periodKey||'');
+      if(periodKey==='once') return true;
+      return /^\d{4}-\d{2}$/.test(otherPeriod)&&otherPeriod>periodKey;
+    });
+    if(laterPayment) return error(res,409,'PAYMENT_UNDO_BLOCKED_BY_LATER_PAYMENT');
+
+    const transactionId=String(payment.transactionId||paymentId);
+    const transactionRef=household.collection('transactions').doc(transactionId);
+    const transactionSnap=await transactionRef.get();
+    const transaction=transactionSnap.exists?transactionSnap.data()||{}:{};
+
+    await adminDb.runTransaction(async tx=>{
+      const [freshPayment,freshCommitment,freshTransaction]=await Promise.all([
+        tx.get(paymentRef),
+        tx.get(commitmentRef),
+        tx.get(transactionRef)
+      ]);
+      if(!freshPayment.exists) fail('PAYMENT_NOT_FOUND',404);
+      if(!freshCommitment.exists) fail('COMMITMENT_NOT_FOUND',404);
+      if(String(freshPayment.data()?.status||'paid')==='reversed') return;
+
+      const fresh=freshCommitment.data()!;
+      const paidInstallment=freshTransaction.exists&&freshTransaction.data()?.installment
+        ? freshTransaction.data()!.installment
+        : transaction.installment||null;
+
+      tx.update(paymentRef,{
+        status:'reversed',
+        reversedBy:user.uid,
+        reversedAt:FieldValue.serverTimestamp()
+      });
+
+      if(freshTransaction.exists){
+        tx.update(transactionRef,{
+          status:'reversed',
+          reversedBy:user.uid,
+          reversedAt:FieldValue.serverTimestamp()
+        });
+      }
+
+      if(paidInstallment&&Number.isInteger(paidInstallment.current)&&Number.isInteger(paidInstallment.total)){
+        tx.update(commitmentRef,{
+          status:'pending',
+          installment:{current:Number(paidInstallment.current),total:Number(paidInstallment.total)},
+          lastPaidPeriodKey:FieldValue.delete(),
+          lastPaidOn:FieldValue.delete(),
+          paidOn:FieldValue.delete(),
+          paymentTransactionId:FieldValue.delete(),
+          updatedAt:FieldValue.serverTimestamp()
+        });
+      }else if(fresh.recurring===true&&fresh.recurrence==='monthly'){
+        tx.update(commitmentRef,{
+          lastPaidPeriodKey:FieldValue.delete(),
+          lastPaidOn:FieldValue.delete(),
+          updatedAt:FieldValue.serverTimestamp()
+        });
+      }else{
+        tx.update(commitmentRef,{
+          status:'pending',
+          paidOn:FieldValue.delete(),
+          paymentTransactionId:FieldValue.delete(),
+          updatedAt:FieldValue.serverTimestamp()
+        });
+      }
+
+      tx.create(household.collection('auditEvents').doc(),{
+        type:'commitment.payment_reversed',
+        actorUid:user.uid,
+        commitmentId,
+        periodKey,
+        paymentId,
+        transactionId,
+        createdAt:FieldValue.serverTimestamp()
+      });
+    });
+
+    return res.json({ok:true,status:'reversed',commitmentId,periodKey});
+  }catch(err:any){
+    const safe=[
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'INVALID_COMMITMENT','INVALID_PAYMENT_PERIOD','PAYMENT_NOT_FOUND',
+      'COMMITMENT_NOT_FOUND','PAYMENT_UNDO_BLOCKED_BY_LATER_PAYMENT'
+    ];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'PAYMENT_UNDO_FAILED');
   }
 }
