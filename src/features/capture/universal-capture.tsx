@@ -14,7 +14,7 @@ import {
   type AiFinancialScreenSnapshot
 } from '@/src/core/ai-financial';
 import { commitInterpretation } from '@/src/lib/repositories/finance';
-import { findCommitmentPaymentMatches, payCommitment, type CommitmentPaymentCandidate } from '@/src/lib/repositories/commitment-payments';
+import { findCommitmentPaymentMatches, findCommitmentPaymentMatchesBatch, payCommitment, type CommitmentPaymentCandidate } from '@/src/lib/repositories/commitment-payments';
 import { commitFinancialScreen } from '@/src/lib/repositories/financial-screen';
 import {
   analyzeEvidenceAi,
@@ -63,6 +63,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [paymentMatchDismissed,setPaymentMatchDismissed]=useState(false);
   const [payingMatchId,setPayingMatchId]=useState('');
   const [screenSnapshot,setScreenSnapshot]=useState<AiFinancialScreenSnapshot|null>(null);
+  const [batchPaymentMatches,setBatchPaymentMatches]=useState<Record<number,CommitmentPaymentCandidate[]>>({});
+  const [dismissedBatchPaymentIndexes,setDismissedBatchPaymentIndexes]=useState<number[]>([]);
+  const [paidBatchIndexes,setPaidBatchIndexes]=useState<number[]>([]);
   const imageInputRef=useRef<HTMLInputElement|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const textRef=useRef<HTMLTextAreaElement|null>(null);
@@ -110,6 +113,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setPaymentMatchDismissed(false);
     setPayingMatchId('');
     setScreenSnapshot(null);
+    setBatchPaymentMatches({});
+    setDismissedBatchPaymentIndexes([]);
+    setPaidBatchIndexes([]);
     setOpen(false);
     onClose?.();
     setText('');
@@ -146,6 +152,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setPaymentMatchDismissed(false);
     setPayingMatchId('');
     setScreenSnapshot(null);
+    setBatchPaymentMatches({});
+    setDismissedBatchPaymentIndexes([]);
+    setPaidBatchIndexes([]);
     setError('');
     setNotice(noticeText);
   }
@@ -219,6 +228,34 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     }
   }
 
+
+  async function loadBatchMatches(items:FinancialInterpretation[]){
+    const eligible=items.map((item,index)=>({
+      index,
+      amountMinor:item.money.amountMinor,
+      description:item.description,
+      observedOn:item.occurredOn||null,
+      direction:item.direction
+    })).filter(item=>item.direction==='expense'&&item.amountMinor>0);
+    if(!eligible.length){
+      setBatchPaymentMatches({});
+      return;
+    }
+    try{
+      const result=await findCommitmentPaymentMatchesBatch({householdId,items:eligible});
+      const next:Record<number,CommitmentPaymentCandidate[]>={};
+      for(const row of result.matches){
+        const strong=row.candidates.filter(candidate=>candidate.score>=70);
+        if(strong.length) next[row.index]=strong;
+      }
+      setBatchPaymentMatches(next);
+      setDismissedBatchPaymentIndexes([]);
+      setPaidBatchIndexes([]);
+    }catch{
+      setBatchPaymentMatches({});
+    }
+  }
+
   function applySourceText(sourceText: string, documentDerived = false) {
     const parsed = parseFinancialList(sourceText);
     const prepared=documentDerived ? markDocumentDerived(parsed) : parsed;
@@ -230,6 +267,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setPaymentMatches([]);
     setPaymentMatchDismissed(false);
     if(prepared.length===1) void loadPaymentMatches(prepared[0]);
+    else if(prepared.length>1) void loadBatchMatches(prepared);
   }
 
   function prepareAiReview(extraction:AiFinancialExtraction,amountOverride?:number,directionOverride?:ConfirmedDirection){
@@ -307,7 +345,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             const screen=ai.extraction.screen;
             const resourceCount=screen.accounts.length+screen.pots.length+screen.cards.length+screen.commitments.length;
             if(resourceCount>0) setScreenSnapshot(screen);
-            if(ai.parsedInterpretations?.length) setInterpretations(ai.parsedInterpretations);
+            if(ai.parsedInterpretations?.length){
+              setInterpretations(ai.parsedInterpretations);
+              if(ai.parsedInterpretations.length===1) void loadPaymentMatches(ai.parsedInterpretations[0]);
+              else void loadBatchMatches(ai.parsedInterpretations);
+            }
             const movementCount=ai.parsedInterpretations?.length||0;
             const unresolved=ai.parsedInterpretations?.filter(item=>item.needsReview.includes('direction')).length||0;
             if(resourceCount||movementCount){
@@ -328,6 +370,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             setText(transcript);
             setInterpretations(audioItems);
             if(audioItems.length===1) void loadPaymentMatches(audioItems[0]);
+            else void loadBatchMatches(audioItems);
             setNotice(ai.transcriptTruncated?'Transcrevi o áudio parcialmente. Confira antes de guardar.':'Transcrevi o áudio. Confira antes de guardar.');
             return;
           }
@@ -361,6 +404,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         const csv=parseFinancialCsv(result.text);
         if(csv.state==='parsed'){
           setInterpretations(csv.items);
+          if(csv.items.length===1) void loadPaymentMatches(csv.items[0]);
+          else void loadBatchMatches(csv.items);
           const attention=csv.items.filter(item=>item.needsReview.length>0).length;
           setNotice(attention
             ? `Importei ${csv.items.length} movimentações do arquivo. Só ${attention} precisa${attention===1?'':'m'} de uma conferência rápida.`
@@ -410,9 +455,49 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   }
 
   function chooseImportedDirection(index:number,direction:ConfirmedDirection){
-    setInterpretations(items=>items.map((item,itemIndex)=>
-      itemIndex===index?resolveImportedMovementDirection(item,direction):item
-    ));
+    let resolved:FinancialInterpretation|null=null;
+    setInterpretations(items=>items.map((item,itemIndex)=>{
+      if(itemIndex!==index) return item;
+      resolved=resolveImportedMovementDirection(item,direction);
+      return resolved;
+    }));
+    if(direction==='expense'&&resolved){
+      void findCommitmentPaymentMatches({
+        householdId,
+        amountMinor:resolved.money.amountMinor,
+        description:resolved.description,
+        observedOn:resolved.occurredOn||null
+      }).then(result=>{
+        const strong=result.matches.filter(candidate=>candidate.score>=70);
+        if(strong.length) setBatchPaymentMatches(current=>({...current,[index]:strong}));
+      }).catch(()=>{});
+    }
+  }
+
+  async function confirmIndexedMatchedPayment(index:number,interpretation:FinancialInterpretation,candidate:CommitmentPaymentCandidate){
+    if(payingMatchId||saving) return;
+    setPayingMatchId(candidate.commitment.id);
+    setError('');
+    try{
+      await payCommitment({
+        householdId,
+        commitmentId:candidate.commitment.id,
+        paidOn:interpretation.occurredOn,
+        evidenceId:preparedEvidenceId
+      });
+      setPaidBatchIndexes(current=>[...new Set([...current,index])]);
+      setBatchPaymentMatches(current=>{
+        const next={...current};
+        delete next[index];
+        return next;
+      });
+      setNotice('Pagamento ligado à conta certa. Não vou criar uma saída duplicada para essa linha.');
+      onCommitted?.();
+    }catch{
+      setError('Não conseguimos ligar esse pagamento à conta agora. Você pode marcar “Não é essa” e guardar como movimento.');
+    }finally{
+      setPayingMatchId('');
+    }
   }
 
   async function confirmMatchedPayment(candidate:CommitmentPaymentCandidate){
@@ -441,7 +526,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       setError('Escolha a conta que este pagamento quitou ou toque em “Nenhuma dessas”.');
       return;
     }
-    const unresolved=interpretations.filter(item=>item.needsReview.includes('direction')).length;
+    const unresolved=interpretations.filter((item,index)=>!paidBatchIndexes.includes(index)&&item.needsReview.includes('direction')).length;
     if(unresolved){
       setError(`Só falta dizer o que aconteceu em ${unresolved} item${unresolved===1?'':'s'}.`);
       return;
@@ -458,6 +543,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       }
       let duplicates = 0;
       for (let i = 0; i < interpretations.length; i++) {
+        if(paidBatchIndexes.includes(i)) continue;
         const result = await commitInterpretation({
           householdId,
           uid,
@@ -488,7 +574,10 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const attentionInterpretations=indexedInterpretations.filter(({item})=>item.confidence!=='high'||item.needsReview.includes('direction'));
   const readyInterpretations=indexedInterpretations.filter(({item})=>item.confidence==='high'&&!item.needsReview.includes('direction'));
   const reviewCount = attentionInterpretations.length;
-  const unresolvedDirectionCount=interpretations.filter(x=>x.needsReview.includes('direction')).length;
+  const unresolvedDirectionCount=interpretations.filter((x,index)=>!paidBatchIndexes.includes(index)&&x.needsReview.includes('direction')).length;
+  const pendingBatchMatchIndexes=Object.keys(batchPaymentMatches)
+    .map(Number)
+    .filter(index=>!paidBatchIndexes.includes(index)&&!dismissedBatchPaymentIndexes.includes(index));
   const visibleInterpretations=showAllReview
     ? indexedInterpretations
     : attentionInterpretations.length
@@ -703,6 +792,23 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               {interpretation.occurredOn?` · ${new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit'}).format(new Date(interpretation.occurredOn+'T12:00:00'))}`:''}
             </span>
             {interpretation.installment && <span>Parcela {interpretation.installment.current} de {interpretation.installment.total}</span>}
+            {paidBatchIndexes.includes(index)
+              ? <div className="inline-payment-resolved"><strong>Conta marcada como paga</strong><span>Esta linha não será criada de novo como saída.</span></div>
+              : batchPaymentMatches[index]?.length&&!dismissedBatchPaymentIndexes.includes(index)
+                ? <div className="inline-payment-match">
+                    <span>{batchPaymentMatches[index].length===1?'Isso parece pagar:':'Qual delas este pagamento quitou?'}</span>
+                    {batchPaymentMatches[index].map(candidate=><button
+                      key={candidate.commitment.id}
+                      type="button"
+                      disabled={Boolean(payingMatchId)}
+                      onClick={()=>void confirmIndexedMatchedPayment(index,interpretation,candidate)}
+                    >
+                      <strong>{candidate.commitment.description}</strong>
+                      <b>{money.format(candidate.commitment.amountMinor/100)}</b>
+                    </button>)}
+                    <button type="button" className="inline-payment-none" onClick={()=>setDismissedBatchPaymentIndexes(current=>[...new Set([...current,index])])}>Não é nenhuma dessas</button>
+                  </div>
+                : null}
             {interpretation.needsReview.includes('direction')
               ? <div className="inline-direction-choice">
                   <button type="button" onClick={()=>chooseImportedDirection(index,'expense')}>Eu paguei</button>
@@ -731,13 +837,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>Corrigir</button>
-            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
+            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||(paymentMatches.length>0&&!paymentMatchDismissed)||pendingBatchMatchIndexes.length>0} onClick={confirm}>{saving
               ? (upload?.phase === 'verifying' ? 'Conferindo…' : 'Guardando…')
               : unresolvedDirectionCount
                 ? `Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`
                 : paymentMatches.length>0&&!paymentMatchDismissed
                   ? 'Escolha a conta acima'
-                  : 'Guardar'}</button>
+                  : pendingBatchMatchIndexes.length
+                    ? `Confira ${pendingBatchMatchIndexes.length} pagamento${pendingBatchMatchIndexes.length===1?'':'s'}`
+                    : 'Guardar'}</button>
           </div>
         </>}
       </section>
