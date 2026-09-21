@@ -113,7 +113,7 @@ export function answerAssistantQuestion(input:{
         return {
           kind:'invoice' as const,
           id:item.id,
-          label:\`Fatura \${item.invoiceKey}\`,
+          label:`Fatura ${item.invoiceKey}`,
           amountMinor:open,
           detail:item.status==='partial'
             ? 'Valor confirmado até agora; a fatura ainda está em revisão'
@@ -132,7 +132,7 @@ export function answerAssistantQuestion(input:{
       intent,
       title:total>0?'Ainda há valores conhecidos para pagar.':'Nada pendente conhecido agora.',
       summary:total>0
-        ? \`O NestBalance encontrou \${sources.length} obrigação\${sources.length===1?'':'ões'} aberta\${sources.length===1?'':'s'} no Lar.\${partialInvoices?\` \${partialInvoices} fatura\${partialInvoices===1?' está':'s estão'} em revisão, então o total pode aumentar.\`:''}\`
+        ? `O NestBalance encontrou ${sources.length} obrigação${sources.length===1?'':'ões'} aberta${sources.length===1?'':'s'} no Lar.${partialInvoices?` ${partialInvoices} fatura${partialInvoices===1?' está':'s estão'} em revisão, então o total pode aumentar.`:''}`
         : 'Não há compromissos nem faturas abertas confirmadas nos dados atuais.',
       answerMinor:total,
       sources:sources.sort((a,b)=>b.amountMinor-a.amountMinor).slice(0,30),
@@ -140,12 +140,12 @@ export function answerAssistantQuestion(input:{
         {
           label:'Compromissos',
           amountMinor:commitmentSources.reduce((sum,item)=>sum+item.amountMinor,0),
-          detail:\`\${commitmentSources.length} item\${commitmentSources.length===1?'':'s'} pendente\${commitmentSources.length===1?'':'s'}\`
+          detail:`${commitmentSources.length} item${commitmentSources.length===1?'':'s'} pendente${commitmentSources.length===1?'':'s'}`
         },
         {
           label:'Faturas abertas',
           amountMinor:invoiceSources.reduce((sum,item)=>sum+item.amountMinor,0),
-          detail:\`\${invoiceSources.length} fatura\${invoiceSources.length===1?'':'s'} com valor conhecido\`
+          detail:`${invoiceSources.length} fatura${invoiceSources.length===1?'':'s'} com valor conhecido`
         }
       ],
       suggestions:['Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
@@ -168,7 +168,7 @@ export function answerAssistantQuestion(input:{
       intent,
       title:'Saldo disponível conhecido',
       summary:sources.length
-        ? \`Somando \${sources.length} conta\${sources.length===1?'':'s'} ativa\${sources.length===1?'':'s'} do Lar.\`
+        ? `Somando ${sources.length} conta${sources.length===1?'':'s'} ativa${sources.length===1?'':'s'} do Lar.`
         : 'Ainda não há uma conta com saldo disponível para somar.',
       answerMinor:total,
       sources,
@@ -186,20 +186,30 @@ export function answerAssistantQuestion(input:{
       title:'Compromissos conhecidos dos próximos meses',
       summary:'A projeção usa apenas contas recorrentes confirmadas e planos de parcelas já reconciliados.',
       answerMinor:total,
-      sources:input.installmentPlans
-        .filter(plan=>plan.status!=='completed'&&plan.status!=='cancelled')
-        .slice(0,20)
-        .map(plan=>({
-          kind:'installment_plan' as const,
-          id:plan.id,
-          label:plan.description||'Compra parcelada',
-          amountMinor:positive(plan.amountMinor),
-          detail:\`Parcela \${plan.lastObservedInstallment} de \${plan.totalInstallments} observada\`
-        })),
+      sources:[
+        ...input.commitments
+          .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&item.recurring===true&&item.recurrence==='monthly')
+          .map(item=>({
+            kind:'commitment' as const,
+            id:item.id,
+            label:item.description,
+            amountMinor:positive(item.amountMinor),
+            detail:'Conta recorrente mensal'
+          })),
+        ...input.installmentPlans
+          .filter(plan=>plan.status!=='completed'&&plan.status!=='cancelled')
+          .map(plan=>({
+            kind:'installment_plan' as const,
+            id:plan.id,
+            label:plan.description||'Compra parcelada',
+            amountMinor:positive(plan.amountMinor),
+            detail:`Parcela ${plan.lastObservedInstallment} de ${plan.totalInstallments} observada`
+          }))
+      ].slice(0,30),
       cards:projection.map(month=>({
         label:monthFmt.format(new Date(month.year,month.monthIndex,1)),
         amountMinor:month.totalMinor,
-        detail:\`\${month.itemCount} compromisso\${month.itemCount===1?'':'s'} conhecido\${month.itemCount===1?'':'s'}\`
+        detail:`${month.itemCount} compromisso${month.itemCount===1?'':'s'} conhecido${month.itemCount===1?'':'s'}`
       })),
       suggestions:['Quanto ainda falta pagar?','Quanto tenho disponível?']
     };
