@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { projectFutureCommitments } from '../.core-dist/core/future-projection.js';
+
+test('projeta contas mensais sem persistir duplicatas',()=>{
+  const result=projectFutureCommitments([
+    {amountMinor:11990,status:'pending',recurring:true,recurrence:'monthly'}
+  ],new Date(2026,8,20),3);
+  assert.deepEqual(result.map(x=>x.totalMinor),[11990,11990,11990]);
+  assert.deepEqual(result.map(x=>x.key),['2026-10','2026-11','2026-12']);
+});
+
+test('parcela atual 5 de 12 projeta somente parcelas futuras restantes',()=>{
+  const result=projectFutureCommitments([
+    {amountMinor:30000,status:'pending',recurring:true,recurrence:'monthly',installment:{current:5,total:12}}
+  ],new Date(2026,8,20),8);
+  assert.deepEqual(result.map(x=>x.totalMinor),[30000,30000,30000,30000,30000,30000,30000,0]);
+});
+
+test('parcela tem precedência sobre recorrência para não continuar após o total',()=>{
+  const result=projectFutureCommitments([
+    {amountMinor:128600,status:'pending',recurring:true,recurrence:'monthly',installment:{current:11,total:12}}
+  ],new Date(2026,8,20),3);
+  assert.deepEqual(result.map(x=>x.totalMinor),[128600,0,0]);
+});
+
+test('conta apenas com vencimento mas sem recorrência explícita não invade meses futuros',()=>{
+  const result=projectFutureCommitments([
+    {amountMinor:285000,status:'pending',recurring:false,recurrence:null}
+  ],new Date(2026,8,20),3);
+  assert.deepEqual(result.map(x=>x.totalMinor),[0,0,0]);
+});
+
+test('itens pagos e cancelados não são projetados',()=>{
+  const result=projectFutureCommitments([
+    {amountMinor:10000,status:'paid',recurring:true,recurrence:'monthly'},
+    {amountMinor:20000,status:'cancelled',recurring:true,recurrence:'monthly'}
+  ],new Date(2026,8,20),2);
+  assert.deepEqual(result.map(x=>x.totalMinor),[0,0]);
+});
