@@ -8,10 +8,14 @@ assert.match(firestore, /getAfter\(\/databases\/\$\(database\)\/documents\/house
 assert.match(firestore, /request\.auth\.uid == resource\.data\.ownerUid/);
 assert.match(firestore, /request\.resource\.data\.role in \['admin','member','viewer'\]/);
 assert.match(firestore, /match \/evidenceHashes\/\{id\}/);
+assert.match(firestore, /match \/captureFingerprints\/\{id\}/);
 assert.match(firestore, /allow read, write: if false;/);
 assert.match(storage, /evidence\(hid, evidenceId\)\.status == 'awaiting_upload'/);
 assert.match(storage, /request\.resource\.size == evidence\(hid, evidenceId\)\.declaredSize/);
 assert.match(storage, /allow update, delete: if false;/);
 assert.match(evidence, /createHash\('sha256'\)/);
 assert.match(evidence, /signatureMatchesMime/);
+const capture = readFileSync(new URL('./server/capture.ts', import.meta.url),'utf8');
+assert.match(capture, /runTransaction/);
+assert.match(capture, /captureFingerprints/);
 console.log('Static security invariants: PASS');
