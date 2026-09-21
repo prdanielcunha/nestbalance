@@ -4,6 +4,7 @@ import type { DocumentSignalsResult } from '@/src/core/document-signals';
 import type { AiFinancialExtraction } from '@/src/core/ai-financial';
 import type { FinancialInterpretation } from '@/src/core/types';
 import type { ImportedMovementList } from '@/src/core/movement-import';
+import type { FinancialScope } from '@/src/core/privacy';
 
 export type UploadProgress = { phase: 'uploading' | 'verifying'; percent: number };
 
@@ -18,12 +19,12 @@ async function api<T>(path: string, body: unknown): Promise<T> {
   return json as T;
 }
 
-export async function ingestEvidence(householdId: string, file: File, onProgress?: (progress: UploadProgress) => void) {
+export async function ingestEvidence(householdId: string, file: File, onProgress?: (progress: UploadProgress) => void, scope:FinancialScope='household') {
   const token = await auth?.currentUser?.getIdToken();
   if (!token) throw new Error('AUTH_REQUIRED');
 
   const started = await api<{evidenceId:string}>('/api/evidence/start', {
-    householdId, originalName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size
+    householdId, scope, originalName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size
   });
 
   return new Promise<{status:'accepted'|'duplicate';evidenceId:string;canonicalEvidenceId:string}>((resolve,reject)=>{
