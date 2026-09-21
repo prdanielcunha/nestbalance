@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertCanViewFinancialRecord, canViewFinancialRecord } from './privacy.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
 
 function error(res:Response,status:number,code:string){
@@ -32,18 +33,20 @@ function evidenceDto(doc:any){
   };
 }
 
-async function resolveAcceptedEvidence(householdId:string,evidenceId:string){
+async function resolveAcceptedEvidence(householdId:string,evidenceId:string,userUid:string){
   if(!/^[A-Za-z0-9_-]{6,128}$/.test(evidenceId)) return null;
   let ref=adminDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`);
   let snap=await ref.get();
   if(!snap.exists) return null;
   let data=snap.data()!;
+  assertCanViewFinancialRecord(data,userUid);
   if(data.status==='duplicate'&&data.canonicalEvidenceId){
     evidenceId=String(data.canonicalEvidenceId);
     ref=adminDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`);
     snap=await ref.get();
     if(!snap.exists) return null;
     data=snap.data()!;
+    assertCanViewFinancialRecord(data,userUid);
   }
   if(data.status!=='accepted'||data.immutable!==true) return null;
   return {evidenceId,ref,snap,data};
@@ -58,12 +61,12 @@ export async function listVaultEvidence(req:Request,res:Response){
     const snapshot=await adminDb.collection('households').doc(householdId)
       .collection('evidenceAssets').orderBy('createdAt','desc').limit(60).get();
     const items=snapshot.docs
-      .filter(doc=>doc.data().status==='accepted'&&doc.data().immutable===true)
+      .filter(doc=>doc.data().status==='accepted'&&doc.data().immutable===true&&canViewFinancialRecord(doc.data(),user.uid))
       .slice(0,30)
       .map(evidenceDto);
     return res.json({ok:true,items});
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'VAULT_LIST_FAILED');
   }
 }
@@ -75,7 +78,7 @@ export async function getVaultEvidenceDetail(req:Request,res:Response){
     const householdId=String(req.body?.householdId||'');
     const requestedId=String(req.body?.evidenceId||'');
     await requireHouseholdMember(householdId,user.uid);
-    const resolved=await resolveAcceptedEvidence(householdId,requestedId);
+    const resolved=await resolveAcceptedEvidence(householdId,requestedId,user.uid);
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
 
     const extractionVersion=String(resolved.data.lastExtractionVersion||'native-text-v1');
@@ -100,7 +103,7 @@ export async function getVaultEvidenceDetail(req:Request,res:Response){
       }:null
     });
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'VAULT_DETAIL_FAILED');
   }
 }
@@ -133,7 +136,7 @@ export async function previewVaultEvidence(req:Request,res:Response){
     res.setHeader('Content-Disposition',`inline; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`);
     return res.status(200).send(bytes);
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'VAULT_PREVIEW_FAILED');
   }
 }
