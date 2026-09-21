@@ -627,7 +627,7 @@
 .card-empty.readonly{cursor:default}
 
 /* Privacy center */
-.scope-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 20px}
+.scope-choice-wrap{margin:16px 0 20px}.scope-choice-copy{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}.scope-choice-copy>strong{font-size:13px}.scope-choice-copy>span{font-size:11px;line-height:1.45;color:var(--muted)}.scope-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0}
 .scope-choice button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:18px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:4px}
 .scope-choice button span{font-size:12px;color:var(--muted);line-height:1.35}
 .scope-choice button.active{border-color:rgba(94,106,210,.5);box-shadow:0 0 0 3px rgba(94,106,210,.09);background:linear-gradient(145deg,rgba(94,106,210,.08),var(--surface-strong))}
@@ -646,3 +646,11 @@
 .personal-pill{display:inline-flex;margin-left:7px;padding:3px 7px;border-radius:999px;background:rgba(94,106,210,.1);color:var(--iris);font-size:10px;font-style:normal;font-weight:800;letter-spacing:.02em;vertical-align:middle}
 
 .scope-view-switch{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--line);background:var(--surface);border-radius:999px;margin:0 0 18px;position:relative;z-index:1}.scope-view-switch button{border:0;background:transparent;color:var(--muted);border-radius:999px;padding:8px 13px;font-size:12px;font-weight:750}.scope-view-switch button.active{background:var(--surface-strong);color:var(--ink);box-shadow:0 2px 10px rgba(11,16,32,.08)}@media(max-width:520px){.scope-view-switch{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.scope-view-switch button{padding:9px 6px}}
+
+.card-suggestion-block{margin:14px 0 18px;padding:16px;border:1px solid rgba(94,106,210,.22);border-radius:22px;background:linear-gradient(145deg,rgba(94,106,210,.06),var(--surface-strong))}
+.card-suggestion-block>div:first-child{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.card-suggestion-block>div:first-child>span{font-size:9px;font-weight:900;letter-spacing:.08em;color:var(--iris)}
+.card-suggestion-block>div:first-child>strong{font-size:14px}
+.card-suggestion-block>div:first-child>small{color:var(--muted);font-size:11px;line-height:1.45}
+.card-suggestion-block .recognized-card .section-action{margin-top:10px;width:100%}
+.open-finance-security .connect-bank-button{margin-top:12px;text-decoration:none;text-align:center}
