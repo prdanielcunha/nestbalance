@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';\nimport Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { getVaultDetail, getVaultPreview, listVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
 import { AppNav } from '@/src/features/navigation/app-nav';
 
