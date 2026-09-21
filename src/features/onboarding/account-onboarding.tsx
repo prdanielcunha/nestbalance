@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { parseMoneyInputToMinor, type AccountType } from '@/src/core/accounts';
 import { createHouseholdAccount } from '@/src/lib/repositories/accounts';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
@@ -11,14 +11,15 @@ const accountTypes:{value:AccountType;label:string;hint:string}[]=[
   {value:'cash',label:'Dinheiro',hint:'O que está em espécie'}
 ];
 
-export function AccountOnboarding({householdId,onCreated,variant='onboarding'}:{householdId:string;onCreated?:()=>void;variant?:'onboarding'|'compact'}){
+export function AccountOnboarding({householdId,onCreated,variant='onboarding',defaultScope='household'}:{householdId:string;onCreated?:()=>void;variant?:'onboarding'|'compact';defaultScope?:FinancialScope}){
   const [open,setOpen]=useState(false);
   const [type,setType]=useState<AccountType>('bank');
   const [name,setName]=useState('');
   const [balance,setBalance]=useState('');
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
-  const [scope,setScope]=useState<FinancialScope>('household');
+  const [scope,setScope]=useState<FinancialScope>(defaultScope);
+  useEffect(()=>{if(!open)setScope(defaultScope);},[defaultScope,open]);
 
   async function save(){
     const balanceMinor=parseMoneyInputToMinor(balance);
@@ -33,7 +34,7 @@ export function AccountOnboarding({householdId,onCreated,variant='onboarding'}:{
     setSaving(true); setError('');
     try{
       await createHouseholdAccount({householdId,name:name.trim(),type,balanceMinor,scope});
-      setOpen(false); setName(''); setBalance(''); setType('bank'); setScope('household');
+      setOpen(false); setName(''); setBalance(''); setType('bank'); setScope(defaultScope);
       onCreated?.();
     }catch(err:any){
       setError(err?.message==='INVALID_BALANCE'?'Esse saldo parece incorreto.':'Não conseguimos guardar essa conta agora.');
