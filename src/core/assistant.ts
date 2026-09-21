@@ -63,7 +63,8 @@ function parseRequestedMoneyMinor(question:string){
   const normalized=question.normalize('NFKC').replace(/\s+/g,' ').trim();
   const currencyMatch=normalized.match(/R\$\s*([0-9.]+(?:,[0-9]{1,2})?)/i);
   const reaisMatch=normalized.match(/([0-9.]+(?:,[0-9]{1,2})?)\s*(?:reais?|conto(?:s)?)/i);
-  const raw=(currencyMatch?.[1]||reaisMatch?.[1]||'').trim();
+  const spendMatch=normalized.match(/(?:gastar|gasto|gastasse)\s*(?:de\s*)?([0-9.]+(?:,[0-9]{1,2})?)/i);
+  const raw=(currencyMatch?.[1]||reaisMatch?.[1]||spendMatch?.[1]||'').trim();
   if(!raw) return null;
   const number=Number(raw.replace(/\./g,'').replace(',','.'));
   if(!Number.isFinite(number)||number<=0||number>100_000_000) return null;
@@ -270,7 +271,7 @@ export function answerAssistantQuestion(input:{
       intent,
       title:total>0?'Ainda há valores conhecidos para pagar.':'Nada pendente conhecido agora.',
       summary:total>0
-        ? `O NestBalance encontrou ${sources.length} obrigação${sources.length===1?'':'ões'} aberta${sources.length===1?'':'s'} no Lar.${partialInvoices?` ${partialInvoices} fatura${partialInvoices===1?' está':'s estão'} em revisão, então o total pode aumentar.`:''}`
+        ? `O NestBalance encontrou ${sources.length} obrigação${sources.length===1?'':'ões'} aberta${sources.length===1?'':'s'} nesta visão.${partialInvoices?` ${partialInvoices} fatura${partialInvoices===1?' está':'s estão'} em revisão, então o total pode aumentar.`:''}`
         : 'Não há compromissos nem faturas abertas confirmadas nos dados atuais.',
       answerMinor:total,
       sources:sources.sort((a,b)=>b.amountMinor-a.amountMinor).slice(0,30),
@@ -306,7 +307,7 @@ export function answerAssistantQuestion(input:{
       intent,
       title:'Saldo disponível conhecido',
       summary:sources.length
-        ? `Somando ${sources.length} conta${sources.length===1?'':'s'} ativa${sources.length===1?'':'s'} do Lar.`
+        ? `Somando ${sources.length} conta${sources.length===1?'':'s'} ativa${sources.length===1?'':'s'} nesta visão.`
         : 'Ainda não há uma conta com saldo disponível para somar.',
       answerMinor:total,
       sources,
@@ -355,11 +356,11 @@ export function answerAssistantQuestion(input:{
 
   return {
     intent:'unsupported',
-    title:'Posso responder com os dados do seu Lar.',
-    summary:'Nesta primeira camada, pergunte sobre saldo disponível, quanto ainda falta pagar ou os próximos meses.',
+    title:'Posso responder com os dados desta visão.',
+    summary:'Pergunte sobre saldo disponível, quanto falta pagar, próximos meses, simulação de gasto ou parcelas que terminam logo.'
     answerMinor:null,
     sources:[],
     cards:[],
-    suggestions:['Quanto ainda falta pagar?','Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
+    suggestions:['Dá para gastar R$ 500?','Quais parcelas terminam logo?','Quanto ainda falta pagar?','Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
   };
 }
