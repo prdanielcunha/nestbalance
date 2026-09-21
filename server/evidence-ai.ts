@@ -180,7 +180,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
         model:persisted.model,
         createdAt:FieldValue.serverTimestamp()
       });
-      tx.delete(lockRef);
+      tx.delete(activeLockRef);
     });
 
     return res.json(publicExtraction(finalData));
