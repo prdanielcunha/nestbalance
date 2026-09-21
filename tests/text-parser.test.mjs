@@ -37,3 +37,11 @@ test('vencimento sozinho não vira recorrência mensal silenciosamente', () => {
   assert.equal(result.recurring, false);
   assert.equal(result.needsReview.includes('recurrence'), true);
 });
+
+test('transferência não entra como despesa nem renda', () => {
+  const result = parseFinancialText('transferi 850 entre minhas contas');
+  assert.equal(result.kind, 'transaction');
+  assert.equal(result.money.amountMinor, 85000);
+  assert.equal(result.direction, 'transfer');
+  assert.equal(result.needsReview.includes('direction'), false);
+});
