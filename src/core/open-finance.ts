@@ -37,12 +37,14 @@ export const OPEN_FINANCE_INSTITUTIONS:OpenFinanceInstitution[]=[
     key:'itau',
     name:'Itaú',
     priority:3,
+    belvoInstitution:'ofitau_br_retail',
     capabilities:['accounts','balances','transactions','credit_cards','bills','investments']
   },
   {
     key:'santander',
     name:'Santander',
     priority:4,
+    belvoInstitution:'ofsantander_br_retail',
     capabilities:['accounts','balances','transactions','credit_cards','bills','investments']
   },
   {
