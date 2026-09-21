@@ -1,7 +1,7 @@
 'use client';
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { getVaultDetail, getVaultPreview, listVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
+import { AppNav } from '@/src/features/navigation/app-nav';
 
 const bytes = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 const money = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
@@ -83,7 +83,7 @@ export function VaultScreen({householdId}:{householdId:string}) {
   return <main className="app-shell vault-shell">
     <header className="topbar">
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Cofre</span></div>
-      <Link className="text-link" href="/">Voltar</Link>
+<div className="avatar-dot" aria-hidden="true" />
     </header>
 
     <section className="vault-hero">
@@ -106,6 +106,8 @@ export function VaultScreen({householdId}:{householdId:string}) {
         <span className="vault-row-date">{item.createdAtMs ? new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(item.createdAtMs) : ''}</span>
       </button>)}
     </section>}
+
+    <AppNav/>
 
     {selected && <div className="sheet-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!previewLoading){setSelected(null);setDetail(null);if(previewUrl)URL.revokeObjectURL(previewUrl);setPreviewUrl(null);}}}>
       <section className="capture-sheet vault-detail" role="dialog" aria-modal="true" aria-label={selected.originalName}>
