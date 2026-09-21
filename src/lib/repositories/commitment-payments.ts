@@ -63,3 +63,23 @@ export async function payCommitment(input:{
     transactionId?:string;
   }>('/api/commitments/pay',{...input,paidOn:input.paidOn||localIsoDate()});
 }
+
+
+export async function findCommitmentPaymentMatchesBatch(input:{
+  householdId:string;
+  items:Array<{
+    index:number;
+    amountMinor:number;
+    description:string;
+    observedOn?:string|null;
+    direction:'expense'|'income'|'transfer';
+  }>;
+}){
+  return api<{
+    ok:true;
+    matches:Array<{
+      index:number;
+      candidates:CommitmentPaymentCandidate[];
+    }>;
+  }>('/api/commitments/match-payments',input);
+}
