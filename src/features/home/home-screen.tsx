@@ -6,6 +6,7 @@ import { db } from '@/src/lib/firebase/client';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { projectFutureCommitments } from '@/src/core/future-projection';
 import { UniversalCapture } from '@/src/features/capture/universal-capture';
+import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { messages } from '@/src/i18n/messages';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -30,6 +31,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   const [commitments, setCommitments] = useState<Row[]>([]);
   const [accounts, setAccounts] = useState<Row[]>([]);
   const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
+  const [accountCreated,setAccountCreated]=useState(0);
 
   useEffect(() => {
     if (!db) return;
@@ -37,12 +39,12 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
     const u2 = onSnapshot(query(collection(db,'households',householdId,'commitments'), orderBy('createdAt','desc')), s => setCommitments(s.docs.map(d=>({id:d.id,...d.data()} as Row))));
     const u3 = onSnapshot(collection(db,'households',householdId,'accounts'), s => setAccounts(s.docs.map(d=>({id:d.id,...d.data()} as Row))));
     return () => { u1(); u2(); u3(); };
-  }, [householdId]);
+  }, [householdId, accountCreated]);
 
   const snapshot = useMemo(() => {
     const paidExpenseMinor = transactions.filter(x=>x.direction!=='income').reduce((s,x)=>s+x.amountMinor,0);
     const futureCommitmentsMinor = commitments.filter(x=>x.status!=='paid'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0);
-    const availableMinor = accounts.reduce((sum, account) => sum + Number(account.amountMinor ?? 0), 0);
+    const availableMinor = accounts.reduce((sum, account) => sum + Number((account as Row & {balanceMinor?:number}).balanceMinor ?? account.amountMinor ?? 0), 0);
     return deriveHomeSnapshot({availableMinor, incomeMinor:0, paidExpenseMinor, futureCommitmentsMinor, dueSoonMinor: futureCommitmentsMinor});
   }, [transactions, commitments, accounts]);
 
@@ -59,6 +61,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
       <p>{accounts.length ? (snapshot.futureCommitmentsMinor > 0 ? `${money.format(snapshot.futureCommitmentsMinor/100)} ainda estão comprometidos.` : 'Sem contas pendentes registradas.') : 'Adicione uma conta ou saldo para vermos quanto está realmente disponível.'}</p>
     </section>
 
+    {accounts.length===0 && <AccountOnboarding householdId={householdId} onCreated={()=>setAccountCreated(v=>v+1)} />}
     {commitments[0] && <section><div className="section-title"><h2>{t.attention}</h2></div><article className="spotlight-card"><div><span>{commitments[0].dueDay ? `Vence dia ${commitments[0].dueDay}` : 'Próximo compromisso'}</span><h3>{commitments[0].description}</h3></div><strong>{money.format(commitments[0].amountMinor/100)}</strong></article></section>}
 
     <section className="month-section">

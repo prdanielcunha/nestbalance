@@ -57,6 +57,9 @@ service cloud.firestore {
       match /captureFingerprints/{id} {
         allow read, write: if false;
       }
+      match /accountKeys/{id} {
+        allow read, write: if false;
+      }
       match /auditEvents/{id} {
         allow read: if canAdmin(hid);
         allow create, update, delete: if false;

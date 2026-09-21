@@ -117,3 +117,18 @@ test('member cannot read evidence metadata directly from Firestore', async () =>
   const db = env.authenticatedContext('owner_a').firestore();
   await assertFails(getDoc(doc(db, 'households', 'house_vault', 'evidenceAssets', 'e1')));
 });
+
+test('client cannot create account directly', async () => {
+  await seedHousehold('house_accounts', 'owner_a');
+  const db = env.authenticatedContext('owner_a').firestore();
+  await assertFails(setDoc(doc(db, 'households', 'house_accounts', 'accounts', 'a1'), {
+    name: 'Nubank', type: 'bank', balanceMinor: 10000, currency: 'BRL'
+  }));
+});
+
+test('client cannot read or write account dedup keys', async () => {
+  await seedHousehold('house_account_keys', 'owner_a');
+  const db = env.authenticatedContext('owner_a').firestore();
+  await assertFails(getDoc(doc(db, 'households', 'house_account_keys', 'accountKeys', 'k1')));
+  await assertFails(setDoc(doc(db, 'households', 'house_account_keys', 'accountKeys', 'k1'), { accountId: 'a1' }));
+});

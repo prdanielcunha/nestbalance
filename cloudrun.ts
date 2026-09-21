@@ -3,6 +3,7 @@ import { commitCapture } from './server/capture.js';
 import { finalizeEvidence, startEvidence } from './server/evidence.js';
 import { analyzeEvidenceText } from './server/evidence-analysis.js';
 import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence } from './server/vault.js';
+import { createAccount } from './server/accounts.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -15,6 +16,7 @@ app.post('/api/vault/list', listVaultEvidence);
 app.post('/api/vault/detail', getVaultEvidenceDetail);
 app.post('/api/vault/preview', previewVaultEvidence);
 app.post('/api/capture/commit', commitCapture);
+app.post('/api/accounts/create', createAccount);
 app.use((_req, res) => res.status(404).json({ ok: false, error: 'NOT_FOUND' }));
 
 const port = Number(process.env.PORT || 8080);
