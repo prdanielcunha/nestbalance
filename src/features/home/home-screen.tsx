@@ -5,8 +5,9 @@ import { deriveHomeSnapshot } from '@/src/core/summary';
 import { projectFutureCommitments } from '@/src/core/future-projection';
 import { UniversalCapture } from '@/src/features/capture/universal-capture';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
+import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { messages } from '@/src/i18n/messages';
-import { loadHomeData, type HomeAccount, type HomeRow } from '@/src/lib/repositories/home';
+import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeRow } from '@/src/lib/repositories/home';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
@@ -16,16 +17,19 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   const [transactions, setTransactions] = useState<HomeRow[]>([]);
   const [commitments, setCommitments] = useState<HomeRow[]>([]);
   const [accounts, setAccounts] = useState<HomeAccount[]>([]);
+  const [cards, setCards] = useState<HomeCreditCard[]>([]);
   const [loadingHome,setLoadingHome]=useState(true);
   const [homeError,setHomeError]=useState('');
   const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
   const [accountCreated,setAccountCreated]=useState(0);
+  const [cardCreated,setCardCreated]=useState(0);
 
   async function refreshHome(silent=false){
     if(!silent) setLoadingHome(true);
     try{
       const data=await loadHomeData(householdId);
       setAccounts(data.accounts);
+      setCards(data.cards||[]);
       setTransactions(data.transactions);
       setCommitments(data.commitments);
       setHomeError('');
@@ -43,7 +47,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
     window.addEventListener('focus',onFocus);
     document.addEventListener('visibilitychange',onVisibility);
     return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
-  }, [householdId, accountCreated]);
+  }, [householdId, accountCreated, cardCreated]);
 
   const snapshot = useMemo(() => {
     const paidExpenseMinor = transactions.filter(x=>x.direction==='expense').reduce((s,x)=>s+x.amountMinor,0);
@@ -79,6 +83,12 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
         <div className="projected"><span>Deve sobrar</span><strong>{accounts.length ? money.format(snapshot.projectedRemainderMinor/100) : '—'}</strong></div>
       </div>
     </section>
+
+    <CreditCardManager
+      householdId={householdId}
+      cards={cards}
+      onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
+    />
 
     <section className="future-section">
       <div className="section-title"><h2>Próximos meses</h2><span>o que já está comprometido</span></div>
