@@ -12,7 +12,7 @@ import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallme
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
 
-export function HomeScreen({ householdId, uid }: { householdId: string; uid: string }) {
+export function HomeScreen({ householdId }: { householdId: string }) {
   const t = messages['pt-BR'];
   const [transactions, setTransactions] = useState<HomeRow[]>([]);
   const [commitments, setCommitments] = useState<HomeRow[]>([]);
