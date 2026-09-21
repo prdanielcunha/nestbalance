@@ -1,6 +1,7 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { DocumentSignalsResult } from '@/src/core/document-signals';
+import type { AiFinancialExtraction } from '@/src/core/ai-financial';
 
 export type VaultItem = {
   evidenceId:string;
@@ -23,6 +24,11 @@ export type VaultDetail = {
     aiUsed:boolean;
     ocrUsed:boolean;
     signals:DocumentSignalsResult|null;
+    extraction:AiFinancialExtraction|null;
+    transcriptPreview:string|null;
+    analysisVersion:string|null;
+    visionUsed:boolean;
+    sttUsed:boolean;
   };
 };
 
