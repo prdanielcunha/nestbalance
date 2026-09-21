@@ -83,7 +83,7 @@ const jsonMiddleware=cloudrun.indexOf("app.use(express.json");
 assert.ok(rawRoute>=0&&jsonMiddleware>rawRoute,'Raw upload route must run before JSON middleware.');
 
 assert.match(deployWorkflow,/workflow_dispatch/);
-assert.match(deployWorkflow,/environment: homologation/);
+assert.match(deployWorkflow,/push:\s*\n\s*branches:\s*\n\s*- main/);
 assert.match(deployWorkflow,/hosting:nestbalance/);
 assert.ok(!/firestore:rules|firestore:indexes|--only storage/.test(deployWorkflow),'Homologation workflow must not overwrite shared Firebase rules.');
 assert.match(runtimePreflight,/dedicated NestBalance site/);
