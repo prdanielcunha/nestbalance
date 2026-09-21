@@ -1,9 +1,10 @@
 import type { Request, Response } from 'express';
-import { answerAssistantQuestion } from '../src/core/assistant.js';
+import { answerAssistantQuestion, assistantEvidenceQuery, classifyAssistantIntent } from '../src/core/assistant.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { visibleDocs } from './privacy.js';
 import { normalizeFinancialScope } from '../src/core/privacy.js';
+import { searchAccessibleVaultItems } from './vault.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -73,6 +74,38 @@ export async function answerFinanceAssistant(req:Request,res:Response){
 
     await requireHouseholdMember(householdId,user.uid);
     const household=adminDb.collection('households').doc(householdId);
+    const intent=classifyAssistantIntent(question);
+
+    if(intent==='evidence_lookup'){
+      const evidenceQuery=assistantEvidenceQuery(question);
+      const matches=await searchAccessibleVaultItems({
+        householdId,
+        userUid:user.uid,
+        query:evidenceQuery||question,
+        view:requestedView,
+        limit:5
+      });
+      const answer=answerAssistantQuestion({
+        question,
+        accounts:[],
+        commitments:[],
+        invoices:[],
+        installmentPlans:[],
+        evidenceMatches:matches.map(item=>({
+          id:item.evidenceId,
+          label:item.originalName,
+          detail:item.matchReason||'Documento encontrado no Cofre'
+        })),
+        now:new Date()
+      });
+      return res.json({
+        ok:true,
+        answer,
+        grounded:true,
+        view:requestedView,
+        asOf:new Date().toISOString()
+      });
+    }
 
     const [accounts,commitments,invoices,plans]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
