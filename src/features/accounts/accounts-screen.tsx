@@ -1,7 +1,9 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';\nimport Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { AppNav } from '@/src/features/navigation/app-nav';
-import { parseMoneyInputToMinor } from '@/src/core/accounts';\nimport type { HouseholdRole } from '@/src/core/household';
+import { parseMoneyInputToMinor } from '@/src/core/accounts';
+import type { HouseholdRole } from '@/src/core/household';
 import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
@@ -11,7 +13,8 @@ import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditC
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const typeLabel:Record<string,string>={bank:'Conta bancária',wallet:'Carteira digital',cash:'Dinheiro'};
 
-export function AccountsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){\n  const canManage=role==='owner'||role==='admin';
+export function AccountsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
+  const canManage=role==='owner'||role==='admin';
   const [accounts,setAccounts]=useState<HomeAccount[]>([]);
   const [cards,setCards]=useState<HomeCreditCard[]>([]);
   const [invoiceImports,setInvoiceImports]=useState<HomeInvoiceImport[]>([]);
@@ -90,7 +93,10 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
   return <main className="app-shell accounts-shell">
     <header className="topbar">
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Contas</span></div>
-      <div className="topbar-actions">\n        {canManage&&<AccountOnboarding householdId={householdId} variant="compact" onCreated={refreshed}/>}\n        <Link href="/household" className="avatar-dot" aria-label="Lar e acessos"/>\n      </div>
+      <div className="topbar-actions">
+        {canManage&&<AccountOnboarding householdId={householdId} variant="compact" onCreated={refreshed}/>}
+        <Link href="/household" className="avatar-dot" aria-label="Lar e acessos"/>
+      </div>
     </header>
 
     <section className="area-hero accounts-hero">
