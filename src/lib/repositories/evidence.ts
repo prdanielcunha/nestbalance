@@ -1,6 +1,5 @@
 'use client';
-import { ref, uploadBytesResumable } from 'firebase/storage';
-import { auth, storage } from '@/src/lib/firebase/client';
+import { auth } from '@/src/lib/firebase/client';
 import type { DocumentSignalsResult } from '@/src/core/document-signals';
 import type { AiFinancialExtraction } from '@/src/core/ai-financial';
 import type { FinancialInterpretation } from '@/src/core/types';
@@ -19,22 +18,36 @@ async function api<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function ingestEvidence(householdId: string, file: File, onProgress?: (progress: UploadProgress) => void) {
-  if (!storage) throw new Error('STORAGE_NOT_CONFIGURED');
-  const started = await api<{evidenceId:string;uploadPath:string}>('/api/evidence/start', {
+  const token = await auth?.currentUser?.getIdToken();
+  if (!token) throw new Error('AUTH_REQUIRED');
+
+  const started = await api<{evidenceId:string}>('/api/evidence/start', {
     householdId, originalName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size
   });
-  const objectRef = ref(storage, started.uploadPath);
-  const task = uploadBytesResumable(objectRef, file, {
-    contentType: file.type,
-    customMetadata: { householdId, evidenceId: started.evidenceId }
-  });
-  await new Promise<void>((resolve, reject) => task.on('state_changed', snapshot => {
-    const percent = snapshot.totalBytes ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) : 0;
-    onProgress?.({ phase: 'uploading', percent });
-  }, reject, () => resolve()));
-  onProgress?.({ phase: 'verifying', percent: 100 });
-  return api<{status:'accepted'|'duplicate';evidenceId:string;canonicalEvidenceId:string}>('/api/evidence/finalize', {
-    householdId, evidenceId: started.evidenceId
+
+  return new Promise<{status:'accepted'|'duplicate';evidenceId:string;canonicalEvidenceId:string}>((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST','/api/evidence/upload');
+    xhr.setRequestHeader('Authorization',`Bearer ${token}`);
+    xhr.setRequestHeader('X-NestBalance-Household-Id',householdId);
+    xhr.setRequestHeader('X-NestBalance-Evidence-Id',started.evidenceId);
+    xhr.setRequestHeader('Content-Type',file.type||'application/octet-stream');
+    xhr.responseType='json';
+    xhr.upload.onprogress=event=>{
+      const percent=event.lengthComputable&&event.total>0?Math.round((event.loaded/event.total)*100):0;
+      onProgress?.({phase:'uploading',percent});
+    };
+    xhr.onerror=()=>reject(new Error('EVIDENCE_UPLOAD_FAILED'));
+    xhr.onload=()=>{
+      const json=xhr.response||{};
+      if(xhr.status<200||xhr.status>=300){
+        reject(new Error(json.error||'EVIDENCE_UPLOAD_FAILED'));
+        return;
+      }
+      onProgress?.({phase:'verifying',percent:100});
+      resolve(json);
+    };
+    xhr.send(file);
   });
 }
 
