@@ -178,49 +178,50 @@ export async function commitFinancialScreen(req:Request,res:Response){
       commitments++;
     }
 
-    const movementList={
-      documentType:'transaction_list' as const,
-      institution:screen.institution,
-      overallConfidence:1,
-      ambiguities:[],
-      items:screen.movements
-    };
-    const parsed=buildImportedMovements(movementList);
-    for(let index=0;index<parsed.length;index++){
-      const item=parsed[index];
-      if(item.needsReview.includes('direction')||item.needsReview.includes('amount')||item.needsReview.includes('amount_positive')){
-        skipped++;
-        continue;
+    if(req.body?.includeMovements===true){
+      const movementList={
+        documentType:'transaction_list' as const,
+        institution:screen.institution,
+        overallConfidence:1,
+        ambiguities:[],
+        items:screen.movements
+      };
+      const parsed=buildImportedMovements(movementList);
+      for(let index=0;index<parsed.length;index++){
+        const item=parsed[index];
+        if(item.needsReview.includes('direction')||item.needsReview.includes('amount')||item.needsReview.includes('amount_positive')){
+          skipped++;
+          continue;
+        }
+        const observedOn=item.occurredOn||new Date().toISOString().slice(0,10);
+        const fingerprint=fingerprintForInterpretation(item,observedOn);
+        const id=hash(['screen_movement',resolved.evidenceId,String(index),fingerprint].join('|')).slice(0,40);
+        const ref=household.collection('transactions').doc(id);
+        batch.set(ref,{
+          description:item.description,
+          amountMinor:item.money.amountMinor,
+          currency:item.money.currency,
+          direction:item.direction,
+          source:'screen_import',
+          sourceText:item.sourceText,
+          confidence:item.confidence,
+          needsReview:item.needsReview,
+          interpretation:{parserVersion:item.parserVersion,fieldConfidence:item.fieldConfidence},
+          evidenceIds:[resolved.evidenceId],
+          createdBy:user.uid,
+          createdAt:FieldValue.serverTimestamp(),
+          observedOn,
+          status:'confirmed',
+          recurring:false,
+          recurrence:null,
+          dueDay:null,
+          installment:item.installment??null,
+          fingerprint,
+          schemaVersion:2
+        },{merge:true});
+        movements++;
       }
-      const observedOn=item.occurredOn||new Date().toISOString().slice(0,10);
-      const fingerprint=fingerprintForInterpretation(item,observedOn);
-      const id=hash(['screen_movement',resolved.evidenceId,String(index),fingerprint].join('|')).slice(0,40);
-      const ref=household.collection('transactions').doc(id);
-      batch.set(ref,{
-        description:item.description,
-        amountMinor:item.money.amountMinor,
-        currency:item.money.currency,
-        direction:item.direction,
-        source:'screen_import',
-        sourceText:item.sourceText,
-        confidence:item.confidence,
-        needsReview:item.needsReview,
-        interpretation:{parserVersion:item.parserVersion,fieldConfidence:item.fieldConfidence},
-        evidenceIds:[resolved.evidenceId],
-        createdBy:user.uid,
-        createdAt:FieldValue.serverTimestamp(),
-        observedOn,
-        status:'confirmed',
-        recurring:false,
-        recurrence:null,
-        dueDay:null,
-        installment:item.installment??null,
-        fingerprint,
-        schemaVersion:2
-      },{merge:true});
-      movements++;
     }
-
     batch.create(household.collection('auditEvents').doc(),{
       type:'financial_screen.committed',
       actorUid:user.uid,
