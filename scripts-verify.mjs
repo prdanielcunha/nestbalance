@@ -37,3 +37,9 @@ assert.match(firestore, /match \/evidenceAssets\/\{id\}[\s\S]*allow read, create
 assert.match(storage, /match \/nestbalance\/households\/\{hid\}\/evidence\/\{evidenceId\}\/original[\s\S]*allow read: if false/);
 assert.match(vaultSource, /verifyVaultPreviewBytes/);
 assert.match(vaultSource, /Cache-Control','private, no-store/);
+
+const accountsSource = readFileSync(new URL('./server/accounts.ts', import.meta.url),'utf8');
+assert.match(firestore, /match \/accountKeys\/\{id\}/);
+assert.match(accountsSource, /runTransaction/);
+assert.match(accountsSource, /validateAccountDraft/);
+assert.match(accountsSource, /account.created/);
