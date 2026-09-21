@@ -16,6 +16,7 @@ import { findCommitmentPaymentMatches, findCommitmentPaymentMatchesBatch, payCom
 import { completeOpenFinanceConnection, disconnectOpenFinanceConnection, listOpenFinanceConnections, startOpenFinanceConnection, syncOpenFinanceConnection } from './server/open-finance.js';
 import { selectHousehold } from './server/session.js';
 import { acceptHouseholdInvite, createHouseholdInvite, getHouseholdSettings, removeHouseholdMember, renameHousehold, revokeHouseholdInvite, updateHouseholdMemberRole } from './server/household.js';
+import { deleteHousehold, deletePersonalData, exportPrivacyData, getPrivacyStatus, recordPrivacyConsent } from './server/data-rights.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -33,6 +34,11 @@ app.post('/api/household/invite/accept', acceptHouseholdInvite);
 app.post('/api/household/invite/revoke', revokeHouseholdInvite);
 app.post('/api/household/member/role', updateHouseholdMemberRole);
 app.post('/api/household/member/remove', removeHouseholdMember);
+app.post('/api/privacy/status', getPrivacyStatus);
+app.post('/api/privacy/consent', recordPrivacyConsent);
+app.post('/api/privacy/export', exportPrivacyData);
+app.post('/api/privacy/delete-personal', deletePersonalData);
+app.post('/api/privacy/delete-household', deleteHousehold);
 app.post('/api/home', getHomeData);
 app.post('/api/assistant/answer', answerFinanceAssistant);
 app.post('/api/financial-screen/commit', commitFinancialScreen);
