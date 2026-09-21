@@ -140,6 +140,7 @@ export async function extractFinancialImage(bytes:Buffer,mimeType:string){
           'Never turn balance, available balance, credit limit, total limit, statement total, savings-pot balance or dashboard totals into a transaction.',
           'Never turn a credit-card payment into a purchase. Never merge several transaction rows into one.',
           'For savings pots or reserves, create pot entries only when a distinct named bucket/reserve and its balance are visibly supported.',
+          'For account balances, prefer an explicitly available/spendable balance. If a displayed total clearly includes savings pots or investments and there is no separate available balance, do not duplicate the saved money as spendable cash; omit the account snapshot or lower its confidence.',
           'For store cards or retail financing (for example clothing-store cards), commitments represent visible installments or amounts due, not the full credit limit.',
           'Use BRL minor units. Use unknown direction unless the screen visibly establishes money entering, leaving, or moving between the user own accounts.',
           'If dates lack a year and the year cannot be proven from the screen, keep them null rather than guessing.',
