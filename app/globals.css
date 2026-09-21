@@ -392,3 +392,12 @@
 .inline-direction-choice button{border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:8px 9px;border-radius:12px;font-size:10px;font-weight:800}
 .inline-direction-choice button:hover{border-color:rgba(94,106,210,.35);color:var(--iris);background:rgba(94,106,210,.055)}
 @media(max-width:560px){.inline-direction-choice{grid-template-columns:1fr}.inline-direction-choice button{text-align:left}}
+
+
+.capture-review-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.capture-review-summary>div{padding:12px 13px;border:1px solid var(--line);border-radius:15px;background:var(--surface-strong)}
+.capture-review-summary>div.attention{border-color:rgba(216,151,52,.28);background:rgba(216,151,52,.055)}
+.capture-review-summary strong,.capture-review-summary span{display:block}
+.capture-review-summary strong{font-size:18px;letter-spacing:-.03em}
+.capture-review-summary span{margin-top:2px;color:var(--muted);font-size:10px}
+.capture-show-all{width:100%;margin-top:9px;border:0;background:transparent;color:var(--iris);font-size:11px;font-weight:850;padding:8px}
