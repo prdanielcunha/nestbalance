@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { OPEN_FINANCE_INSTITUTIONS, type OpenFinanceInstitutionKey } from '@/src/core/open-finance';
+import type { HomeAccount } from '@/src/lib/repositories/home';
 import {
   listOpenFinanceConnections,
   startOpenFinanceConnection,
@@ -8,11 +9,13 @@ import {
   type OpenFinanceConnection
 } from '@/src/lib/repositories/open-finance';
 
+const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+
 const institutionCopy:Record<OpenFinanceInstitutionKey,{detail:string;badge?:string}>={
   mercado_pago:{detail:'Saldo e movimentações pelo Open Finance. Cofrinhos entram quando a fonte autorizada os expuser.',badge:'Prioridade'},
   nubank:{detail:'Conta, cartão, saldo e movimentações autorizadas.'},
-  itau:{detail:'Conecte pelo seletor seguro do Open Finance.'},
-  santander:{detail:'Conecte pelo seletor seguro do Open Finance.'},
+  itau:{detail:'Conta, cartão e movimentações autorizadas pelo Open Finance.'},
+  santander:{detail:'Conta, cartão e movimentações autorizadas pelo Open Finance.'},
   other:{detail:'Escolha outra instituição participante do Open Finance.'}
 };
 
@@ -26,9 +29,11 @@ function statusText(connection:OpenFinanceConnection){
 
 export function ConnectedBanks({
   householdId,
+  accounts,
   onSynced
 }:{
   householdId:string;
+  accounts:HomeAccount[];
   onSynced?:()=>void;
 }){
   const [connections,setConnections]=useState<OpenFinanceConnection[]>([]);
@@ -55,6 +60,17 @@ export function ConnectedBanks({
   }
 
   useEffect(()=>{void refresh();},[householdId]);
+
+  const accountsByConnection=useMemo(()=>{
+    const map=new Map<string,HomeAccount[]>();
+    for(const account of accounts){
+      if(!account.connectionId) continue;
+      const list=map.get(account.connectionId)??[];
+      list.push(account);
+      map.set(account.connectionId,list);
+    }
+    return map;
+  },[accounts]);
 
   const connectedByKey=useMemo(()=>{
     const map=new Map<OpenFinanceInstitutionKey,OpenFinanceConnection>();
@@ -123,7 +139,7 @@ export function ConnectedBanks({
       </div>
       <div className="open-finance-security">
         <strong>Você controla</strong>
-        <span>conectar · atualizar · revogar</span>
+        <span>conectar · atualizar · consentir</span>
       </div>
     </article>
 
@@ -133,6 +149,15 @@ export function ConnectedBanks({
           {OPEN_FINANCE_INSTITUTIONS.filter(item=>item.key!=='other').map(item=>{
             const connection=connectedByKey.get(item.key);
             const copy=institutionCopy[item.key];
+            const linkedAccounts=connection?accountsByConnection.get(connection.id)??[]:[];
+            const spendableMinor=linkedAccounts
+              .filter(account=>account.connectedProductType!=='investment')
+              .reduce((sum,account)=>sum+account.balanceMinor,0);
+            const investmentsMinor=linkedAccounts
+              .filter(account=>account.connectedProductType==='investment')
+              .reduce((sum,account)=>sum+account.balanceMinor,0);
+            const autoInvestedMinor=linkedAccounts
+              .reduce((sum,account)=>sum+Number(account.automaticallyInvestedMinor||0),0);
             return <article className={item.key==='mercado_pago'?'institution-card priority':'institution-card'} key={item.key}>
               <div className="institution-card-head">
                 <div><strong>{item.name}</strong>{copy.badge&&<span>{copy.badge}</span>}</div>
@@ -142,6 +167,11 @@ export function ConnectedBanks({
               {connection
                 ? <div className="connected-bank-state">
                     <span>{statusText(connection)}</span>
+                    {linkedAccounts.length>0&&<div className="connected-bank-money">
+                      <div><small>Disponível</small><strong>{money.format(spendableMinor/100)}</strong></div>
+                      {investmentsMinor>0&&<div><small>Investimentos</small><strong>{money.format(investmentsMinor/100)}</strong></div>}
+                      {autoInvestedMinor>0&&<div><small>Aplicado automaticamente</small><strong>{money.format(autoInvestedMinor/100)}</strong></div>}
+                    </div>}
                     <button type="button" disabled={syncing===connection.id} onClick={()=>void sync(connection)}>
                       {syncing===connection.id?'Atualizando…':'Atualizar agora'}
                     </button>
