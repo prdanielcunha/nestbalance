@@ -36,3 +36,37 @@ export async function previewInvoice(input:{
   if(!response.ok) throw new Error(json.error||'INVOICE_PREVIEW_FAILED');
   return json as InvoicePreviewResponse;
 }
+
+
+export type InvoiceCommitResponse={
+  ok:true;
+  status:'committed'|'duplicate';
+  invoiceKey:string;
+  evidenceId:string;
+  selected:number;
+  created:number;
+  duplicates:number;
+  installmentPlans:number;
+};
+
+export async function commitInvoice(input:{
+  householdId:string;
+  cardId:string;
+  evidenceId:string;
+  itemIds:string[];
+  referenceDate?:string;
+}){
+  const token=await auth?.currentUser?.getIdToken();
+  if(!token) throw new Error('AUTH_REQUIRED');
+
+  const response=await fetch('/api/invoices/commit',{
+    method:'POST',
+    headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
+    body:JSON.stringify(input),
+    cache:'no-store'
+  });
+
+  const json=await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(json.error||'INVOICE_COMMIT_FAILED');
+  return json as InvoiceCommitResponse;
+}
