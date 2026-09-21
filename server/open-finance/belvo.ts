@@ -9,8 +9,12 @@ function normalizedBase(){
   return process.env.BELVO_ENVIRONMENT==='production'?PROD:DEFAULT_SANDBOX;
 }
 
+export function paidOpenFinanceEnabled(){
+  return process.env.NESTBALANCE_ALLOW_PAID_INTEGRATIONS==='true';
+}
+
 export function isBelvoConfigured(){
-  return Boolean(process.env.BELVO_SECRET_ID?.trim()&&process.env.BELVO_SECRET_PASSWORD?.trim());
+  return paidOpenFinanceEnabled()&&Boolean(process.env.BELVO_SECRET_ID?.trim()&&process.env.BELVO_SECRET_PASSWORD?.trim());
 }
 
 function authHeader(){
