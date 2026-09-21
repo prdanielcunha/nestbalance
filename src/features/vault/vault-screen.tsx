@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';\nimport Link from 'next/link';
 import { getVaultDetail, getVaultPreview, listVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
 import { AppNav } from '@/src/features/navigation/app-nav';
 
@@ -83,7 +83,7 @@ export function VaultScreen({householdId}:{householdId:string}) {
   return <main className="app-shell vault-shell">
     <header className="topbar">
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Cofre</span></div>
-<div className="avatar-dot" aria-hidden="true" />
+<Link href="/household" className="avatar-dot" aria-label="Lar e acessos" />
     </header>
 
     <section className="vault-hero">
