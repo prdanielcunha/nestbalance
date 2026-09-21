@@ -312,7 +312,7 @@ export async function startOpenFinanceConnection(req:Request,res:Response){
     const externalId=`nb-${sessionId.replace(/-/g,'')}`;
     const sessionRef=household.collection('bankConnectionSessions').doc(sessionId);
     const expiresAtMs=Date.now()+SESSION_TTL_MS;
-    const callbackBase=`${origin}/banking/callback/${encodeURIComponent(sessionId)}`;
+    const callbackBase=`${origin}/banking/callback?session=${encodeURIComponent(sessionId)}`;
     const termsUrl=`${origin}/open-finance/terms`;
 
     await sessionRef.create({
@@ -332,9 +332,9 @@ export async function startOpenFinanceConnection(req:Request,res:Response){
         cpf,
         legalName,
         externalId,
-        callbackSuccess:`${callbackBase}/success`,
-        callbackExit:`${callbackBase}/exit`,
-        callbackEvent:`${callbackBase}/event`,
+        callbackSuccess:`${callbackBase}&outcome=success`,
+        callbackExit:`${callbackBase}&outcome=exit`,
+        callbackEvent:`${callbackBase}&outcome=event`,
         termsUrl,
         institution:institution.belvoInstitution
       });
