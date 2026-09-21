@@ -1,0 +1,41 @@
+'use client';
+import { auth } from '@/src/lib/firebase/client';
+import type { FinancialInterpretation } from '@/src/core/types';
+import { ingestEvidence, type UploadProgress } from './evidence';
+
+function localIsoDate() {
+  const d = new Date();
+  const offset = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - offset).toISOString().slice(0,10);
+}
+
+export type CommitResult = { status: 'created' | 'duplicate'; id: string; evidenceId?: string | null };
+
+async function commitOnServer(householdId: string, sourceText: string, evidenceId?: string | null): Promise<CommitResult> {
+  const token = await auth?.currentUser?.getIdToken();
+  if (!token) throw new Error('AUTH_REQUIRED');
+  const response = await fetch('/api/capture/commit', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ householdId, sourceText, evidenceId: evidenceId || null, observedOn: localIsoDate() })
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(json.error || 'CAPTURE_COMMIT_FAILED');
+  return json as CommitResult;
+}
+
+export async function commitInterpretation(args: {
+  householdId: string;
+  uid: string;
+  interpretation: FinancialInterpretation;
+  file?: File | null;
+  onUploadProgress?: (progress: UploadProgress) => void;
+}): Promise<CommitResult> {
+  const { householdId, interpretation, file, onUploadProgress } = args;
+  let evidenceId: string | null = null;
+  if (file) {
+    const evidence = await ingestEvidence(householdId, file, onUploadProgress);
+    evidenceId = evidence.canonicalEvidenceId;
+  }
+  return commitOnServer(householdId, interpretation.sourceText, evidenceId);
+}
