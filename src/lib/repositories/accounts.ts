@@ -1,8 +1,9 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { AccountType } from '@/src/core/accounts';
+import type { FinancialScope } from '@/src/core/privacy';
 
-export async function createHouseholdAccount(input:{householdId:string;name:string;type:AccountType;balanceMinor:number}){
+export async function createHouseholdAccount(input:{householdId:string;name:string;type:AccountType;balanceMinor:number;scope?:FinancialScope}){
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');
   const response=await fetch('/api/accounts/create',{
