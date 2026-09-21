@@ -122,7 +122,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
       const result=await extractFinancialImage(bytes,mimeType);
       const screenMovements=result.extraction.screen?.movements||[];
       const movementList=screenMovements.length?{
-        documentType:result.extraction.screen?.screenType==='transaction_list'?'transaction_list':'bank_screenshot',
+        documentType:(result.extraction.screen?.screenType==='transaction_list'?'transaction_list':'bank_screenshot') as const,
         institution:result.extraction.screen?.institution||result.extraction.institution,
         overallConfidence:result.extraction.overallConfidence,
         ambiguities:result.extraction.ambiguities,
