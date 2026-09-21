@@ -1,0 +1,11 @@
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+const firestore = readFileSync(new URL('./firestore.rules', import.meta.url),'utf8');
+const storage = readFileSync(new URL('./storage.rules', import.meta.url),'utf8');
+assert.match(firestore, /match \/households\/\{hid\}/);
+assert.match(firestore, /getAfter\(\/databases\/\$\(database\)\/documents\/households\/\$\(hid\)\)/);
+assert.match(firestore, /allow update, delete: if false;/);
+assert.match(storage, /firestore\.exists/);
+assert.match(storage, /request\.resource\.size < 20 \* 1024 \* 1024/);
+assert.match(storage, /allow update, delete: if false;/);
+console.log('Static security invariants: PASS');
