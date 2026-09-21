@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getVaultDetail, getVaultPreview, listVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import type { HouseholdRole } from '@/src/core/household';
+import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 
 const bytes = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 const money = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
@@ -40,6 +41,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   const [detailLoading,setDetailLoading]=useState(false);
   const [previewUrl,setPreviewUrl]=useState<string|null>(null);
   const [previewLoading,setPreviewLoading]=useState(false);
+  const [view,setView]=useState<FinancialView>('household');
 
   async function load() {
     setLoading(true); setError('');
@@ -72,6 +74,8 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
     } finally { setPreviewLoading(false); }
   }
 
+  const visibleItems=useMemo(()=>items.filter(item=>inFinancialView(item.scope,view)),[items,view]);
+
   const summary=useMemo(()=>{
     const signals=detail?.understood?.signals?.candidates||[];
     const values=signals.filter(x=>x.kind==='money'&&typeof x.amountMinor==='number');
@@ -87,6 +91,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Cofre</span></div>
 <Link href="/household" className="avatar-dot" aria-label="Lar e acessos" />
     </header>
+    <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="vault-hero">
       <span>Seus documentos financeiros</span>
@@ -97,9 +102,9 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
     {error && <p className="error-copy" role="alert">{error}</p>}
 
     {loading ? <div className="vault-list" aria-label="Carregando Cofre">{[0,1,2].map(i=><div className="vault-row skeleton-line" key={i} />)}</div>
-    : items.length===0 ? <section className="empty-state"><h3>Seu Cofre começa com o primeiro envio.</h3><p>Quando você enviar um comprovante, fatura ou documento pela Entrada universal, o original aparecerá aqui.</p></section>
+    : visibleItems.length===0 ? <section className="empty-state"><h3>Seu Cofre começa com o primeiro envio.</h3><p>Quando você enviar um comprovante, fatura ou documento pela Entrada universal, o original aparecerá aqui.</p></section>
     : <section className="vault-list" aria-label="Documentos guardados">
-      {items.map(item=><button className="vault-row" key={item.evidenceId} onClick={()=>openItem(item)}>
+      {visibleItems.map(item=><button className="vault-row" key={item.evidenceId} onClick={()=>openItem(item)}>
         <div className="vault-file-mark">{typeLabel(item.mimeType).slice(0,1)}</div>
         <div className="vault-row-copy">
           <strong>{item.originalName}</strong>
