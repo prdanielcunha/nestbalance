@@ -102,7 +102,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
               <div className={'movement-dot '+(row.direction==='income'?'in':'')}/>
               <div className="movement-full-copy">
                 <strong>{row.description}</strong>
-                <span>{label(row)}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
+                <span>{label(row)}{row.scope==='personal'?' · Só para mim':''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
                 {row.installment&&<small>Parcela {row.installment.current} de {row.installment.total}</small>}
               </div>
               <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {money.format(row.amountMinor/100)}</b>
