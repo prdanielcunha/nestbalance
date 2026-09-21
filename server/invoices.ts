@@ -189,6 +189,7 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
     const transactionResult=await adminDb.runTransaction(async tx=>{
       let created=0;
       let duplicates=0;
+      let createdAmountMinor=0;
       const itemKeyRefs=itemEntries.map(entry=>context.household.collection('invoiceItemKeys').doc(entry.keyId));
       const itemKeySnaps=await Promise.all(itemKeyRefs.map(ref=>tx.get(ref)));
       const planEntries=[...planGroups.entries()];
@@ -220,6 +221,7 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
           evidenceIds:[context.evidenceId],
           cardId,
           invoiceKey:context.preview.invoiceKey,
+          invoiceImportId:importId,
           invoiceDueOn:context.preview.dueOn,
           invoiceItemId:entry.item.id,
           cardEntryKind:entry.item.kind,
@@ -245,6 +247,7 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
           createdAt:FieldValue.serverTimestamp()
         });
         created++;
+        createdAmountMinor+=entry.item.amountMinor;
       }
 
       for(const [planId,group] of planGroups){
@@ -278,6 +281,17 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
 
       const allClear=context.preview.reviewCount===0;
       const status=allClear&&selected.length===context.preview.items.length?'confirmed':'partial';
+      const importData=importSnap.exists?importSnap.data()||{}:{};
+      const previousConfirmed=Number.isSafeInteger(importData.confirmedAmountMinor)?Number(importData.confirmedAmountMinor):0;
+      const previousItemIds=Array.isArray(importData.confirmedItemIds)
+        ? importData.confirmedItemIds.map((value:any)=>String(value||'')).filter(Boolean)
+        : [];
+      const allConfirmedIds=new Set([...previousItemIds,...selected.map(item=>item.id)]);
+      const reconstructedConfirmed=context.preview.items
+        .filter(item=>allConfirmedIds.has(item.id))
+        .reduce((sum,item)=>sum+item.amountMinor,0);
+      const confirmedAmountMinor=Math.max(previousConfirmed+createdAmountMinor,reconstructedConfirmed);
+      const existingPaid=Number.isSafeInteger(importData.paidAmountMinor)?Number(importData.paidAmountMinor):0;
       tx.set(importRef,{
         cardId,
         evidenceId:context.evidenceId,
@@ -285,6 +299,9 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
         dueOn:context.preview.dueOn,
         parserVersion:context.preview.parserVersion,
         status,
+        confirmedAmountMinor,
+        paymentStatus:String(importData.paymentStatus||'unpaid'),
+        paidAmountMinor:existingPaid,
         confirmedItemIds:FieldValue.arrayUnion(...selected.map(item=>item.id)),
         selectedCount:selected.length,
         lastCommittedBy:user.uid,
@@ -305,10 +322,10 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
         createdAt:FieldValue.serverTimestamp()
       });
 
-      return {created,duplicates};
+      return {created,duplicates,createdAmountMinor};
     });
 
-    const {created,duplicates}=transactionResult;
+    const {created,duplicates,createdAmountMinor}=transactionResult;
 
     return res.status(created>0?201:200).json({
       ok:true,
@@ -318,6 +335,7 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
       selected:selected.length,
       created,
       duplicates,
+      createdAmountMinor,
       installmentPlans:planIds.length
     });
   }catch(err:any){
@@ -329,5 +347,119 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
       'EMPTY_INVOICE_TEXT','INVALID_REFERENCE_DATE','INVALID_CLOSING_DAY','INVALID_DUE_DAY'
     ];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'INVOICE_COMMIT_FAILED');
+  }
+}
+
+
+export async function payCreditCardInvoice(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    const invoiceImportId=String(req.body?.invoiceImportId||'');
+    const accountId=String(req.body?.accountId||'');
+    const paidOn=/^\d{4}-\d{2}-\d{2}$/.test(String(req.body?.paidOn||''))
+      ? String(req.body.paidOn)
+      : new Date().toISOString().slice(0,10);
+
+    await requireHouseholdMember(householdId,user.uid);
+    if(!validId(invoiceImportId)) return error(res,400,'INVALID_INVOICE_IMPORT');
+    if(!validId(accountId)) return error(res,400,'INVALID_ACCOUNT');
+
+    const household=adminDb.collection('households').doc(householdId);
+    const importRef=household.collection('invoiceImports').doc(invoiceImportId);
+    const accountRef=household.collection('accounts').doc(accountId);
+    const paymentKeyId=hash(`invoice_payment|${invoiceImportId}`);
+    const paymentKeyRef=household.collection('invoicePaymentKeys').doc(paymentKeyId);
+    const paymentRef=household.collection('transactions').doc();
+    const auditRef=household.collection('auditEvents').doc();
+
+    const result=await adminDb.runTransaction(async tx=>{
+      const [importSnap,accountSnap,keySnap]=await Promise.all([
+        tx.get(importRef),
+        tx.get(accountRef),
+        tx.get(paymentKeyRef)
+      ]);
+
+      if(!importSnap.exists) fail('INVOICE_IMPORT_NOT_FOUND',404);
+      if(!accountSnap.exists) fail('ACCOUNT_NOT_FOUND',404);
+
+      const invoice=importSnap.data()!;
+      const account=accountSnap.data()!;
+      if(account.status!=='active') fail('ACCOUNT_NOT_ACTIVE',409);
+      if(invoice.status!=='confirmed') fail('INVOICE_NOT_CONFIRMABLE',409);
+
+      const amountMinor=Number(invoice.confirmedAmountMinor||0);
+      if(!Number.isSafeInteger(amountMinor)||amountMinor<=0) fail('INVOICE_AMOUNT_INVALID',409);
+
+      if(invoice.paymentStatus==='paid'||keySnap.exists){
+        return {
+          status:'duplicate' as const,
+          transactionId:String(invoice.paymentTransactionId||keySnap.data()?.transactionId||''),
+          amountMinor
+        };
+      }
+
+      tx.create(paymentRef,{
+        description:`Pagamento da fatura ${String(invoice.invoiceKey||'')}`.trim(),
+        amountMinor,
+        currency:'BRL',
+        direction:'transfer',
+        transferKind:'liability_settlement',
+        source:'credit_card_invoice_payment',
+        fromAccountId:accountId,
+        cardId:String(invoice.cardId||''),
+        invoiceImportId,
+        invoiceKey:String(invoice.invoiceKey||''),
+        evidenceIds:invoice.evidenceId?[String(invoice.evidenceId)]:[],
+        createdBy:user.uid,
+        createdAt:FieldValue.serverTimestamp(),
+        observedOn:paidOn,
+        status:'confirmed',
+        recurring:false,
+        recurrence:null,
+        dueDay:null,
+        installment:null
+      });
+
+      tx.create(paymentKeyRef,{
+        transactionId:paymentRef.id,
+        invoiceImportId,
+        createdAt:FieldValue.serverTimestamp()
+      });
+
+      tx.update(importRef,{
+        paymentStatus:'paid',
+        paidAmountMinor:amountMinor,
+        paidOn,
+        paymentTransactionId:paymentRef.id,
+        paidFromAccountId:accountId,
+        paidBy:user.uid,
+        updatedAt:FieldValue.serverTimestamp()
+      });
+
+      tx.create(auditRef,{
+        type:'credit_card_invoice.paid',
+        actorUid:user.uid,
+        cardId:String(invoice.cardId||''),
+        invoiceImportId,
+        invoiceKey:String(invoice.invoiceKey||''),
+        accountId,
+        amountMinor,
+        paymentTransactionId:paymentRef.id,
+        createdAt:FieldValue.serverTimestamp()
+      });
+
+      return {status:'paid' as const,transactionId:paymentRef.id,amountMinor};
+    });
+
+    return res.status(result.status==='paid'?201:200).json({ok:true,...result,invoiceImportId,paidOn});
+  }catch(err:any){
+    const safe=[
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'INVALID_INVOICE_IMPORT','INVALID_ACCOUNT','INVOICE_IMPORT_NOT_FOUND',
+      'ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE','INVOICE_NOT_CONFIRMABLE','INVOICE_AMOUNT_INVALID'
+    ];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'INVOICE_PAYMENT_FAILED');
   }
 }

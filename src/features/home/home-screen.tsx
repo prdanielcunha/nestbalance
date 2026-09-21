@@ -2,12 +2,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { deriveHomeSnapshot } from '@/src/core/summary';
+import { deriveCashView } from '@/src/core/cash-view';
 import { projectHouseholdFuture } from '@/src/core/future-projection';
 import { UniversalCapture } from '@/src/features/capture/universal-capture';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { messages } from '@/src/i18n/messages';
-import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeRow } from '@/src/lib/repositories/home';
+import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
@@ -19,6 +20,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   const [accounts, setAccounts] = useState<HomeAccount[]>([]);
   const [cards, setCards] = useState<HomeCreditCard[]>([]);
   const [installmentPlans,setInstallmentPlans]=useState<HomeInstallmentPlan[]>([]);
+  const [invoiceImports,setInvoiceImports]=useState<HomeInvoiceImport[]>([]);
   const [loadingHome,setLoadingHome]=useState(true);
   const [homeError,setHomeError]=useState('');
   const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
@@ -34,6 +36,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
       setTransactions(data.transactions);
       setCommitments(data.commitments);
       setInstallmentPlans(data.installmentPlans||[]);
+      setInvoiceImports(data.invoiceImports||[]);
       setHomeError('');
     }catch{
       setHomeError('Não conseguimos atualizar sua visão financeira agora.');
@@ -51,16 +54,26 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
     return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
   }, [householdId, accountCreated, cardCreated]);
 
+  const cashView=useMemo(()=>deriveCashView({
+    transactions,
+    commitments,
+    invoices:invoiceImports
+  }),[transactions,commitments,invoiceImports]);
+
   const snapshot = useMemo(() => {
-    const paidExpenseMinor = transactions.filter(x=>x.direction==='expense').reduce((s,x)=>s+x.amountMinor,0);
-    const futureCommitmentsMinor = commitments.filter(x=>x.status!=='paid'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0);
     const availableMinor = accounts.reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
-    return deriveHomeSnapshot({availableMinor, incomeMinor:0, paidExpenseMinor, futureCommitmentsMinor, dueSoonMinor: futureCommitmentsMinor});
-  }, [transactions, commitments, accounts]);
+    return deriveHomeSnapshot({
+      availableMinor,
+      incomeMinor:0,
+      paidExpenseMinor:cashView.paidExpenseMinor,
+      futureCommitmentsMinor:cashView.futureCommitmentsMinor,
+      dueSoonMinor:cashView.futureCommitmentsMinor
+    });
+  }, [accounts, cashView]);
 
   const futureMonths=useMemo(()=>projectHouseholdFuture(commitments,installmentPlans,new Date(),3),[commitments,installmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
-  const hasData = transactions.length + commitments.length + installmentPlans.length > 0;
+  const hasData = transactions.length + commitments.length + installmentPlans.length + invoiceImports.length > 0;
 
   return <main className="app-shell">
     <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="topbar-actions"><Link className="text-link" href="/vault">Cofre</Link><div className="avatar-dot" aria-hidden="true" /></div></header>
@@ -89,6 +102,8 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
     <CreditCardManager
       householdId={householdId}
       cards={cards}
+      accounts={accounts}
+      invoiceImports={invoiceImports}
       onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
     />
 
@@ -113,7 +128,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
 
     <section className="timeline-section">
       <div className="section-title"><h2>Movimentos</h2><span>Timeline</span></div>
-      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
+      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?'No cartão':x.source==='credit_card_invoice_payment'?'Fatura paga':x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
     </section>
 
     <UniversalCapture householdId={householdId} uid={uid} onCommitted={()=>void refreshHome(true)} />

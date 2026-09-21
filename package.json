@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test:core": "rm -rf .core-dist && tsc -p tsconfig.core.json && node --test tests/evidence.test.mjs tests/finance-core.test.mjs tests/text-parser.test.mjs tests/document-signals.test.mjs tests/document-suggestion.test.mjs tests/future-projection.test.mjs tests/accounts.test.mjs tests/cards.test.mjs tests/invoices.test.mjs tests/ai-financial.test.mjs",
+    "test:core": "rm -rf .core-dist && tsc -p tsconfig.core.json && node --test tests/evidence.test.mjs tests/finance-core.test.mjs tests/text-parser.test.mjs tests/document-signals.test.mjs tests/document-suggestion.test.mjs tests/future-projection.test.mjs tests/cash-view.test.mjs tests/accounts.test.mjs tests/cards.test.mjs tests/invoices.test.mjs tests/ai-financial.test.mjs",
     "check": "npm run test:core && npm run test:document && npm run test:security:static",
     "test:security:static": "node scripts-verify.mjs",
     "build:cloudrun": "esbuild cloudrun.ts --bundle --platform=node --format=esm --packages=external --outfile=server-dist/server.mjs",

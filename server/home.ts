@@ -48,6 +48,22 @@ function installmentPlanDto(doc:any){
   };
 }
 
+function invoiceImportDto(doc:any){
+  const data=doc.data();
+  return {
+    id:doc.id,
+    cardId:String(data.cardId||''),
+    invoiceKey:String(data.invoiceKey||''),
+    dueOn:String(data.dueOn||''),
+    status:String(data.status||'partial'),
+    confirmedAmountMinor:Number.isSafeInteger(data.confirmedAmountMinor)?data.confirmedAmountMinor:0,
+    paymentStatus:String(data.paymentStatus||'unpaid'),
+    paidAmountMinor:Number.isSafeInteger(data.paidAmountMinor)?data.paidAmountMinor:0,
+    paidOn:typeof data.paidOn==='string'?data.paidOn:null,
+    paidFromAccountId:typeof data.paidFromAccountId==='string'?data.paidFromAccountId:null
+  };
+}
+
 function movementDto(doc:any){
   const data=doc.data();
   return {
@@ -56,6 +72,7 @@ function movementDto(doc:any){
     amountMinor:Number(data.amountMinor||0),
     currency:String(data.currency||'BRL'),
     direction:data.direction||'expense',
+    source:typeof data.source==='string'?data.source:null,
     status:data.status||'confirmed',
     observedOn:data.observedOn||null,
     recurring:Boolean(data.recurring),
@@ -64,7 +81,10 @@ function movementDto(doc:any){
     installment:data.installment&&Number.isInteger(data.installment.current)&&Number.isInteger(data.installment.total)
       ? {current:data.installment.current,total:data.installment.total}
       : null,
-    installmentPlanId:typeof data.installmentPlanId==='string'?data.installmentPlanId:null
+    installmentPlanId:typeof data.installmentPlanId==='string'?data.installmentPlanId:null,
+    cardId:typeof data.cardId==='string'?data.cardId:null,
+    invoiceKey:typeof data.invoiceKey==='string'?data.invoiceKey:null,
+    invoiceImportId:typeof data.invoiceImportId==='string'?data.invoiceImportId:null
   };
 }
 
@@ -76,12 +96,13 @@ export async function getHomeData(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid);
 
     const household=adminDb.collection('households').doc(householdId);
-    const [accounts,cards,transactions,commitments,installmentPlans]=await Promise.all([
+    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(100).get(),
-      household.collection('installmentPlans').where('status','==','active').limit(100).get()
+      household.collection('installmentPlans').where('status','==','active').limit(100).get(),
+      household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get()
     ]);
 
     return res.json({
@@ -91,6 +112,7 @@ export async function getHomeData(req:Request,res:Response){
       transactions:transactions.docs.map(movementDto),
       commitments:commitments.docs.map(movementDto),
       installmentPlans:installmentPlans.docs.map(installmentPlanDto),
+      invoiceImports:invoiceImports.docs.map(invoiceImportDto),
       refreshedAt:new Date().toISOString()
     });
   }catch(err:any){

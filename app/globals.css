@@ -178,3 +178,28 @@
   .invoice-item-list{max-height:46vh}
   .invoice-item-main{gap:12px}
 }
+
+
+.card-open-invoice{margin-top:16px;padding:13px 14px;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(255,255,255,.07);backdrop-filter:blur(10px)}
+.card-open-invoice span{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#bfc6d8}
+.card-open-invoice strong{display:block;margin-top:4px;font-size:20px;letter-spacing:-.03em}
+.card-open-invoice small{display:block;margin-top:3px;color:#aeb6ca;font-size:11px}
+.card-tile-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.card-tile-actions .invoice-import-button{margin-top:0}
+.invoice-pay-button{border:1px solid rgba(255,255,255,.24);background:#fff;color:#13192a;padding:10px 13px;border-radius:999px;font-size:12px;font-weight:850}
+.invoice-pay-button:disabled{opacity:.48;cursor:not-allowed}
+.payment-sheet{max-width:620px}
+.payment-invoice-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:18px}
+.payment-invoice-summary>div{padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface-strong)}
+.payment-invoice-summary span{display:block;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.payment-invoice-summary strong{display:block;margin-top:5px;font-size:14px}
+.payment-account-select{appearance:auto}
+.payment-semantic-note{margin-top:16px;padding:15px 16px;border-radius:18px;border:1px solid rgba(94,106,210,.18);background:rgba(94,106,210,.07)}
+.payment-semantic-note strong,.payment-semantic-note span{display:block}
+.payment-semantic-note strong{font-size:13px}
+.payment-semantic-note span{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.45}
+@media(max-width:720px){
+  .payment-invoice-summary{grid-template-columns:1fr}
+  .card-tile-actions{flex-direction:column}
+  .card-tile-actions button{width:100%}
+}
