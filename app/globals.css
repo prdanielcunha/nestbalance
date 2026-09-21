@@ -357,3 +357,9 @@
   .app-nav-add{background:#eef1f7;color:#0d1220}
   .assistant-starters button,.assistant-next-questions button{background:rgba(255,255,255,.04)}
 }
+
+
+.account-balance-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px}
+.account-balance-foot small{color:var(--muted);font-size:10px}
+.account-balance-foot button{border:0;background:transparent;color:var(--iris);font-size:10px;font-weight:850;padding:4px 0}
+.balance-update-sheet{max-width:560px}
