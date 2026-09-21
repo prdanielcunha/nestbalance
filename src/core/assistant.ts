@@ -123,6 +123,70 @@ export function answerAssistantQuestion(input:{
 }):AssistantAnswer{
   const intent=classifyAssistantIntent(input.question);
 
+  if(intent==='spending_simulation'){
+    const spendMinor=parseRequestedMoneyMinor(input.question);
+    if(!spendMinor){
+      return {
+        intent,
+        title:'Qual valor você quer simular?',
+        summary:'Escreva o valor na própria pergunta, por exemplo: “Dá para gastar R$ 500?”.',
+        answerMinor:null,
+        sources:[],
+        cards:[],
+        suggestions:['Dá para gastar R$ 500?','Quanto ainda falta pagar?','Quanto tenho disponível?']
+      };
+    }
+
+    const accountSources=input.accounts
+      .filter(account=>account.status!=='inactive')
+      .map(account=>({
+        kind:'account' as const,
+        id:account.id,
+        label:account.name,
+        amountMinor:Number(account.balanceMinor)||0,
+        detail:'Saldo atual conhecido'
+      }));
+    const commitmentSources=input.commitments
+      .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&positive(item.amountMinor)>0)
+      .map(item=>({
+        kind:'commitment' as const,
+        id:item.id,
+        label:item.description,
+        amountMinor:positive(item.amountMinor),
+        detail:'Compromisso aberto conhecido'
+      }));
+    const invoiceSources=input.invoices
+      .filter(item=>item.paymentStatus!=='paid'&&item.status!=='cancelled')
+      .map(item=>({
+        kind:'invoice' as const,
+        id:item.id,
+        label:`Fatura ${item.invoiceKey}`,
+        amountMinor:Math.max(0,positive(item.confirmedAmountMinor)-positive(item.paidAmountMinor)),
+        detail:item.status==='partial'?'Fatura ainda em revisão':'Fatura aberta confirmada'
+      }))
+      .filter(item=>item.amountMinor>0);
+
+    const availableMinor=accountSources.reduce((sum,item)=>sum+item.amountMinor,0);
+    const obligationsMinor=[...commitmentSources,...invoiceSources].reduce((sum,item)=>sum+item.amountMinor,0);
+    const afterSpendMinor=availableMinor-obligationsMinor-spendMinor;
+    const partialInvoices=input.invoices.filter(item=>item.status==='partial'&&item.paymentStatus!=='paid').length;
+
+    return {
+      intent,
+      title:`Simulação de ${formatMoneyMinor(spendMinor)}`,
+      summary:`Com os saldos e obrigações conhecidos agora, depois desse gasto a projeção ficaria em ${formatMoneyMinor(afterSpendMinor)}.${partialInvoices?` Há ${partialInvoices} fatura${partialInvoices===1?'':'s'} ainda em revisão, então esse valor pode mudar.`:''} Isso é uma simulação, não uma recomendação de gasto.`,
+      answerMinor:afterSpendMinor,
+      sources:[...accountSources,...commitmentSources,...invoiceSources].slice(0,40),
+      cards:[
+        {label:'Disponível agora',amountMinor:availableMinor,detail:`${accountSources.length} conta${accountSources.length===1?'':'s'} conhecida${accountSources.length===1?'':'s'}`},
+        {label:'Obrigações conhecidas',amountMinor:obligationsMinor,detail:`${commitmentSources.length+invoiceSources.length} item${commitmentSources.length+invoiceSources.length===1?'':'s'} aberto${commitmentSources.length+invoiceSources.length===1?'':'s'}`},
+        {label:'Gasto simulado',amountMinor:spendMinor,detail:'Valor informado por você'},
+        {label:'Restaria na projeção',amountMinor:afterSpendMinor,detail:afterSpendMinor>=0?'Após obrigações conhecidas e o gasto simulado':'Ficaria abaixo de zero com os dados conhecidos'}
+      ],
+      suggestions:['Quanto ainda falta pagar?','Quais parcelas terminam logo?','O que já está comprometido nos próximos meses?']
+    };
+  }
+
   if(intent==='remaining_to_pay'){
     const commitmentSources=input.commitments
       .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&positive(item.amountMinor)>0)
