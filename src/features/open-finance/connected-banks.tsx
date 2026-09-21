@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { OPEN_FINANCE_INSTITUTIONS, type OpenFinanceInstitutionKey } from '@/src/core/open-finance';
 import type { HomeAccount } from '@/src/lib/repositories/home';
 import {
+  disconnectOpenFinanceConnection,
   listOpenFinanceConnections,
   startOpenFinanceConnection,
   syncOpenFinanceConnection,
@@ -44,6 +45,8 @@ export function ConnectedBanks({
   const [cpf,setCpf]=useState('');
   const [working,setWorking]=useState(false);
   const [syncing,setSyncing]=useState('');
+  const [disconnectTarget,setDisconnectTarget]=useState<OpenFinanceConnection|null>(null);
+  const [disconnecting,setDisconnecting]=useState(false);
   const [error,setError]=useState('');
 
   async function refresh(){
@@ -75,6 +78,7 @@ export function ConnectedBanks({
   const connectedByKey=useMemo(()=>{
     const map=new Map<OpenFinanceInstitutionKey,OpenFinanceConnection>();
     for(const connection of connections){
+      if(connection.status==='disconnected') continue;
       if(!map.has(connection.institutionKey)) map.set(connection.institutionKey,connection);
     }
     return map;
@@ -110,6 +114,25 @@ export function ConnectedBanks({
     }
   }
 
+  async function disconnect(){
+    if(!disconnectTarget||disconnecting) return;
+    setDisconnecting(true);
+    setError('');
+    try{
+      await disconnectOpenFinanceConnection({
+        householdId,
+        connectionId:disconnectTarget.id
+      });
+      setDisconnectTarget(null);
+      await refresh();
+      onSynced?.();
+    }catch{
+      setError('Não conseguimos revogar essa conexão agora. O saldo conectado não foi removido.');
+    }finally{
+      setDisconnecting(false);
+    }
+  }
+
   async function sync(connection:OpenFinanceConnection){
     if(syncing) return;
     setSyncing(connection.id);
@@ -139,7 +162,7 @@ export function ConnectedBanks({
       </div>
       <div className="open-finance-security">
         <strong>Você controla</strong>
-        <span>conectar · atualizar · consentir</span>
+        <span>conectar · atualizar · revogar</span>
       </div>
     </article>
 
@@ -172,9 +195,14 @@ export function ConnectedBanks({
                       {investmentsMinor>0&&<div><small>Investimentos</small><strong>{money.format(investmentsMinor/100)}</strong></div>}
                       {autoInvestedMinor>0&&<div><small>Aplicado automaticamente</small><strong>{money.format(autoInvestedMinor/100)}</strong></div>}
                     </div>}
-                    <button type="button" disabled={syncing===connection.id} onClick={()=>void sync(connection)}>
-                      {syncing===connection.id?'Atualizando…':'Atualizar agora'}
-                    </button>
+                    <div className="connected-bank-actions">
+                      <button type="button" disabled={syncing===connection.id} onClick={()=>void sync(connection)}>
+                        {syncing===connection.id?'Atualizando…':'Atualizar agora'}
+                      </button>
+                      <button type="button" className="disconnect-bank-button" disabled={Boolean(syncing)} onClick={()=>setDisconnectTarget(connection)}>
+                        Desconectar
+                      </button>
+                    </div>
                   </div>
                 : <button
                     type="button"
@@ -188,7 +216,7 @@ export function ConnectedBanks({
           })}
         </div>}
 
-    {connections.filter(item=>!['mercado_pago','nubank','itau','santander'].includes(item.institutionKey)).map(connection=>
+    {connections.filter(item=>item.status!=='disconnected'&&!['mercado_pago','nubank','itau','santander'].includes(item.institutionKey)).map(connection=>
       <div className="other-bank-connection" key={connection.id}>
         <div><strong>{connection.institutionName}</strong><span>{statusText(connection)}</span></div>
         <button type="button" disabled={syncing===connection.id} onClick={()=>void sync(connection)}>Atualizar</button>
@@ -196,6 +224,26 @@ export function ConnectedBanks({
     )}
 
     {error&&!open&&<p className="error-copy" role="alert">{error}</p>}
+
+
+    {disconnectTarget&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!disconnecting&&setDisconnectTarget(null)}>
+      <section className="capture-sheet bank-disconnect-sheet" role="dialog" aria-modal="true" aria-label="Desconectar instituição">
+        <div className="sheet-handle"/>
+        <div className="eyebrow">Sua autorização</div>
+        <h2>Desconectar {disconnectTarget.institutionName}?</h2>
+        <p>O NestBalance vai parar de atualizar essa instituição e remover suas contas conectadas do saldo atual. Seu histórico já importado continua no Lar para não apagar sua vida financeira.</p>
+        <div className="bank-revoke-note">
+          <strong>O consentimento também será revogado.</strong>
+          <span>A conexão do provedor é excluída junto com os dados mantidos por ele para esse vínculo.</span>
+        </div>
+        <div className="sheet-actions">
+          <button className="ghost-button" disabled={disconnecting} onClick={()=>setDisconnectTarget(null)}>Manter conectado</button>
+          <button className="danger-button" disabled={disconnecting} onClick={()=>void disconnect()}>
+            {disconnecting?'Desconectando…':'Desconectar e revogar'}
+          </button>
+        </div>
+      </section>
+    </div>}
 
     {open&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!working&&setOpen(null)}>
       <section className="capture-sheet bank-connect-sheet" role="dialog" aria-modal="true" aria-label="Conectar conta bancária">
