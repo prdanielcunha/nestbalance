@@ -190,6 +190,16 @@ export function parseCreditCardStatement(text:string,statementDueOn:string):Cred
     });
   }
 
+  return buildCreditCardStatementPreview(items,statementDueOn,ignoredLineCount);
+}
+
+export function buildCreditCardStatementPreview(
+  items:CreditCardStatementItem[],
+  statementDueOn:string,
+  ignoredLineCount=0
+):CreditCardStatementPreview{
+  if(!validIso(statementDueOn)) throw new Error('INVALID_STATEMENT_DUE_ON');
+
   const monthMap=new Map<string,StatementProjectionMonth>();
   for(const item of items){
     const remaining=item.installment?item.installment.total-item.installment.current+1:1;
