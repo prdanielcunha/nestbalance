@@ -28,3 +28,6 @@ assert.match(evidenceAnalysis, /extractions/);
 assert.match(pdfText, /PDF_TEXT_MAX_INPUT_BYTES = 4 \* 1024 \* 1024/);
 assert.match(pdfText, /PDF_TEXT_MAX_PAGES = 40/);
 assert.ok(!evidenceAnalysis.includes('@google/genai') && !pdfText.includes('@google/genai'));
+
+assert.match(evidenceAnalysis, /Cache-Control','private, no-store/);
+assert.match(evidenceAnalysis, /runTransaction/);
