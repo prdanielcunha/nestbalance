@@ -3,16 +3,27 @@ import { useEffect, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
 import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
+import {
+  aiAmountChoices,
+  aiDirectionNeedsConfirmation,
+  sourceTextFromAiExtraction,
+  type AiFinancialDirection,
+  type AiFinancialExtraction
+} from '@/src/core/ai-financial';
 import { commitInterpretation } from '@/src/lib/repositories/finance';
 import {
+  analyzeEvidenceAi,
   analyzeEvidenceText,
   ingestEvidence,
+  type AiEvidenceAnalysis,
   type EvidenceTextAnalysis,
   type UploadProgress
 } from '@/src/lib/repositories/evidence';
 import { messages } from '@/src/i18n/messages';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
+type PendingAi={extraction:AiFinancialExtraction;amountMinor:number|null};
 
 function markDocumentDerived(items: FinancialInterpretation[]) {
   return items.map(item => ({
@@ -30,7 +41,10 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
   const [file, setFile] = useState<File | null>(null);
   const [preparedEvidenceId, setPreparedEvidenceId] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<EvidenceTextAnalysis | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<AiEvidenceAnalysis | null>(null);
+  const [pendingAi, setPendingAi] = useState<PendingAi | null>(null);
   const [amountChoices, setAmountChoices] = useState<number[]>([]);
+  const [directionChoice, setDirectionChoice] = useState(false);
   const [interpretations, setInterpretations] = useState<FinancialInterpretation[]>([]);
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -53,7 +67,10 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
     setFile(null);
     setPreparedEvidenceId(null);
     setAnalysis(null);
+    setAiAnalysis(null);
+    setPendingAi(null);
     setAmountChoices([]);
+    setDirectionChoice(false);
     setInterpretations([]);
     setUpload(null);
     setError('');
@@ -70,12 +87,49 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
     setText(sourceText);
     setInterpretations(documentDerived ? markDocumentDerived(parsed) : parsed);
     setAmountChoices([]);
+    setDirectionChoice(false);
+    setPendingAi(null);
+  }
+
+  function prepareAiReview(extraction:AiFinancialExtraction,amountOverride?:number,directionOverride?:ConfirmedDirection){
+    const candidates=aiAmountChoices(extraction);
+    const trustedPrimary=extraction.amountMinor && extraction.amountConfidence>=0.82 ? extraction.amountMinor : null;
+    const amountMinor=amountOverride ?? trustedPrimary ?? (candidates.length===1?candidates[0]:null);
+
+    if(!amountMinor){
+      setPendingAi({extraction,amountMinor:null});
+      setAmountChoices(candidates);
+      setDirectionChoice(false);
+      setNotice(candidates.length?'Encontrei mais de um valor possível. Qual representa esta movimentação?':'Li a imagem, mas não encontrei um valor confiável. Você pode escrever o que aconteceu acima.');
+      return;
+    }
+
+    const modelDirection=!aiDirectionNeedsConfirmation(extraction)&&extraction.direction!=='unknown'
+      ? extraction.direction
+      : null;
+    const direction=directionOverride ?? modelDirection;
+    if(!direction){
+      setPendingAi({extraction,amountMinor});
+      setAmountChoices([]);
+      setDirectionChoice(true);
+      setNotice('Encontrei o valor. Só preciso saber como esse dinheiro se moveu.');
+      return;
+    }
+
+    const sourceText=sourceTextFromAiExtraction(extraction,{amountMinor,direction});
+    if(!sourceText){
+      setError('Consegui ler a imagem, mas ainda preciso que você descreva esse movimento.');
+      return;
+    }
+    applySourceText(sourceText,true);
+    setNotice('Li a imagem com inteligência visual. Confira antes de guardar.');
   }
 
   async function interpret() {
     setError('');
     setNotice('');
     setAmountChoices([]);
+    setDirectionChoice(false);
 
     if (text.trim()) {
       try { applySourceText(text); }
@@ -103,12 +157,40 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
       setUpload(null);
 
       if (result.state === 'needs_ai') {
-        setNotice(
-          result.reason === 'audio_input'
-            ? 'Comprovante guardado. Este áudio precisa de transcrição para eu entender o conteúdo; ainda não criei nenhum lançamento.'
-            : 'Comprovante guardado. Esta imagem precisa de leitura visual para eu entender o conteúdo; ainda não criei nenhum lançamento.'
-        );
-        return;
+        try{
+          const ai=await analyzeEvidenceAi(householdId,evidenceId);
+          setAiAnalysis(ai);
+          if(ai.kind==='audio'){
+            const transcript=ai.transcript?.trim()||'';
+            if(!transcript||!ai.parsedInterpretations?.length){
+              setNotice('Áudio transcrito, mas não encontrei uma movimentação clara. Você pode ajustar o texto acima.');
+              if(transcript) setText(transcript);
+              return;
+            }
+            setText(transcript);
+            setInterpretations(markDocumentDerived(ai.parsedInterpretations));
+            setNotice(ai.transcriptTruncated?'Transcrevi o áudio parcialmente. Confira antes de guardar.':'Transcrevi o áudio. Confira antes de guardar.');
+            return;
+          }
+          if(ai.extraction){
+            prepareAiReview(ai.extraction);
+            return;
+          }
+          setNotice('O original está guardado, mas não consegui extrair dados financeiros suficientes.');
+          return;
+        }catch(err:any){
+          if(err?.message==='AI_NOT_CONFIGURED'){
+            setNotice(result.reason==='audio_input'
+              ? 'Áudio guardado. A transcrição inteligente ainda não está conectada neste ambiente.'
+              : 'Imagem guardada. A leitura inteligente ainda não está conectada neste ambiente.');
+            return;
+          }
+          if(err?.message==='AI_ANALYSIS_IN_PROGRESS'){
+            setNotice('Este arquivo já está sendo analisado. Toque em Entender novamente para buscar o resultado.');
+            return;
+          }
+          throw err;
+        }
       }
 
       if (result.state !== 'extracted') {
@@ -138,6 +220,10 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
   }
 
   function chooseAmount(amountMinor: number) {
+    if(pendingAi){
+      prepareAiReview(pendingAi.extraction,amountMinor);
+      return;
+    }
     if (!file || !analysis || analysis.state !== 'extracted') return;
     try {
       applySourceText(sourceTextForChosenDocumentAmount(file.name, amountMinor, analysis.signals), true);
@@ -145,6 +231,11 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
     } catch {
       setError('Não consegui preparar essa revisão.');
     }
+  }
+
+  function chooseDirection(direction:ConfirmedDirection){
+    if(!pendingAi?.amountMinor) return;
+    prepareAiReview(pendingAi.extraction,pendingAi.amountMinor,direction);
   }
 
   async function confirm() {
@@ -185,7 +276,13 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
 
   const reviewCount = interpretations.filter(x => x.confidence !== 'high').length;
   const organizedLabel = interpretations.length === 1
-    ? (interpretations[0].kind === 'commitment' ? 'Conta a pagar' : interpretations[0].direction === 'income' ? 'Entrada' : 'Saída')
+    ? (interpretations[0].kind === 'commitment'
+        ? 'Conta a pagar'
+        : interpretations[0].direction === 'income'
+          ? 'Entrada'
+          : interpretations[0].direction === 'transfer'
+            ? 'Transferência'
+            : 'Saída')
     : `${interpretations.length} itens financeiros`;
 
   return <>
@@ -217,7 +314,10 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
                 setFile(e.target.files?.[0] ?? null);
                 setPreparedEvidenceId(null);
                 setAnalysis(null);
+                setAiAnalysis(null);
+                setPendingAi(null);
                 setAmountChoices([]);
+                setDirectionChoice(false);
                 setNotice('');
                 setError('');
               }}
@@ -230,7 +330,7 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
             <progress max="100" value={upload.percent}>{upload.percent}%</progress>
           </div>}
 
-          {analyzing && !upload && <p className="confidence-note" role="status">Entendendo o documento…</p>}
+          {analyzing && !upload && <p className="confidence-note" role="status">{analysis?.state==='needs_ai'?'Fazendo a leitura inteligente…':'Entendendo o documento…'}</p>}
 
           {amountChoices.length > 0 && <div className="amount-choice-panel">
             <span>Qual valor devo usar?</span>
@@ -238,7 +338,18 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
             <small>Nenhum valor é escolhido automaticamente quando o documento é ambíguo.</small>
           </div>}
 
-          {analysis?.state === 'extracted' && <p className="native-analysis-note">Texto lido diretamente do documento · sem IA</p>}
+          {directionChoice && <div className="direction-choice-panel">
+            <span>O que aconteceu com esse dinheiro?</span>
+            <div>
+              <button type="button" onClick={()=>chooseDirection('expense')}>Saiu</button>
+              <button type="button" onClick={()=>chooseDirection('income')}>Entrou</button>
+              <button type="button" onClick={()=>chooseDirection('transfer')}>Entre minhas contas</button>
+            </div>
+            <small>Transferências entre suas contas não entram como gasto nem como renda.</small>
+          </div>}
+
+          {analysis?.state === 'extracted' && !aiAnalysis && <p className="native-analysis-note">Texto lido diretamente do documento · sem IA</p>}
+          {aiAnalysis && <p className="native-analysis-note">{aiAnalysis.kind==='audio'?'Áudio transcrito com IA':'Imagem lida com IA'} · confirmação humana antes de guardar</p>}
           {notice && <p className="notice-copy" role="status">{notice}</p>}
           {error && <p className="error-copy" role="alert">{error}</p>}
 
@@ -262,7 +373,7 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
             <div>
               <span>ENTENDEMOS</span>
               <strong>{interpretations.length === 1 ? `${interpretations[0].description} · ${money.format(interpretations[0].money.amountMinor / 100)}` : `${interpretations.length} itens encontrados`}</strong>
-              <small>{analysis?.state === 'extracted' ? 'Leitura nativa do documento; sem IA.' : reviewCount ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.` : 'Os dados principais estão claros.'}</small>
+              <small>{aiAnalysis ? 'Interpretação por IA; confirme antes de guardar.' : analysis?.state === 'extracted' ? 'Leitura nativa do documento; sem IA.' : reviewCount ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.` : 'Os dados principais estão claros.'}</small>
             </div>
             <div>
               <span>ORGANIZAMOS COMO</span>
@@ -273,7 +384,9 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
 
           <div className="review-list">{interpretations.map((interpretation, index) => <div className="interpretation-card" key={`${interpretation.description}-${index}`}>
             <div><strong>{interpretation.description}</strong><b>{money.format(interpretation.money.amountMinor / 100)}</b></div>
-            <span>{interpretation.kind === 'commitment' ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta a pagar') : 'Movimento'}</span>
+            <span>{interpretation.kind === 'commitment'
+              ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta a pagar')
+              : interpretation.direction==='transfer'?'Transferência':'Movimento'}</span>
             {interpretation.installment && <span>Parcela {interpretation.installment.current} de {interpretation.installment.total}</span>}
             {interpretation.confidence !== 'high' && <em>Confira este item</em>}
           </div>)}</div>
