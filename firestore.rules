@@ -8,56 +8,57 @@ service cloud.firestore {
     function canAdmin(hid) { return isMember(hid) && role(hid) in ['owner','admin']; }
 
     match /users/{uid}/householdRefs/{hid} {
-      allow read, create, update, delete: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+                    && getAfter(/databases/$(database)/documents/households/$(hid)/members/$(uid)).data.userId == uid;
+      allow update, delete: if signedIn() && request.auth.uid == uid;
     }
 
     match /households/{hid} {
       allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
       allow read: if isMember(hid);
       allow update: if canAdmin(hid) && request.resource.data.ownerUid == resource.data.ownerUid;
-      allow delete: if isMember(hid) && role(hid) == 'owner';
+      allow delete: if signedIn() && request.auth.uid == resource.data.ownerUid;
 
       match /members/{uid} {
         allow read: if isMember(hid);
         allow create: if signedIn() && (
-          canAdmin(hid) ||
-          (uid == request.auth.uid && getAfter(/databases/$(database)/documents/households/$(hid)).data.ownerUid == request.auth.uid && request.resource.data.role == 'owner')
+          (canAdmin(hid) && request.resource.data.role in ['admin','member','viewer'] && request.resource.data.userId == uid) ||
+          (uid == request.auth.uid && getAfter(/databases/$(database)/documents/households/$(hid)).data.ownerUid == request.auth.uid && request.resource.data.role == 'owner' && request.resource.data.userId == uid)
         );
-        allow update, delete: if canAdmin(hid) && uid != get(/databases/$(database)/documents/households/$(hid)).data.ownerUid;
+        allow update: if canAdmin(hid)
+                      && uid != get(/databases/$(database)/documents/households/$(hid)).data.ownerUid
+                      && request.resource.data.userId == resource.data.userId
+                      && request.resource.data.role in ['admin','member','viewer'];
+        allow delete: if canAdmin(hid) && uid != get(/databases/$(database)/documents/households/$(hid)).data.ownerUid;
       }
 
       match /accounts/{id} {
         allow read: if isMember(hid);
-        allow create: if isMember(hid) && request.resource.data.createdBy == request.auth.uid;
-        allow update: if isMember(hid);
-        allow delete: if canAdmin(hid);
+        allow create, update, delete: if false;
       }
       match /transactions/{id} {
         allow read: if isMember(hid);
-        allow create: if isMember(hid) && request.resource.data.createdBy == request.auth.uid;
-        allow update: if isMember(hid);
-        allow delete: if canAdmin(hid);
+        allow create, update, delete: if false;
       }
       match /commitments/{id} {
         allow read: if isMember(hid);
-        allow create: if isMember(hid) && request.resource.data.createdBy == request.auth.uid;
-        allow update: if isMember(hid);
-        allow delete: if canAdmin(hid);
+        allow create, update, delete: if false;
       }
       match /evidenceAssets/{id} {
         allow read: if isMember(hid);
-        allow create: if isMember(hid) && request.resource.data.uploadedBy == request.auth.uid && request.resource.data.immutable == true;
-        allow update, delete: if false;
+        allow create, update, delete: if false;
         match /extractions/{extractionId} {
           allow read: if isMember(hid);
-          allow create: if isMember(hid);
-          allow update, delete: if false;
+          allow create, update, delete: if false;
         }
+      }
+      match /evidenceHashes/{id} {
+        allow read, write: if false;
       }
       match /auditEvents/{id} {
         allow read: if canAdmin(hid);
-        allow create: if isMember(hid) && request.resource.data.actorUid == request.auth.uid;
-        allow update, delete: if false;
+        allow create, update, delete: if false;
       }
     }
   }
