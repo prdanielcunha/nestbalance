@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import { auth, firebaseConfigured } from '@/src/lib/firebase/client';
-import { ensurePrimaryHousehold } from '@/src/lib/repositories/households';
+import { bootstrapSession } from '@/src/lib/repositories/session';
 import { messages } from '@/src/i18n/messages';
 
 export function AuthGate({ children }: { children: (ctx: { user: User; householdId: string }) => React.ReactNode }) {
@@ -14,7 +14,7 @@ export function AuthGate({ children }: { children: (ctx: { user: User; household
     if (!auth) { setLoading(false); return; }
     return onAuthStateChanged(auth, async user => {
       if (!user) { setState(null); setLoading(false); return; }
-      try { setState({ user, householdId: await ensurePrimaryHousehold(user.uid, user.displayName) }); }
+      try { setState({ user, householdId: (await bootstrapSession()).householdId }); }
       finally { setLoading(false); }
     });
   }, []);
