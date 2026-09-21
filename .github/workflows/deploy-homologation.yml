@@ -28,6 +28,8 @@ jobs:
       GCP_PROJECT_ID: millionsnest
       GCP_PROJECT_NUMBER: "555464791734"
       GCP_REGION: us-central1
+      GCP_ARTIFACT_REGISTRY: millionsnest-web
+      NESTBALANCE_API_IMAGE: us-central1-docker.pkg.dev/millionsnest/millionsnest-web/nestbalance-api:${{ github.sha }}
       GCP_WIF_PROVIDER: projects/555464791734/locations/global/workloadIdentityPools/mn-prod-github/providers/github
       GCP_DEPLOY_SERVICE_ACCOUNT: mn-web-deployer@millionsnest.iam.gserviceaccount.com
       NESTBALANCE_RUNTIME_SERVICE_ACCOUNT: nestbalance-runtime@millionsnest.iam.gserviceaccount.com
@@ -78,6 +80,35 @@ jobs:
       - name: Runtime IAM boundary
         run: echo "NestBalance runtime identity and IAM are centrally bootstrapped by MillionsNest infrastructure."
 
+      - name: Configure Docker authentication
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build NestBalance API image
+        run: docker build -t "$NESTBALANCE_API_IMAGE" .
+
+      - name: Local API container smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name nestbalance-api-smoke \
+            -e PORT=8080 \
+            -e FIREBASE_PROJECT_ID="$GCP_PROJECT_ID" \
+            -e FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET" \
+            -p 18083:8080 "$NESTBALANCE_API_IMAGE"
+          trap 'docker stop nestbalance-api-smoke >/dev/null 2>&1 || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:18083/healthz | grep -q '"ok":true'; then
+              echo "NESTBALANCE_CONTAINER_SMOKE_OK"
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs nestbalance-api-smoke
+          exit 1
+
+      - name: Push NestBalance API image
+        run: docker push "$NESTBALANCE_API_IMAGE"
+
       - name: Deploy NestBalance API
         shell: bash
         run: |
@@ -88,11 +119,12 @@ jobs:
           fi
 
           gcloud run deploy nestbalance-api \
-            --source . \
+            --image "$NESTBALANCE_API_IMAGE" \
             --project "$GCP_PROJECT_ID" \
             --region "$GCP_REGION" \
             --service-account "$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT" \
             --allow-unauthenticated \
+            --port 8080 \
             --memory 512Mi \
             --cpu 1 \
             --concurrency 8 \
