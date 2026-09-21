@@ -2,6 +2,7 @@ import express from 'express';
 import { commitCapture } from './server/capture.js';
 import { finalizeEvidence, startEvidence } from './server/evidence.js';
 import { analyzeEvidenceText } from './server/evidence-analysis.js';
+import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence } from './server/vault.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -10,6 +11,9 @@ app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'nestbalance-ap
 app.post('/api/evidence/start', startEvidence);
 app.post('/api/evidence/finalize', finalizeEvidence);
 app.post('/api/evidence/analyze-text', analyzeEvidenceText);
+app.post('/api/vault/list', listVaultEvidence);
+app.post('/api/vault/detail', getVaultEvidenceDetail);
+app.post('/api/vault/preview', previewVaultEvidence);
 app.post('/api/capture/commit', commitCapture);
 app.use((_req, res) => res.status(404).json({ ok: false, error: 'NOT_FOUND' }));
 

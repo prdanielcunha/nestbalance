@@ -31,3 +31,9 @@ assert.ok(!evidenceAnalysis.includes('@google/genai') && !pdfText.includes('@goo
 
 assert.match(evidenceAnalysis, /Cache-Control','private, no-store/);
 assert.match(evidenceAnalysis, /runTransaction/);
+
+const vaultSource = readFileSync(new URL('./server/vault.ts', import.meta.url),'utf8');
+assert.match(firestore, /match \/evidenceAssets\/\{id\}[\s\S]*allow read, create, update, delete: if false/);
+assert.match(storage, /match \/nestbalance\/households\/\{hid\}\/evidence\/\{evidenceId\}\/original[\s\S]*allow read: if false/);
+assert.match(vaultSource, /verifyVaultPreviewBytes/);
+assert.match(vaultSource, /Cache-Control','private, no-store/);

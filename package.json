@@ -17,7 +17,7 @@
     "start:cloudrun": "node server-dist/server.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-nestbalance-rules \"node --test tests/firestore-rules.test.mjs\"",
     "check:ci": "npm run check && npm run test:rules && npm run typecheck && npm run build && npm run build:cloudrun",
-    "test:document": "tsx --test tests/pdf-text.test.ts"
+    "test:document": "tsx --test tests/pdf-text.test.ts tests/vault-verifier.test.ts"
   },
   "dependencies": {
     "firebase": "12.19.0",
