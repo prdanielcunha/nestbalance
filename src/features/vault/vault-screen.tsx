@@ -22,7 +22,8 @@ function typeLabel(mime:string) {
 }
 
 function understandingLabel(state:string) {
-  if(state==='extracted') return 'Texto entendido';
+  if(state==='ai_extracted') return 'Entendido com IA';
+  if(state==='extracted') return 'Conteúdo entendido';
   if(state==='needs_ai') return 'Aguardando leitura inteligente';
   if(state==='unavailable') return 'Precisa de revisão';
   return 'Guardado';
@@ -74,7 +75,9 @@ export function VaultScreen({householdId}:{householdId:string}) {
     const values=signals.filter(x=>x.kind==='money'&&typeof x.amountMinor==='number');
     const dates=signals.filter(x=>x.kind==='date');
     const installments=signals.filter(x=>x.kind==='installment');
-    return {values,dates,installments};
+    const ai=detail?.understood?.extraction||null;
+    const aiAmount=ai?.amountMinor&&ai.amountMinor>0?ai.amountMinor:null;
+    return {values,dates,installments,ai,aiAmount,transcript:detail?.understood?.transcriptPreview||null};
   },[detail]);
 
   return <main className="app-shell vault-shell">
@@ -115,11 +118,13 @@ export function VaultScreen({householdId}:{householdId:string}) {
           <div className="evidence-stack">
             <div><span>ORIGINAL</span><strong>Preservado</strong><small>O arquivo que você enviou permanece separado da interpretação.</small></div>
             <div><span>ENTENDEMOS</span><strong>{understandingLabel(detail.understood?.state||selected.extractionState)}</strong><small>{detail.understood?.aiUsed ? 'Houve análise por IA.' : detail.understood ? 'Análise determinística; sem IA.' : 'Ainda não analisado.'}</small></div>
-            <div><span>ENCONTRAMOS</span><strong>{summary.values.length+summary.dates.length+summary.installments.length} sinais</strong><small>São candidatos; não substituem sua confirmação.</small></div>
+            <div><span>ENCONTRAMOS</span><strong>{summary.ai?.description || (summary.values.length+summary.dates.length+summary.installments.length ? `${summary.values.length+summary.dates.length+summary.installments.length} sinais` : 'Nenhum dado confirmado')}</strong><small>São candidatos; não substituem sua confirmação.</small></div>
           </div>
 
-          {summary.values.length>0 && <div className="vault-signal-block"><span>Valores encontrados</span><div>{summary.values.slice(0,6).map((x,i)=><b key={`${x.start}-${i}`}>{money.format((x.amountMinor||0)/100)}</b>)}</div></div>}
+          {summary.aiAmount && <div className="vault-signal-block"><span>Valor principal entendido</span><div><b>{money.format(summary.aiAmount/100)}</b></div></div>}
+          {!summary.aiAmount && summary.values.length>0 && <div className="vault-signal-block"><span>Valores encontrados</span><div>{summary.values.slice(0,6).map((x,i)=><b key={`${x.start}-${i}`}>{money.format((x.amountMinor||0)/100)}</b>)}</div></div>}
           {summary.installments.length>0 && <div className="vault-signal-block"><span>Parcelas possíveis</span><div>{summary.installments.slice(0,6).map((x,i)=><b key={`${x.start}-${i}`}>{x.normalized}</b>)}</div></div>}
+          {summary.transcript && <div className="vault-transcript"><span>Transcrição</span><p>{summary.transcript}</p></div>}
 
           {!previewUrl ? <button className="primary-button vault-preview-button" disabled={previewLoading} onClick={preview}>{previewLoading?'Conferindo original…':'Ver original'}</button>
           : <div className="vault-preview">

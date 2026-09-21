@@ -3,8 +3,6 @@ import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
 
-const EXTRACTION_VERSION='native-text-v1';
-
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
 }
@@ -80,7 +78,8 @@ export async function getVaultEvidenceDetail(req:Request,res:Response){
     const resolved=await resolveAcceptedEvidence(householdId,requestedId);
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
 
-    const extraction=await resolved.ref.collection('extractions').doc(EXTRACTION_VERSION).get();
+    const extractionVersion=String(resolved.data.lastExtractionVersion||'native-text-v1');
+    const extraction=await resolved.ref.collection('extractions').doc(extractionVersion).get();
     const extractionData=extraction.exists?extraction.data():null;
     return res.json({
       ok:true,
@@ -92,7 +91,12 @@ export async function getVaultEvidenceDetail(req:Request,res:Response){
         truncated:Boolean(extractionData.truncated),
         aiUsed:Boolean(extractionData.aiUsed),
         ocrUsed:Boolean(extractionData.ocrUsed),
-        signals:extractionData.signals||null
+        signals:extractionData.signals||null,
+        extraction:extractionData.extraction||null,
+        transcriptPreview:typeof extractionData.transcript==='string'?extractionData.transcript.slice(0,1200):null,
+        analysisVersion:extractionData.analysisVersion||extractionData.extractionVersion||extractionVersion,
+        visionUsed:Boolean(extractionData.visionUsed),
+        sttUsed:Boolean(extractionData.sttUsed)
       }:null
     });
   }catch(err:any){

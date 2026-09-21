@@ -16,7 +16,7 @@ type Row = {
   id:string;
   description:string;
   amountMinor:number;
-  direction?:'expense'|'income';
+  direction?:'expense'|'income'|'transfer';
   status?:string;
   dueDay?:number|null;
   recurring?:boolean;
@@ -42,7 +42,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   }, [householdId, accountCreated]);
 
   const snapshot = useMemo(() => {
-    const paidExpenseMinor = transactions.filter(x=>x.direction!=='income').reduce((s,x)=>s+x.amountMinor,0);
+    const paidExpenseMinor = transactions.filter(x=>x.direction==='expense').reduce((s,x)=>s+x.amountMinor,0);
     const futureCommitmentsMinor = commitments.filter(x=>x.status!=='paid'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0);
     const availableMinor = accounts.reduce((sum, account) => sum + Number((account as Row & {balanceMinor?:number}).balanceMinor ?? account.amountMinor ?? 0), 0);
     return deriveHomeSnapshot({availableMinor, incomeMinor:0, paidExpenseMinor, futureCommitmentsMinor, dueSoonMinor: futureCommitmentsMinor});
@@ -95,7 +95,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
 
     <section className="timeline-section">
       <div className="section-title"><h2>Movimentos</h2><span>Timeline</span></div>
-      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.direction==='income'?'Entrou':'Saiu'}</span></div><b>{x.direction==='income'?'+':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
+      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
     </section>
 
     <UniversalCapture householdId={householdId} uid={uid} />

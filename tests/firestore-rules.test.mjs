@@ -132,3 +132,19 @@ test('client cannot read or write account dedup keys', async () => {
   await assertFails(getDoc(doc(db, 'households', 'house_account_keys', 'accountKeys', 'k1')));
   await assertFails(setDoc(doc(db, 'households', 'house_account_keys', 'accountKeys', 'k1'), { accountId: 'a1' }));
 });
+
+test('client cannot read or write AI analysis locks', async () => {
+  await seedHousehold('house_ai_locks', 'owner_a');
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'households', 'house_ai_locks', 'evidenceAssets', 'e1'), {
+      status: 'accepted', immutable: true
+    });
+    await setDoc(doc(context.firestore(), 'households', 'house_ai_locks', 'evidenceAssets', 'e1', 'analysisLocks', 'vision-v1'), {
+      requestId: 'server-only', expiresAtMs: Date.now()+10000
+    });
+  });
+  const db = env.authenticatedContext('owner_a').firestore();
+  const lock = doc(db, 'households', 'house_ai_locks', 'evidenceAssets', 'e1', 'analysisLocks', 'vision-v1');
+  await assertFails(getDoc(lock));
+  await assertFails(setDoc(lock, { requestId: 'client' }));
+});

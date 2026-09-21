@@ -8,3 +8,4 @@ export * from "./document-signals.js";
 export * from "./document-suggestion.js";
 export * from "./future-projection.js";
 export * from "./accounts.js";
+export * from "./ai-financial.js";
