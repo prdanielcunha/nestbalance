@@ -63,6 +63,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [paymentMatchDismissed,setPaymentMatchDismissed]=useState(false);
   const [payingMatchId,setPayingMatchId]=useState('');
   const [screenSnapshot,setScreenSnapshot]=useState<AiFinancialScreenSnapshot|null>(null);
+  const [visibility,setVisibility]=useState<'household'|'personal'>('household');
   const imageInputRef=useRef<HTMLInputElement|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const textRef=useRef<HTMLTextAreaElement|null>(null);
@@ -110,6 +111,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setPaymentMatchDismissed(false);
     setPayingMatchId('');
     setScreenSnapshot(null);
+    setVisibility('household');
     setOpen(false);
     onClose?.();
     setText('');
@@ -290,7 +292,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     try {
       let evidenceId = preparedEvidenceId;
       if (!evidenceId) {
-        const evidence = await ingestEvidence(householdId, activeFile, progress => setUpload(progress));
+        const evidence = await ingestEvidence(householdId, activeFile, progress => setUpload(progress), visibility);
         evidenceId = evidence.canonicalEvidenceId;
         setPreparedEvidenceId(evidenceId);
       }
@@ -453,7 +455,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     try {
       let created = 0;
       if(screenSnapshot&&preparedEvidenceId){
-        await commitFinancialScreen({householdId,evidenceId:preparedEvidenceId});
+        await commitFinancialScreen({householdId,evidenceId:preparedEvidenceId,visibility});
         created++;
       }
       let duplicates = 0;
@@ -464,7 +466,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           interpretation: interpretations[i],
           evidenceId: i === 0 ? preparedEvidenceId : null,
           file: i === 0 && !preparedEvidenceId ? file : null,
-          onUploadProgress: progress => setUpload(progress)
+          onUploadProgress: progress => setUpload(progress),
+          visibility
         });
         if (result.status === 'duplicate') duplicates++;
         else created++;
@@ -520,6 +523,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           <div className="eyebrow">Jogue aqui. A gente organiza.</div>
           <h2>O que aconteceu?</h2>
           <p>Escreva, fale, mande um print ou um arquivo. Você não precisa decidir antes se foi dinheiro que entrou, saiu ou uma conta para pagar.</p>
+
+          <div className="privacy-choice" aria-label="Quem pode ver">
+            <button type="button" className={visibility==='household'?'active':''} disabled={working||Boolean(preparedEvidenceId)} onClick={()=>setVisibility('household')}>
+              <strong>Lar</strong><span>Compartilhado com quem tem acesso</span>
+            </button>
+            <button type="button" className={visibility==='personal'?'active':''} disabled={working||Boolean(preparedEvidenceId)} onClick={()=>setVisibility('personal')}>
+              <strong>Só eu</strong><span>Não aparece para outras pessoas do Lar</span>
+            </button>
+          </div>
 
           <div className="capture-quick-actions" aria-label="Como você quer contar">
             <button type="button" disabled={working} onClick={()=>textRef.current?.focus()}>
@@ -640,7 +652,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <div>
               <span>VAI FICAR ASSIM</span>
               <strong>{organizedLabel}</strong>
-              <small>{file ? 'Documento e registro ficarão ligados entre si.' : 'Você poderá corrigir isso depois sem perder o original.'}</small>
+              <small>{visibility==='personal'?'Só você verá este registro e a evidência ligada a ele.':file ? 'Documento e registro ficarão ligados entre si.' : 'Você poderá corrigir isso depois sem perder o original.'}</small>
             </div>
           </div>
 
