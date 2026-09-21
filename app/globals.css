@@ -203,3 +203,16 @@
   .card-tile-actions{flex-direction:column}
   .card-tile-actions button{width:100%}
 }
+
+
+.invoice-reconciliation{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;padding:14px 15px;border-radius:18px;border:1px solid var(--line);background:var(--surface-strong)}
+.invoice-reconciliation>div span{display:block;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.invoice-reconciliation>div strong{display:block;margin-top:4px;font-size:14px}
+.invoice-reconciliation small{grid-column:1/-1;font-size:11px;line-height:1.45;color:var(--muted)}
+.invoice-reconciliation.ok{border-color:rgba(62,143,103,.22);background:rgba(62,143,103,.055)}
+.invoice-reconciliation.review{border-color:rgba(216,151,52,.3);background:rgba(216,151,52,.055)}
+.invoice-global-review{margin-top:10px;padding:14px 15px;border:1px solid rgba(216,151,52,.3);border-radius:18px;background:rgba(216,151,52,.055)}
+.invoice-global-review strong,.invoice-global-review span{display:block}
+.invoice-global-review strong{font-size:12px}
+.invoice-global-review span{margin-top:4px;font-size:11px;line-height:1.5;color:var(--muted)}
+@media(max-width:720px){.invoice-reconciliation{grid-template-columns:1fr}}

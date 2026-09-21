@@ -6,6 +6,7 @@ import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence } from 
 import { createAccount } from './server/accounts.js';
 import { createCreditCard } from './server/cards.js';
 import { commitCreditCardInvoice, payCreditCardInvoice, previewCreditCardInvoice } from './server/invoices.js';
+import { analyzeCreditCardInvoiceImage } from './server/invoice-vision.js';
 import { analyzeEvidenceWithAi } from './server/evidence-ai.js';
 import { bootstrapSession } from './server/session.js';
 import { getHomeData } from './server/home.js';
@@ -30,6 +31,7 @@ app.post('/api/capture/commit', commitCapture);
 app.post('/api/accounts/create', createAccount);
 app.post('/api/cards/create', createCreditCard);
 app.post('/api/invoices/preview', previewCreditCardInvoice);
+app.post('/api/invoices/analyze-image', analyzeCreditCardInvoiceImage);
 app.post('/api/invoices/commit', commitCreditCardInvoice);
 app.post('/api/invoices/pay', payCreditCardInvoice);
 app.use((_req, res) => res.status(404).json({ ok: false, error: 'NOT_FOUND' }));

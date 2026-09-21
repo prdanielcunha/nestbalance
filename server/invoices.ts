@@ -12,12 +12,14 @@ import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 
 const EXTRACTION_VERSION='native-text-v1';
+const INVOICE_VISION_VERSION='invoice-vision-v1';
+const invoiceVisionDocumentId=(cardId:string)=>`${INVOICE_VISION_VERSION}-${cardId}`;
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
 }
 
-function fail(code:string,statusCode:number){
+function fail(code:string,statusCode:number):never{
   throw Object.assign(new Error(code),{statusCode});
 }
 
@@ -72,25 +74,42 @@ async function loadInvoiceContext(input:{
   }
   if(evidence.status!=='accepted'||evidence.immutable!==true) fail('EVIDENCE_NOT_READY',409);
 
-  const extraction=await household.collection('evidenceAssets').doc(evidenceId)
-    .collection('extractions').doc(EXTRACTION_VERSION).get();
-  if(!extraction.exists) fail('EVIDENCE_ANALYSIS_REQUIRED',409);
-
-  const extracted=extraction.data()!;
-  if(extracted.state!=='extracted'||typeof extracted.text!=='string'||!extracted.text.trim()){
-    fail('INVOICE_TEXT_UNAVAILABLE',409);
-  }
+  const evidenceRef=household.collection('evidenceAssets').doc(evidenceId);
+  const [nativeExtraction,visionExtraction]=await Promise.all([
+    evidenceRef.collection('extractions').doc(EXTRACTION_VERSION).get(),
+    evidenceRef.collection('extractions').doc(invoiceVisionDocumentId(cardId)).get()
+  ]);
 
   const closingDay=Number(card.closingDay);
   const dueDay=Number(card.dueDay);
   if(!Number.isInteger(closingDay)||!Number.isInteger(dueDay)) fail('CARD_CYCLE_INVALID',409);
 
-  const preview=parseInvoiceText({
-    text:extracted.text,
-    closingDay,
-    dueDay,
-    referenceDate:input.referenceDate
-  });
+  let preview:InvoicePreview|null=null;
+  if(nativeExtraction.exists){
+    const extracted=nativeExtraction.data()!;
+    if(extracted.state==='extracted'&&typeof extracted.text==='string'&&extracted.text.trim()){
+      preview=parseInvoiceText({
+        text:extracted.text,
+        closingDay,
+        dueDay,
+        referenceDate:input.referenceDate
+      });
+    }
+  }
+
+  if(!preview&&visionExtraction.exists){
+    const visual=visionExtraction.data()!;
+    if(
+      visual.state==='extracted'&&
+      visual.preview&&
+      visual.preview.parserVersion==='invoice-vision-v1'&&
+      Array.isArray(visual.preview.items)
+    ){
+      preview=visual.preview as InvoicePreview;
+    }
+  }
+
+  if(!preview) fail('EVIDENCE_ANALYSIS_REQUIRED',409);
 
   return {household,cardId,card,evidenceId,referenceDate:input.referenceDate,preview};
 }
