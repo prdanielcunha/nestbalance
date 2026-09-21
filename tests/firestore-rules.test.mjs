@@ -106,3 +106,14 @@ test('owner identity, not mutable role, controls household deletion', async () =
   });
   assert.equal(existsAfterDelete, false);
 });
+
+test('member cannot read evidence metadata directly from Firestore', async () => {
+  await seedHousehold('house_vault', 'owner_a');
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'households', 'house_vault', 'evidenceAssets', 'e1'), {
+      status: 'accepted', immutable: true, originalName: 'private.pdf'
+    });
+  });
+  const db = env.authenticatedContext('owner_a').firestore();
+  await assertFails(getDoc(doc(db, 'households', 'house_vault', 'evidenceAssets', 'e1')));
+});
