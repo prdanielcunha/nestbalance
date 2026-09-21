@@ -60,6 +60,41 @@ export async function analyzeInvoiceImage(input:{
 }
 
 
+export type InvoiceReviewAction=
+  | {action:'update';itemId:string;item:{description:string;amountMinor:number;purchaseOn:string|null;kind:'purchase'|'fee';installment:{current:number;total:number}|null}}
+  | {action:'add';item:{description:string;amountMinor:number;purchaseOn:string|null;kind:'purchase'|'fee';installment:{current:number;total:number}|null}}
+  | {action:'remove';itemId:string}
+  | {action:'acknowledge_visual'};
+
+export async function reviewInvoice(input:{
+  householdId:string;
+  cardId:string;
+  evidenceId:string;
+  review:InvoiceReviewAction;
+  referenceDate?:string;
+}){
+  const token=await auth?.currentUser?.getIdToken();
+  if(!token) throw new Error('AUTH_REQUIRED');
+
+  const response=await fetch('/api/invoices/review',{
+    method:'POST',
+    headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
+    body:JSON.stringify({
+      householdId:input.householdId,
+      cardId:input.cardId,
+      evidenceId:input.evidenceId,
+      referenceDate:input.referenceDate||localIsoDate(),
+      ...input.review
+    }),
+    cache:'no-store'
+  });
+
+  const json=await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(json.error||'INVOICE_REVIEW_FAILED');
+  return json as InvoicePreviewResponse&{reviewedItemId:string|null};
+}
+
+
 export type InvoiceCommitResponse={
   ok:true;
   status:'committed'|'duplicate';
