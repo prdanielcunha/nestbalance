@@ -85,7 +85,9 @@ export function isSafeOpenFinanceOrigin(value:unknown){
     if(url.protocol!=='https:') return false;
     return [
       'nestbalance.millionsnest.com',
-      'mn-nestbalance-555464791734.web.app'
+      'mn-nestbalance-555464791734.web.app',
+      'mn-nb-prod-555464791734.web.app',
+      'mn-nb-homol-555464791734.web.app'
     ].includes(url.hostname)&&url.pathname==='/';
   }catch{
     return false;
