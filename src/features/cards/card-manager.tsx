@@ -34,6 +34,7 @@ export function CreditCardManager({
   accounts:HomeAccount[];
   invoiceImports:HomeInvoiceImport[];
   onCreated?:()=>void;
+  canManage?:boolean;
 }){
   const [open,setOpen]=useState(false);
   const [name,setName]=useState('');
@@ -148,7 +149,7 @@ export function CreditCardManager({
                       <small>Vence {new Intl.DateTimeFormat('pt-BR').format(new Date(openInvoice.dueOn+'T12:00:00'))}</small>
                     </div>
                   : cycle&&<small>Compras de hoje entram na fatura com vencimento em {new Intl.DateTimeFormat('pt-BR').format(new Date(cycle.dueOn+'T12:00:00'))}.</small>}
-                <div className="card-tile-actions">
+                {canManage&&<div className="card-tile-actions">
                   <button className="invoice-import-button" type="button" onClick={()=>setInvoiceCard(card)}>Importar fatura</button>
                   {openInvoice&&<button
                     className="invoice-pay-button"
@@ -156,7 +157,7 @@ export function CreditCardManager({
                     disabled={openInvoice.status!=='confirmed'}
                     onClick={()=>setPaymentTarget({card,invoice:openInvoice})}
                   >{openInvoice.status==='confirmed'?'Pagar fatura':'Revisão pendente'}</button>}
-                </div>
+                </div>}
               </article>;
             })}
           </div>}
