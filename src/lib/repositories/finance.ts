@@ -1,7 +1,7 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { FinancialInterpretation } from '@/src/core/types';
-import { ingestEvidence } from './evidence';
+import { ingestEvidence, type UploadProgress } from './evidence';
 
 function localIsoDate() {
   const d = new Date();
@@ -24,11 +24,17 @@ async function commitOnServer(householdId: string, sourceText: string, evidenceI
   return json as CommitResult;
 }
 
-export async function commitInterpretation(args: { householdId: string; uid: string; interpretation: FinancialInterpretation; file?: File | null; }): Promise<CommitResult> {
-  const { householdId, interpretation, file } = args;
+export async function commitInterpretation(args: {
+  householdId: string;
+  uid: string;
+  interpretation: FinancialInterpretation;
+  file?: File | null;
+  onUploadProgress?: (progress: UploadProgress) => void;
+}): Promise<CommitResult> {
+  const { householdId, interpretation, file, onUploadProgress } = args;
   let evidenceId: string | null = null;
   if (file) {
-    const evidence = await ingestEvidence(householdId, file);
+    const evidence = await ingestEvidence(householdId, file, onUploadProgress);
     evidenceId = evidence.canonicalEvidenceId;
   }
   return commitOnServer(householdId, interpretation.sourceText, evidenceId);
