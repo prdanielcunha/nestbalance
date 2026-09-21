@@ -52,6 +52,7 @@ assert.match(vaultSource,/Cache-Control','private, no-store/);
 assert.match(accountsSource,/runTransaction/);
 assert.match(accountsSource,/validateAccountDraft/);
 assert.match(accountsSource,/account.created/);
+assert.match(accountsSource,/ACCOUNT_SYNC_READ_ONLY/);
 
 assert.match(aiEvidence,/analysisLocks/);
 assert.match(aiEvidence,/verifyVaultPreviewBytes/);
