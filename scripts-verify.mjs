@@ -171,7 +171,7 @@ assert.match(deployWorkflow,/workflow_dispatch/);
 assert.match(deployWorkflow,/push:\s*\n\s*branches:\s*\n\s*- main/);
 assert.match(deployWorkflow,/hosting:nestbalance/);
 assert.ok(!/firestore:rules|firestore:indexes|--only storage/.test(deployWorkflow),'Homologation workflow must not overwrite shared Firebase rules.');
-assert.match(runtimePreflight,/dedicated NestBalance site/);
+assert.match(runtimePreflight,/dedicated NestBalance homologation site/);
 assert.match(runtimePreflight,/Deploy and runtime service accounts must be different/);
 
 console.log('Static security/runtime invariants: PASS');
