@@ -1,0 +1,77 @@
+name: Publish NestBalance Official Production Site
+
+on:
+  push:
+    branches:
+      - production
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: nestbalance-official-production-site
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GCP_PROJECT_ID: millionsnest
+      GCP_WIF_PROVIDER: projects/555464791734/locations/global/workloadIdentityPools/mn-prod-github/providers/github
+      GCP_DEPLOY_SERVICE_ACCOUNT: mn-web-deployer@millionsnest.iam.gserviceaccount.com
+      FIREBASE_OFFICIAL_HOSTING_SITE: mn-nestbalance-555464791734
+      NESTBALANCE_OFFICIAL_DOMAIN: nestbalance.millionsnest.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build certified web bundle
+        run: |
+          npm run typecheck
+          npm run build
+
+      - name: Authenticate to MillionsNest GCP
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Bind official Hosting target
+        run: npx firebase target:apply hosting nestbalance-production-official "$FIREBASE_OFFICIAL_HOSTING_SITE" --project "$GCP_PROJECT_ID"
+
+      - name: Publish official production site
+        run: npx firebase deploy --only hosting:nestbalance-production-official --config firebase.production.official.json --project "$GCP_PROJECT_ID"
+
+      - name: Verify official production endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          SITE_URL="https://$FIREBASE_OFFICIAL_HOSTING_SITE.web.app"
+          DOMAIN_URL="https://$NESTBALANCE_OFFICIAL_DOMAIN"
+
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$SITE_URL/api/healthz" | tee /tmp/site-health.json | grep -q '"ok":true'
+          grep -q '"environment":"production"' /tmp/site-health.json
+
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$DOMAIN_URL/api/healthz" | tee /tmp/domain-health.json | grep -q '"ok":true'
+          grep -q '"environment":"production"' /tmp/domain-health.json
+
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$DOMAIN_URL/" | grep -q 'NestBalance'
+
+          echo "NESTBALANCE_OFFICIAL_PRODUCTION_URL=$DOMAIN_URL"
