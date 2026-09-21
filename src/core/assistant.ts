@@ -37,7 +37,7 @@ export type AssistantSource={
 };
 
 export type AssistantAnswer={
-  intent:'remaining_to_pay'|'available_now'|'future_months'|'unsupported';
+  intent:'remaining_to_pay'|'available_now'|'future_months'|'spending_simulation'|'ending_installments'|'unsupported';
   title:string;
   summary:string;
   answerMinor:number|null;
@@ -55,9 +55,37 @@ function positive(value:unknown){
   return Number.isSafeInteger(n)&&n>0?n:0;
 }
 
+function formatMoneyMinor(value:number){
+  return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value/100);
+}
+
+function parseRequestedMoneyMinor(question:string){
+  const normalized=question.normalize('NFKC').replace(/\s+/g,' ').trim();
+  const currencyMatch=normalized.match(/R\$\s*([0-9.]+(?:,[0-9]{1,2})?)/i);
+  const reaisMatch=normalized.match(/([0-9.]+(?:,[0-9]{1,2})?)\s*(?:reais?|conto(?:s)?)/i);
+  const raw=(currencyMatch?.[1]||reaisMatch?.[1]||'').trim();
+  if(!raw) return null;
+  const number=Number(raw.replace(/\./g,'').replace(',','.'));
+  if(!Number.isFinite(number)||number<=0||number>100_000_000) return null;
+  return Math.round(number*100);
+}
+
 export function classifyAssistantIntent(question:string):AssistantAnswer['intent']{
   const q=normalize(question);
   if(!q) return 'unsupported';
+
+  if(
+    /(?:da|dá) para gastar/.test(q)||
+    /posso gastar/.test(q)||
+    /consigo gastar/.test(q)||
+    /se eu gastar/.test(q)
+  ) return 'spending_simulation';
+
+  if(
+    /parcelas?.*(?:terminam|acabam|finalizam)/.test(q)||
+    /parcelamentos?.*(?:terminam|acabam|finalizam)/.test(q)||
+    /quais .*parcelas?.*logo/.test(q)
+  ) return 'ending_installments';
 
   if(
     /quanto .*falta.*pagar/.test(q)||
