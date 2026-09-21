@@ -3,6 +3,7 @@ import { answerAssistantQuestion } from '../src/core/assistant.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { visibleDocs } from './privacy.js';
+import { normalizeFinancialScope } from '../src/core/privacy.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -67,6 +68,7 @@ export async function answerFinanceAssistant(req:Request,res:Response){
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
     const question=String(req.body?.question||'').normalize('NFKC').replace(/\s+/g,' ').trim();
+    const requestedView=req.body?.view==='personal'?'personal':req.body?.view==='all'?'all':'household';
     if(!question||question.length>400) return error(res,400,'INVALID_ASSISTANT_QUESTION');
 
     await requireHouseholdMember(householdId,user.uid);
@@ -79,12 +81,16 @@ export async function answerFinanceAssistant(req:Request,res:Response){
       household.collection('installmentPlans').where('status','==','active').limit(100).get()
     ]);
 
+    const scoped=(docs:any[])=>visibleDocs(docs,user.uid).filter(doc=>
+      requestedView==='all'||normalizeFinancialScope(doc.data()?.scope)===requestedView
+    );
+
     const answer=answerAssistantQuestion({
       question,
-      accounts:visibleDocs(accounts.docs,user.uid).map(accountDto),
-      commitments:visibleDocs(commitments.docs,user.uid).map(commitmentDto),
-      invoices:visibleDocs(invoices.docs,user.uid).map(invoiceDto),
-      installmentPlans:visibleDocs(plans.docs,user.uid).map(planDto),
+      accounts:scoped(accounts.docs).map(accountDto),
+      commitments:scoped(commitments.docs).map(commitmentDto),
+      invoices:scoped(invoices.docs).map(invoiceDto),
+      installmentPlans:scoped(plans.docs).map(planDto),
       now:new Date()
     });
 
@@ -92,6 +98,7 @@ export async function answerFinanceAssistant(req:Request,res:Response){
       ok:true,
       answer,
       grounded:true,
+      view:requestedView,
       asOf:new Date().toISOString()
     });
   }catch(err:any){
