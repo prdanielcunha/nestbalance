@@ -264,7 +264,7 @@ export async function listOpenFinanceConnections(req:Request,res:Response){
   try{
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_connections');
 
     const snap=await adminDb.collection('households').doc(householdId)
       .collection('bankConnections').orderBy('createdAt','desc').limit(20).get();
@@ -297,7 +297,7 @@ export async function startOpenFinanceConnection(req:Request,res:Response){
   try{
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_connections');
 
     const cpf=normalizeCpf(req.body?.cpf);
     const legalName=normalizeLegalName(req.body?.legalName);
@@ -372,7 +372,7 @@ export async function completeOpenFinanceConnection(req:Request,res:Response){
     const householdId=String(req.body?.householdId||'');
     const sessionId=String(req.body?.sessionId||'');
     const linkId=String(req.body?.linkId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_connections');
 
     if(!validUuid(sessionId)||!validUuid(linkId)) return error(res,400,'OPEN_FINANCE_LINK_INVALID');
     const household=adminDb.collection('households').doc(householdId);
@@ -443,7 +443,7 @@ export async function syncOpenFinanceConnection(req:Request,res:Response){
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
     const connectionId=String(req.body?.connectionId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_connections');
     if(!/^[a-f0-9]{40}$/.test(connectionId)) return error(res,400,'OPEN_FINANCE_CONNECTION_NOT_FOUND');
 
     const result=await syncConnection(householdId,connectionId,user.uid);
@@ -460,7 +460,7 @@ export async function disconnectOpenFinanceConnection(req:Request,res:Response){
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
     const connectionId=String(req.body?.connectionId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_connections');
     if(!/^[a-f0-9]{40}$/.test(connectionId)) return error(res,400,'OPEN_FINANCE_CONNECTION_NOT_FOUND');
 
     const household=adminDb.collection('households').doc(householdId);
