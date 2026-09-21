@@ -38,6 +38,28 @@ export async function previewInvoice(input:{
 }
 
 
+export async function analyzeInvoiceImage(input:{
+  householdId:string;
+  cardId:string;
+  evidenceId:string;
+  referenceDate?:string;
+}){
+  const token=await auth?.currentUser?.getIdToken();
+  if(!token) throw new Error('AUTH_REQUIRED');
+
+  const response=await fetch('/api/invoices/analyze-image',{
+    method:'POST',
+    headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
+    body:JSON.stringify({...input,referenceDate:input.referenceDate||localIsoDate()}),
+    cache:'no-store'
+  });
+
+  const json=await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(json.error||'INVOICE_IMAGE_ANALYSIS_FAILED');
+  return json as InvoicePreviewResponse&{model:string;analysisVersion:string};
+}
+
+
 export type InvoiceCommitResponse={
   ok:true;
   status:'committed'|'duplicate';
