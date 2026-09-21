@@ -21,7 +21,6 @@ function accountDto(doc:any){
     balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
     currency:String(data.currency||'BRL'),
     status:String(data.status||'active'),
-    scope:data.scope==='personal'?'personal':'household',
     scope:data.scope==='personal'?'personal':'household'
   };
 }
@@ -68,7 +67,8 @@ function cardDto(doc:any){
     last4:typeof data.last4==='string'&&/^\d{4}$/.test(data.last4)?data.last4:null,
     limitMinor:Number.isSafeInteger(data.limitMinor)?data.limitMinor:null,
     currency:String(data.currency||'BRL'),
-    status:String(data.status||'active')
+    status:String(data.status||'active'),
+    scope:data.scope==='personal'?'personal':'household'
   };
 }
 
