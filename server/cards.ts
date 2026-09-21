@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { validateCreditCardDraft } from '../src/core/cards.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { scopeFields } from './privacy.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -16,6 +17,7 @@ export async function createCreditCard(req:Request,res:Response){
     const householdId=String(req.body?.householdId||'');
     await requireHouseholdMember(householdId,user.uid,'manage_finance');
 
+    const privacy=scopeFields(req.body?.scope,user.uid);
     const validated=validateCreditCardDraft({
       name:req.body?.name,
       brand:req.body?.brand,
@@ -26,7 +28,7 @@ export async function createCreditCard(req:Request,res:Response){
     });
     if(!validated.ok) return error(res,400,validated.reason);
 
-    const keyHash=createHash('sha256').update(validated.dedupKey).digest('hex');
+    const keyHash=createHash('sha256').update(privacy.scope+'|'+(privacy.ownerUid||'')+'|'+validated.dedupKey).digest('hex');
     const household=adminDb.collection('households').doc(householdId);
     const cardRef=household.collection('creditCards').doc();
     const keyRef=household.collection('creditCardKeys').doc(keyHash);
@@ -49,7 +51,8 @@ export async function createCreditCard(req:Request,res:Response){
         last4:validated.value.last4,
         limitMinor:validated.value.limitMinor,
         currency:'BRL',
-        scope:'household',
+        scope:privacy.scope,
+        ownerUid:privacy.ownerUid,
         status:'active',
         createdBy:user.uid,
         createdAt:FieldValue.serverTimestamp(),
