@@ -29,7 +29,7 @@ export type InvoicePreview={
 };
 
 const moneyPattern=/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})(?!\d)/gi;
-const installmentPattern=/\b(?:parc(?:ela)?\s*)?(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/i;
+const installmentPattern=/\b(?:parc(?:ela)?\s*)?(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/i;\nconst explicitInstallmentPattern=/\bparc(?:ela)?\s*(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/i;\nconst genericInstallmentPattern=/\b(\d{1,2})\s*(?:\/|de)\s*(\d{1,2})\b/gi;
 const fullDatePattern=/\b(\d{2})[\/.\-](\d{2})[\/.\-](\d{2,4})\b/;
 const shortDatePattern=/\b(\d{2})[\/.\-](\d{2})\b/;
 
@@ -113,12 +113,30 @@ function itemKind(line:string):InvoicePreviewItemKind{
   return /\b(juros|iof|multa|anuidade|tarifa|encargos?)\b/i.test(line)?'fee':'purchase';
 }
 
+function validInstallmentMatch(current:number,total:number){
+  return Number.isInteger(current)&&Number.isInteger(total)&&current>=1&&total>=2&&current<=total&&total<=120;
+}
+
 function installmentFromLine(line:string){
-  const match=line.match(installmentPattern);
-  if(!match) return null;
-  const current=Number(match[1]),total=Number(match[2]);
-  if(!Number.isInteger(current)||!Number.isInteger(total)||current<1||total<2||current>total||total>120) return null;
-  return {current,total};
+  const explicit=line.match(explicitInstallmentPattern);
+  if(explicit){
+    const current=Number(explicit[1]),total=Number(explicit[2]);
+    return validInstallmentMatch(current,total)?{current,total}:null;
+  }
+
+  const dateRanges=[
+    ...[...line.matchAll(/\b\d{2}[\/.\-]\d{2}[\/.\-]\d{2,4}\b/g)].map(m=>[m.index,m.index+m[0].length] as const),
+    ...[...line.matchAll(/\b\d{2}[\/.\-]\d{2}\b/g)].map(m=>[m.index,m.index+m[0].length] as const)
+  ];
+
+  for(const match of line.matchAll(genericInstallmentPattern)){
+    const start=match.index;
+    const end=start+match[0].length;
+    if(dateRanges.some(([a,b])=>start>=a&&end<=b)) continue;
+    const current=Number(match[1]),total=Number(match[2]);
+    if(validInstallmentMatch(current,total)) return {current,total};
+  }
+  return null;
 }
 
 function stableItemId(index:number,line:string){
