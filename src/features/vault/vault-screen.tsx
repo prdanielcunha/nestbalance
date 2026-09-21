@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getVaultDetail, getVaultPreview, listVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import type { HouseholdRole } from '@/src/core/household';
 
 const bytes = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 const money = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
@@ -30,7 +31,7 @@ function understandingLabel(state:string) {
   return 'Guardado';
 }
 
-export function VaultScreen({householdId}:{householdId:string}) {
+export function VaultScreen({householdId,role}:{householdId:string;role:HouseholdRole}) {
   const [items,setItems]=useState<VaultItem[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
@@ -108,7 +109,7 @@ export function VaultScreen({householdId}:{householdId:string}) {
       </button>)}
     </section>}
 
-    <AppNav/>
+    <AppNav canContribute={role!=='read_only'}/>
 
     {selected && <div className="sheet-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!previewLoading){setSelected(null);setDetail(null);if(previewUrl)URL.revokeObjectURL(previewUrl);setPreviewUrl(null);}}}>
       <section className="capture-sheet vault-detail" role="dialog" aria-modal="true" aria-label={selected.originalName}>
