@@ -83,3 +83,17 @@ export async function findCommitmentPaymentMatchesBatch(input:{
     }>;
   }>('/api/commitments/match-payments',input);
 }
+
+
+export async function undoCommitmentPayment(input:{
+  householdId:string;
+  commitmentId:string;
+  periodKey:string;
+}){
+  return api<{
+    ok:true;
+    status:'reversed'|'already_reversed';
+    commitmentId:string;
+    periodKey:string;
+  }>('/api/commitments/undo-payment',input);
+}
