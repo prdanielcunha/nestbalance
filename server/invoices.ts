@@ -593,6 +593,8 @@ export async function payCreditCardInvoice(req:Request,res:Response){
       assertScopedAccess(account,user.uid);
       const scope=requestedScope(invoice.scope);
       const ownerUid=scope==='personal'?user.uid:null;
+      const accountScope=requestedScope(account.scope);
+      const exposeFundingAccount=scope==='personal'||accountScope===scope;
       if(account.status!=='active') fail('ACCOUNT_NOT_ACTIVE',409);
       if(invoice.status!=='confirmed') fail('INVOICE_NOT_CONFIRMABLE',409);
 
@@ -616,7 +618,8 @@ export async function payCreditCardInvoice(req:Request,res:Response){
         source:'credit_card_invoice_payment',
         scope,
         ownerUid,
-        fromAccountId:accountId,
+        fromAccountId:exposeFundingAccount?accountId:null,
+        privateFundingSource:scope==='household'&&accountScope==='personal',
         cardId:String(invoice.cardId||''),
         invoiceImportId,
         invoiceKey:String(invoice.invoiceKey||''),
@@ -642,7 +645,8 @@ export async function payCreditCardInvoice(req:Request,res:Response){
         paidAmountMinor:amountMinor,
         paidOn,
         paymentTransactionId:paymentRef.id,
-        paidFromAccountId:accountId,
+        paidFromAccountId:exposeFundingAccount?accountId:null,
+        paidFromPrivateAccount:scope==='household'&&accountScope==='personal',
         paidBy:user.uid,
         updatedAt:FieldValue.serverTimestamp()
       });
@@ -654,7 +658,8 @@ export async function payCreditCardInvoice(req:Request,res:Response){
         cardId:String(invoice.cardId||''),
         invoiceImportId,
         invoiceKey:String(invoice.invoiceKey||''),
-        accountId,
+        accountId:exposeFundingAccount?accountId:null,
+        privateFundingSource:scope==='household'&&accountScope==='personal',
         amountMinor,
         paymentTransactionId:paymentRef.id,
         createdAt:FieldValue.serverTimestamp()
