@@ -120,7 +120,9 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     let persisted:any;
     if(kind==='image'){
       const result=await extractFinancialImage(bytes,mimeType);
-      const screenMovements=result.extraction.screen?.movements||[];
+      const screenType=result.extraction.screen?.screenType;
+      const cashMovementScreen=!['card_home','card_statement','retail_account'].includes(String(screenType||''));
+      const screenMovements=cashMovementScreen?(result.extraction.screen?.movements||[]):[];
       const movementList:ImportedMovementList|null=screenMovements.length?{
         documentType:result.extraction.screen?.screenType==='transaction_list'?'transaction_list':'bank_screenshot',
         institution:result.extraction.screen?.institution||result.extraction.institution,
