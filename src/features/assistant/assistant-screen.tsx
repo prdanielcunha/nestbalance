@@ -10,6 +10,7 @@ const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const time=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
 const starters=[
+  'Ache o comprovante do IPTU',
   'Dá para gastar R$ 500?',
   'Quais parcelas terminam logo?',
   'Quanto ainda falta pagar?',
@@ -96,7 +97,9 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
               ?'SIMULAÇÃO COM PREMISSAS'
               :result.answer.intent==='future_months'||result.answer.intent==='ending_installments'
                 ?'PROJEÇÃO COM DADOS'
-                :'RESPOSTA COMPROVADA'}</span>
+                :result.answer.intent==='evidence_lookup'
+                  ?'DOCUMENTO DO COFRE'
+                  :'RESPOSTA COMPROVADA'}</span>
           <h2>{result.answer.title}</h2>
           <p>{result.answer.summary}</p>
         </div>
@@ -126,7 +129,9 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
               <strong>{source.label}</strong>
               <span>{source.detail}</span>
             </div>
-            <b>{money.format(source.amountMinor/100)}</b>
+            {source.kind==='evidence'
+              ?<Link className="assistant-source-action" href={`/vault?evidence=${encodeURIComponent(source.id)}`}>Abrir no Cofre</Link>
+              :<b>{money.format(source.amountMinor/100)}</b>}
           </article>)}
         </div>
         {(result.answer.intent==='remaining_to_pay'||result.answer.intent==='available_now')&&<div className="assistant-source-foot">
