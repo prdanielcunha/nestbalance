@@ -1,0 +1,98 @@
+name: Deploy NestBalance Homologation
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type DEPLOY_NESTBALANCE_HOMOLOG to deploy main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: nestbalance-homologation
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref_name == 'main' && inputs.confirm == 'DEPLOY_NESTBALANCE_HOMOLOG'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: homologation
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+      GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      NESTBALANCE_RUNTIME_SERVICE_ACCOUNT: ${{ vars.NESTBALANCE_RUNTIME_SERVICE_ACCOUNT }}
+      FIREBASE_HOSTING_SITE: ${{ vars.FIREBASE_HOSTING_SITE }}
+      FIREBASE_STORAGE_BUCKET: ${{ vars.FIREBASE_STORAGE_BUCKET }}
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+      NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+      OPENAI_SECRET_NAME: ${{ vars.OPENAI_SECRET_NAME }}
+      OPENAI_VISION_MODEL: ${{ vars.OPENAI_VISION_MODEL }}
+      OPENAI_TRANSCRIBE_MODEL: ${{ vars.OPENAI_TRANSCRIBE_MODEL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Deployment preflight
+        run: npm run deploy:preflight
+
+      - name: Validate application
+        run: |
+          npm run check
+          npm run typecheck
+          npm run build
+          npm run build:cloudrun
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Deploy API to Cloud Run
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXTRA_ARGS=()
+          if [[ -n "${OPENAI_SECRET_NAME:-}" ]]; then
+            EXTRA_ARGS+=(--set-secrets "OPENAI_API_KEY=${OPENAI_SECRET_NAME}:latest")
+          fi
+          gcloud run deploy nestbalance-api             --source .             --project "$GCP_PROJECT_ID"             --region "$GCP_REGION"             --service-account "$NESTBALANCE_RUNTIME_SERVICE_ACCOUNT"             --allow-unauthenticated             --memory 512Mi             --cpu 1             --concurrency 20             --min-instances 0             --max-instances 3             --timeout 60             --set-env-vars "FIREBASE_PROJECT_ID=$GCP_PROJECT_ID,FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET,OPENAI_VISION_MODEL=${OPENAI_VISION_MODEL:-gpt-5.6-luna},OPENAI_TRANSCRIBE_MODEL=${OPENAI_TRANSCRIBE_MODEL:-gpt-transcribe}"             "${EXTRA_ARGS[@]}"
+
+      - name: Bind dedicated Hosting target
+        run: npx firebase target:apply hosting nestbalance "$FIREBASE_HOSTING_SITE" --project "$GCP_PROJECT_ID"
+
+      - name: Deploy Hosting only
+        run: npx firebase deploy --only hosting:nestbalance --project "$GCP_PROJECT_ID"
+
+      - name: Smoke check Cloud Run
+        shell: bash
+        run: |
+          set -euo pipefail
+          API_URL="$(gcloud run services describe nestbalance-api --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format='value(status.url)')"
+          test -n "$API_URL"
+          curl --fail --silent --show-error "$API_URL/healthz" | grep -q '"ok":true'
+          echo "Cloud Run health check passed."
