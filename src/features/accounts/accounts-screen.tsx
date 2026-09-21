@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import { parseMoneyInputToMinor } from '@/src/core/accounts';
+import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInvoiceImport } from '@/src/lib/repositories/home';
@@ -15,6 +17,10 @@ export function AccountsScreen({householdId}:{householdId:string}){
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [refreshKey,setRefreshKey]=useState(0);
+  const [editingAccount,setEditingAccount]=useState<HomeAccount|null>(null);
+  const [balanceInput,setBalanceInput]=useState('');
+  const [savingBalance,setSavingBalance]=useState(false);
+  const [balanceError,setBalanceError]=useState('');
 
   async function load(silent=false){
     if(!silent) setLoading(true);
@@ -38,6 +44,37 @@ export function AccountsScreen({householdId}:{householdId:string}){
   function refreshed(){
     setRefreshKey(value=>value+1);
     void load(true);
+  }
+
+  function openBalance(account:HomeAccount){
+    setEditingAccount(account);
+    setBalanceInput((account.balanceMinor/100).toFixed(2).replace('.',','));
+    setBalanceError('');
+  }
+
+  async function saveBalance(){
+    if(!editingAccount||savingBalance) return;
+    const balanceMinor=parseMoneyInputToMinor(balanceInput);
+    if(balanceMinor===null){
+      setBalanceError('Digite um saldo válido.');
+      return;
+    }
+    setSavingBalance(true);
+    setBalanceError('');
+    try{
+      await updateHouseholdAccountBalance({
+        householdId,
+        accountId:editingAccount.id,
+        balanceMinor
+      });
+      setEditingAccount(null);
+      refreshed();
+    }catch(err:any){
+      const code=String(err?.message||'');
+      setBalanceError(code==='ACCOUNT_NOT_ACTIVE'?'Essa conta não está mais ativa.':'Não conseguimos atualizar esse saldo agora.');
+    }finally{
+      setSavingBalance(false);
+    }
   }
 
   return <main className="app-shell accounts-shell">
@@ -65,7 +102,7 @@ export function AccountsScreen({householdId}:{householdId:string}){
                 <span>{typeLabel[account.type]||'Conta'}</span>
                 <h3>{account.name}</h3>
                 <strong>{money.format(account.balanceMinor/100)}</strong>
-                <small>Saldo atual informado</small>
+                <div className="account-balance-foot"><small>Saldo atual informado</small><button type="button" onClick={()=>openBalance(account)}>Atualizar</button></div>
               </article>)}
             </div>}
     </section>
@@ -79,5 +116,22 @@ export function AccountsScreen({householdId}:{householdId:string}){
     />
 
     <AppNav/>
+
+    {editingAccount&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!savingBalance&&setEditingAccount(null)}>
+      <section className="capture-sheet balance-update-sheet" role="dialog" aria-modal="true" aria-label="Atualizar saldo">
+        <div className="sheet-handle"/>
+        <div className="eyebrow">Saldo atual</div>
+        <h2>{editingAccount.name}</h2>
+        <p>Informe quanto existe nessa conta agora. Isso não cria uma entrada nem uma saída; apenas atualiza o ponto de referência do saldo.</p>
+        <label className="field-label" htmlFor="balance-update-value">Saldo</label>
+        <div className="money-input-wrap"><span>R$</span><input id="balance-update-value" autoFocus inputMode="decimal" value={balanceInput} onChange={e=>setBalanceInput(e.target.value)} placeholder="0,00"/></div>
+        <small className="field-help">Pode ser negativo se a conta estiver no vermelho.</small>
+        {balanceError&&<p className="error-copy" role="alert">{balanceError}</p>}
+        <div className="sheet-actions">
+          <button className="ghost-button" disabled={savingBalance} onClick={()=>setEditingAccount(null)}>Cancelar</button>
+          <button className="primary-button" disabled={savingBalance} onClick={saveBalance}>{savingBalance?'Atualizando…':'Atualizar saldo'}</button>
+        </div>
+      </section>
+    </div>}
   </main>;
 }
