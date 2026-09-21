@@ -12,6 +12,10 @@ function accountDto(doc:any){
     id:doc.id,
     name:String(data.name||'Conta'),
     type:String(data.type||'bank'),
+    connectedProductType:typeof data.connectedProductType==='string'?data.connectedProductType:null,
+    source:typeof data.source==='string'?data.source:null,
+    institutionName:typeof data.institutionName==='string'?data.institutionName:null,
+    automaticallyInvestedMinor:Number.isSafeInteger(data.automaticallyInvestedMinor)?data.automaticallyInvestedMinor:null,
     balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
     currency:String(data.currency||'BRL'),
     status:String(data.status||'active')
