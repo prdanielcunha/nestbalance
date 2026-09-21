@@ -1,5 +1,5 @@
 import express from 'express';
-import { rateLimit, requestTelemetry, securityHeaders } from './server/http-runtime.js';
+import { rateLimit, requestTelemetry, runtimeIdentity, securityHeaders } from './server/http-runtime.js';
 import { commitCapture } from './server/capture.js';
 import { finalizeEvidence, startEvidence, uploadEvidence } from './server/evidence.js';
 import { analyzeEvidenceText } from './server/evidence-analysis.js';
@@ -26,8 +26,7 @@ app.use(requestTelemetry);
 const healthz = (_req: express.Request, res: express.Response) => res.json({
   ok:true,
   service:'nestbalance-api',
-  environment:process.env.NESTBALANCE_ENV||'unknown',
-  release:String(process.env.NESTBALANCE_RELEASE_SHA||'').slice(0,12)||null
+  ...runtimeIdentity()
 });
 app.get('/healthz', healthz);
 app.get('/api/healthz', healthz);
