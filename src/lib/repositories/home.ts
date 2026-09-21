@@ -18,6 +18,7 @@ export type HomeRow={
   invoiceKey?:string|null;
   invoiceImportId?:string|null;
   observedOn?:string|null;
+  paidThisMonth?:boolean;
 };
 
 export type HomeAccount={
