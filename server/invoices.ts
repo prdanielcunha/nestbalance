@@ -19,7 +19,7 @@ function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
 }
 
-function fail(code:string,statusCode:number){
+function fail(code:string,statusCode:number):never{
   throw Object.assign(new Error(code),{statusCode});
 }
 
