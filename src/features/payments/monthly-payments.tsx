@@ -50,7 +50,7 @@ export function MonthlyPayments({
         <div className="monthly-payment-main">
           <span>{item.paidThisMonth?'Pago este mês':item.dueDay?'Dia '+item.dueDay:'Sem dia definido'}</span>
           <strong>{item.description}</strong>
-          {item.installment&&<small>Parcela {item.installment.current} de {item.installment.total}</small>}
+          {item.installment&&<small>{item.paidThisMonth?'Próxima: parcela ':'Parcela '}{item.installment.current} de {item.installment.total}</small>}
           {item.recurring&&<small>Repete todo mês</small>}
         </div>
         <div className="monthly-payment-action">
