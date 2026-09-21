@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import { detectDocumentSignals } from '../src/core/document-signals.js';
 import { parseFinancialList } from '../src/core/text-parser.js';
 import { extractFinancialImage } from './ai/financial-image.js';
@@ -55,7 +55,7 @@ function publicExtraction(data:any){
 
 export async function analyzeEvidenceWithAi(req:Request,res:Response){
   privateJson(res);
-  let lockRef:any=null;
+  let lockRef:DocumentReference|null=null;
   let requestId='';
   try{
     const user=await requireFirebaseUser(req);
@@ -184,11 +184,12 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
 
     return res.json(publicExtraction(finalData));
   }catch(err:any){
-    if(lockRef&&requestId){
+    const refToRelease=lockRef;
+    if(refToRelease&&requestId){
       try{
         await adminDb.runTransaction(async tx=>{
-          const lock=await tx.get(lockRef);
-          if(lock.exists&&lock.data()?.requestId===requestId) tx.delete(lockRef);
+          const lock=await tx.get(refToRelease);
+          if(lock.exists&&lock.data()?.requestId===requestId) tx.delete(refToRelease);
         });
       }catch{}
     }
