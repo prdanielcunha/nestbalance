@@ -57,19 +57,24 @@ function parseMoneyMinor(raw:string){
   return Number.isSafeInteger(minor)?{minor,negative,explicitPlus}:null;
 }
 
+function validIsoParts(year:number,month:number,day:number){
+  const d=new Date(year,month-1,day);
+  return d.getFullYear()===year&&d.getMonth()===month-1&&d.getDate()===day;
+}
+
 function parseDate(raw:string){
   const value=raw.trim();
   let match=value.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
   if(match){
-    const [,day,month,year]=match;
-    const iso=`${year}-${month}-${day}`;
-    const d=new Date(iso+'T12:00:00');
-    return Number.isNaN(d.getTime())?null:iso;
+    const day=Number(match[1]),month=Number(match[2]),year=Number(match[3]);
+    return validIsoParts(year,month,day)
+      ? `${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+      : null;
   }
   match=value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(match){
-    const d=new Date(value+'T12:00:00');
-    return Number.isNaN(d.getTime())?null:value;
+    const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]);
+    return validIsoParts(year,month,day)?value:null;
   }
   return null;
 }
