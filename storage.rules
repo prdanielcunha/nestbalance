@@ -3,18 +3,25 @@ service firebase.storage {
   match /b/{bucket}/o {
     function signedIn() { return request.auth != null; }
     function member(hid) { return signedIn() && firestore.exists(/databases/(default)/documents/households/$(hid)/members/$(request.auth.uid)); }
+    function evidence(hid, evidenceId) { return firestore.get(/databases/(default)/documents/households/$(hid)/evidenceAssets/$(evidenceId)).data; }
     function allowedType() {
-      return request.resource.contentType.matches('image/.*') ||
-             request.resource.contentType == 'application/pdf' ||
-             request.resource.contentType.matches('audio/.*') ||
-             request.resource.contentType == 'text/csv' ||
-             request.resource.contentType == 'text/plain';
+      return request.resource.contentType in [
+        'application/pdf','image/jpeg','image/png','image/webp','image/gif',
+        'audio/mpeg','audio/wav','audio/x-wav','audio/mp4','audio/x-m4a','audio/ogg',
+        'text/plain','text/csv'
+      ];
     }
-    match /nestbalance/households/{hid}/evidence/{evidenceId}/{fileName} {
-      allow read: if member(hid);
-      allow create: if member(hid) && request.resource.size < 20 * 1024 * 1024 && allowedType()
+    match /nestbalance/households/{hid}/evidence/{evidenceId}/original {
+      allow read: if member(hid) && evidence(hid, evidenceId).status in ['accepted','duplicate'];
+      allow create: if member(hid)
+                    && evidence(hid, evidenceId).status == 'awaiting_upload'
+                    && evidence(hid, evidenceId).uploadedBy == request.auth.uid
+                    && request.resource.size == evidence(hid, evidenceId).declaredSize
+                    && request.resource.size <= 20 * 1024 * 1024
+                    && request.resource.contentType == evidence(hid, evidenceId).declaredMimeType
                     && request.resource.metadata.householdId == hid
-                    && request.resource.metadata.uploaderUid == request.auth.uid;
+                    && request.resource.metadata.evidenceId == evidenceId
+                    && allowedType();
       allow update, delete: if false;
     }
   }
