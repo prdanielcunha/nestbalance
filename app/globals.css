@@ -529,3 +529,15 @@
   .monthly-payment-row{grid-template-columns:1fr;gap:10px}
   .monthly-payment-action{justify-content:space-between}
 }
+
+
+.payment-match-panel{margin:14px 0;padding:15px;border:1px solid rgba(94,106,210,.2);border-radius:20px;background:linear-gradient(145deg,rgba(94,106,210,.07),var(--surface-strong))}
+.payment-match-panel>div:first-child>span{display:block;font-size:10px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:var(--iris)}
+.payment-match-panel>div:first-child>strong{display:block;margin-top:4px;font-size:13px;line-height:1.4}
+.payment-match-options{display:grid;gap:7px;margin-top:12px}
+.payment-match-options>button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;text-align:left;padding:12px 13px;border:1px solid var(--line);border-radius:15px;background:var(--paper);color:var(--ink)}
+.payment-match-options>button>span{grid-column:1/-1;font-size:9px;font-weight:850;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.payment-match-options>button>strong{font-size:12px}
+.payment-match-options>button>b{font-size:12px;font-variant-numeric:tabular-nums}
+.payment-match-options>button>em{grid-column:1/-1;margin-top:3px;font-size:10px;font-style:normal;font-weight:850;color:var(--iris)}
+.payment-match-none{width:100%;margin-top:8px;padding:8px;border:0;background:transparent;color:var(--muted);font-size:10px;font-weight:800}
