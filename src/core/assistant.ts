@@ -187,6 +187,52 @@ export function answerAssistantQuestion(input:{
     };
   }
 
+  if(intent==='ending_installments'){
+    const active=input.installmentPlans
+      .filter(plan=>plan.status!=='completed'&&plan.status!=='cancelled')
+      .map(plan=>({...plan,remaining:Math.max(0,Number(plan.totalInstallments||0)-Number(plan.lastObservedInstallment||0))}))
+      .filter(plan=>plan.remaining>0&&positive(plan.amountMinor)>0)
+      .sort((a,b)=>a.remaining-b.remaining||positive(b.amountMinor)-positive(a.amountMinor));
+
+    if(!active.length){
+      return {
+        intent,
+        title:'Nenhuma parcela ativa conhecida.',
+        summary:'Não encontrei planos de parcelamento reconciliados ainda.',
+        answerMinor:0,
+        sources:[],
+        cards:[],
+        suggestions:['O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?','Dá para gastar R$ 500?']
+      };
+    }
+
+    const endingSoon=active.filter(plan=>plan.remaining<=3);
+    const visible=active.slice(0,8);
+    const releasedSoonMinor=endingSoon.reduce((sum,plan)=>sum+positive(plan.amountMinor),0);
+
+    return {
+      intent,
+      title:endingSoon.length?'Estas parcelas terminam primeiro.':'Estas são as parcelas mais próximas do fim.',
+      summary:endingSoon.length
+        ? `${endingSoon.length} plano${endingSoon.length===1?' termina':'s terminam'} em até 3 parcelas. Quando acabarem, ${formatMoneyMinor(releasedSoonMinor)} por mês deixam de estar comprometidos, considerando os valores atuais.`
+        : 'Nenhum plano termina nas próximas 3 parcelas, mas estes são os mais próximos do fim.',
+      answerMinor:endingSoon.length?releasedSoonMinor:null,
+      sources:visible.map(plan=>({
+        kind:'installment_plan' as const,
+        id:plan.id,
+        label:plan.description||'Compra parcelada',
+        amountMinor:positive(plan.amountMinor),
+        detail:`Faltam ${plan.remaining} parcela${plan.remaining===1?'':'s'} de ${plan.totalInstallments}`
+      })),
+      cards:visible.slice(0,6).map(plan=>({
+        label:plan.description||'Compra parcelada',
+        amountMinor:positive(plan.amountMinor),
+        detail:`Faltam ${plan.remaining} parcela${plan.remaining===1?'':'s'}`
+      })),
+      suggestions:['Dá para gastar R$ 500?','O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?']
+    };
+  }
+
   if(intent==='remaining_to_pay'){
     const commitmentSources=input.commitments
       .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&positive(item.amountMinor)>0)
