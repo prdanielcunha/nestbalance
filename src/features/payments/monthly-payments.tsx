@@ -68,7 +68,7 @@ export function MonthlyPayments({
     <div className="monthly-payment-list">
       {items.map(item=><article className={item.paidThisMonth?'monthly-payment-row paid':'monthly-payment-row'} key={item.id}>
         <div className="monthly-payment-main">
-          <span>{item.paidThisMonth?'Pago este mês':item.dueDay?'Dia '+item.dueDay:'Sem dia definido'}</span>
+          <span>{item.paidThisMonth?'Pago este mês':item.dueDay?'Dia '+item.dueDay:'Sem dia definido'}{item.scope==='personal'&&<em className="personal-pill">Só para mim</em>}</span>
           <strong>{item.description}</strong>
           {item.installment&&<small>{item.paidThisMonth?'Próxima: parcela ':'Parcela '}{item.installment.current} de {item.installment.total}</small>}
           {item.recurring&&<small>Repete todo mês</small>}
