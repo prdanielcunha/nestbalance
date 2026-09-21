@@ -10,13 +10,14 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test:core": "rm -rf .core-dist && tsc -p tsconfig.core.json && node --test tests/evidence.test.mjs tests/finance-core.test.mjs tests/text-parser.test.mjs",
-    "check": "npm run test:core && npm run test:security:static",
+    "test:core": "rm -rf .core-dist && tsc -p tsconfig.core.json && node --test tests/evidence.test.mjs tests/finance-core.test.mjs tests/text-parser.test.mjs tests/document-signals.test.mjs",
+    "check": "npm run test:core && npm run test:document && npm run test:security:static",
     "test:security:static": "node scripts-verify.mjs",
     "build:cloudrun": "esbuild cloudrun.ts --bundle --platform=node --format=esm --packages=external --outfile=server-dist/server.mjs",
     "start:cloudrun": "node server-dist/server.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-nestbalance-rules \"node --test tests/firestore-rules.test.mjs\"",
-    "check:ci": "npm run check && npm run test:rules && npm run typecheck && npm run build && npm run build:cloudrun"
+    "check:ci": "npm run check && npm run test:rules && npm run typecheck && npm run build && npm run build:cloudrun",
+    "test:document": "tsx --test tests/pdf-text.test.ts"
   },
   "dependencies": {
     "firebase": "12.19.0",
@@ -24,7 +25,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "express": "^5.1.0",
-    "firebase-admin": "^13.5.0"
+    "firebase-admin": "^13.5.0",
+    "unpdf": "1.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -34,6 +36,7 @@
     "@types/express": "^5.0.3",
     "esbuild": "^0.25.0",
     "@firebase/rules-unit-testing": "^5.0.0",
-    "firebase-tools": "^15.0.0"
+    "firebase-tools": "^15.0.0",
+    "tsx": "^4.21.0"
   }
 }
