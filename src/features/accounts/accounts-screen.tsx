@@ -9,6 +9,7 @@ import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding'
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { ConnectedBanks } from '@/src/features/open-finance/connected-banks';
 import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditCard, type HomeInvoiceImport, type HomeSavingsPot } from '@/src/lib/repositories/home';
+import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const typeLabel:Record<string,string>={bank:'Conta bancária',wallet:'Carteira digital',cash:'Dinheiro'};
@@ -27,6 +28,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
   const [balanceInput,setBalanceInput]=useState('');
   const [savingBalance,setSavingBalance]=useState(false);
   const [balanceError,setBalanceError]=useState('');
+  const [view,setView]=useState<FinancialView>('household');
 
   async function load(silent=false){
     if(!silent) setLoading(true);
@@ -47,13 +49,20 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
 
   useEffect(()=>{void load();},[householdId,refreshKey]);
 
-  const spendableTotal=useMemo(()=>accounts
+  const viewAccounts=useMemo(()=>accounts.filter(item=>inFinancialView(item.scope,view)),[accounts,view]);
+  const viewCards=useMemo(()=>cards.filter(item=>inFinancialView(item.scope,view)),[cards,view]);
+  const viewInvoices=useMemo(()=>invoiceImports.filter(item=>inFinancialView(item.scope,view)),[invoiceImports,view]);
+  const viewPots=useMemo(()=>savingsPots.filter(item=>inFinancialView(item.scope,view)),[savingsPots,view]);
+  const viewSnapshots=useMemo(()=>cardSnapshots.filter(item=>inFinancialView(item.scope,view)),[cardSnapshots,view]);
+  const defaultCreateScope=view==='personal'?'personal':'household';
+
+  const spendableTotal=useMemo(()=>viewAccounts
     .filter(item=>item.connectedProductType!=='investment')
-    .reduce((sum,item)=>sum+item.balanceMinor,0),[accounts]);
-  const investmentTotal=useMemo(()=>accounts
+    .reduce((sum,item)=>sum+item.balanceMinor,0),[viewAccounts]);
+  const investmentTotal=useMemo(()=>viewAccounts
     .filter(item=>item.connectedProductType==='investment')
-    .reduce((sum,item)=>sum+item.balanceMinor,0),[accounts]);
-  const savedTotal=useMemo(()=>savingsPots.reduce((sum,item)=>sum+item.balanceMinor,0),[savingsPots]);
+    .reduce((sum,item)=>sum+item.balanceMinor,0),[viewAccounts]);
+  const savedTotal=useMemo(()=>viewPots.reduce((sum,item)=>sum+item.balanceMinor,0),[viewPots]);
 
   function refreshed(){
     setRefreshKey(value=>value+1);
@@ -94,15 +103,16 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
     <header className="topbar">
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Contas</span></div>
       <div className="topbar-actions">
-        {canManage&&<AccountOnboarding householdId={householdId} variant="compact" onCreated={refreshed}/>}
+        {canManage&&<AccountOnboarding householdId={householdId} variant="compact" defaultScope={defaultCreateScope} onCreated={refreshed}/>}
         <Link href="/household" className="avatar-dot" aria-label="Lar e acessos"/>
       </div>
     </header>
+    <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="area-hero accounts-hero">
       <span>Onde seu dinheiro está</span>
-      <h1>{accounts.length?money.format(spendableTotal/100):'Suas contas em um só lugar.'}</h1>
-      <p>{accounts.length
+      <h1>{viewAccounts.length?money.format(spendableTotal/100):'Suas contas em um só lugar.'}</h1>
+      <p>{viewAccounts.length
         ? investmentTotal>0
           ? `${money.format(investmentTotal/100)} estão separados como investimentos e não entram no dinheiro disponível.`
           : 'Saldo disponível conhecido nas contas ativas do Lar.'
@@ -112,13 +122,13 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
     {error&&<p className="error-copy" role="alert">{error}</p>}
 
     <section>
-      <div className="section-title"><h2>Seus saldos</h2><span>{accounts.length} conta{accounts.length===1?'':'s'}</span></div>
+      <div className="section-title"><h2>Seus saldos</h2><span>{viewAccounts.length} conta{viewAccounts.length===1?'':'s'}</span></div>
       {loading
         ? <div className="account-balance-grid">{[0,1].map(i=><div className="account-balance-tile skeleton-line" key={i}/>)}</div>
-        : accounts.length===0
+        : viewAccounts.length===0
           ? <div className="empty-state"><h3>Nenhum saldo informado ainda.</h3><p>{canManage?'Use “Adicionar conta” para começar.':'Um administrador ainda não adicionou contas a este Lar.'}</p></div>
           : <div className="account-balance-grid">
-              {accounts.map(account=>{
+              {viewAccounts.map(account=>{
                 const connected=account.source==='open_finance';
                 const investment=account.connectedProductType==='investment';
                 return <article className={connected?'account-balance-tile connected':'account-balance-tile'} key={account.id}>
@@ -141,10 +151,10 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
             </div>}
     </section>
 
-    {!loading&&savingsPots.length>0&&<section className="savings-pots-section">
+    {!loading&&viewPots.length>0&&<section className="savings-pots-section">
       <div className="section-title"><div><h2>Dinheiro guardado</h2><span>{money.format(savedTotal/100)} separado do saldo para gastar</span></div></div>
       <div className="savings-pot-grid">
-        {savingsPots.map(pot=><article className="savings-pot-card" key={pot.id}>
+        {viewPots.map(pot=><article className="savings-pot-card" key={pot.id}>
           <span>{pot.institutionName||'Importado de um print'}{pot.scope==='personal'&&<em className="personal-pill">Só para mim</em>}</span>
           <h3>{pot.name}</h3>
           <strong>{money.format(pot.balanceMinor/100)}</strong>
@@ -153,10 +163,10 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       </div>
     </section>}
 
-    {!loading&&cardSnapshots.length>0&&<section className="recognized-cards-section">
+    {!loading&&viewSnapshots.length>0&&<section className="recognized-cards-section">
       <div className="section-title"><div><h2>Cartões reconhecidos</h2><span>informações vistas nos seus prints</span></div></div>
       <div className="recognized-card-grid">
-        {cardSnapshots.map(card=><article className="recognized-card" key={card.id}>
+        {viewSnapshots.map(card=><article className="recognized-card" key={card.id}>
           <span>{card.institutionName||'Cartão'}{card.scope==='personal'&&<em className="personal-pill">Só para mim</em>}</span>
           <h3>{card.name}{card.last4?' · '+card.last4:''}</h3>
           {card.statementAmountMinor!==null&&<strong>{money.format(card.statementAmountMinor/100)}</strong>}
@@ -166,13 +176,14 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       </div>
     </section>}
 
-    {!loading&&canManage&&<ConnectedBanks householdId={householdId} accounts={accounts} onSynced={refreshed}/>}
+    {!loading&&canManage&&view!=='personal'&&<ConnectedBanks householdId={householdId} accounts={viewAccounts} onSynced={refreshed}/>}
     
     {!loading&&<CreditCardManager
       householdId={householdId}
-      cards={cards}
-      accounts={accounts}
-      invoiceImports={invoiceImports}
+      cards={viewCards}
+      accounts={viewAccounts}
+      invoiceImports={viewInvoices}
+      defaultScope={defaultCreateScope}
       canManage={canManage}
       onCreated={refreshed}
     />}
