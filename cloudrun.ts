@@ -15,7 +15,7 @@ import { commitFinancialScreen } from './server/financial-screen.js';
 import { findCommitmentPaymentMatches, findCommitmentPaymentMatchesBatch, payCommitment, undoCommitmentPayment } from './server/commitment-payments.js';
 import { completeOpenFinanceConnection, disconnectOpenFinanceConnection, listOpenFinanceConnections, startOpenFinanceConnection, syncOpenFinanceConnection } from './server/open-finance.js';
 import { selectHousehold } from './server/session.js';
-import { acceptHouseholdInvite, createHouseholdInvite, getHouseholdSettings, removeHouseholdMember, renameHousehold, updateHouseholdMemberRole } from './server/household.js';
+import { acceptHouseholdInvite, createHouseholdInvite, getHouseholdSettings, removeHouseholdMember, renameHousehold, revokeHouseholdInvite, updateHouseholdMemberRole } from './server/household.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -30,6 +30,7 @@ app.post('/api/household/settings', getHouseholdSettings);
 app.post('/api/household/rename', renameHousehold);
 app.post('/api/household/invite', createHouseholdInvite);
 app.post('/api/household/invite/accept', acceptHouseholdInvite);
+app.post('/api/household/invite/revoke', revokeHouseholdInvite);
 app.post('/api/household/member/role', updateHouseholdMemberRole);
 app.post('/api/household/member/remove', removeHouseholdMember);
 app.post('/api/home', getHomeData);

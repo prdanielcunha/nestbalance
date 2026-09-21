@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
+import type { HouseholdRole } from '@/src/core/household';
 import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
@@ -11,7 +13,8 @@ import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditC
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const typeLabel:Record<string,string>={bank:'Conta bancária',wallet:'Carteira digital',cash:'Dinheiro'};
 
-export function AccountsScreen({householdId}:{householdId:string}){
+export function AccountsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
+  const canManage=role==='owner'||role==='admin';
   const [accounts,setAccounts]=useState<HomeAccount[]>([]);
   const [cards,setCards]=useState<HomeCreditCard[]>([]);
   const [invoiceImports,setInvoiceImports]=useState<HomeInvoiceImport[]>([]);
@@ -90,7 +93,10 @@ export function AccountsScreen({householdId}:{householdId:string}){
   return <main className="app-shell accounts-shell">
     <header className="topbar">
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Contas</span></div>
-      <AccountOnboarding householdId={householdId} variant="compact" onCreated={refreshed}/>
+      <div className="topbar-actions">
+        {canManage&&<AccountOnboarding householdId={householdId} variant="compact" onCreated={refreshed}/>}
+        <Link href="/household" className="avatar-dot" aria-label="Lar e acessos"/>
+      </div>
     </header>
 
     <section className="area-hero accounts-hero">
@@ -100,7 +106,7 @@ export function AccountsScreen({householdId}:{householdId:string}){
         ? investmentTotal>0
           ? `${money.format(investmentTotal/100)} estão separados como investimentos e não entram no dinheiro disponível.`
           : 'Saldo disponível conhecido nas contas ativas do Lar.'
-        : 'Adicione uma conta manualmente ou conecte seu banco com Open Finance.'}</p>
+        : canManage ? 'Adicione uma conta manualmente ou conecte seu banco com Open Finance.' : 'Um administrador pode adicionar contas; você pode consultar o que já existe.'}</p>
     </section>
 
     {error&&<p className="error-copy" role="alert">{error}</p>}
@@ -110,7 +116,7 @@ export function AccountsScreen({householdId}:{householdId:string}){
       {loading
         ? <div className="account-balance-grid">{[0,1].map(i=><div className="account-balance-tile skeleton-line" key={i}/>)}</div>
         : accounts.length===0
-          ? <div className="empty-state"><h3>Nenhum saldo informado ainda.</h3><p>Use “Adicionar conta” para começar.</p></div>
+          ? <div className="empty-state"><h3>Nenhum saldo informado ainda.</h3><p>{canManage?'Use “Adicionar conta” para começar.':'Um administrador ainda não adicionou contas a este Lar.'}</p></div>
           : <div className="account-balance-grid">
               {accounts.map(account=>{
                 const connected=account.source==='open_finance';
@@ -128,7 +134,7 @@ export function AccountsScreen({householdId}:{householdId:string}){
                       : 'Saldo atual informado'}</small>
                     {connected
                       ? <span className="synced-account-pill">Automático</span>
-                      : <button type="button" onClick={()=>openBalance(account)}>Atualizar</button>}
+                      : canManage&&<button type="button" onClick={()=>openBalance(account)}>Atualizar</button>}
                   </div>
                 </article>;
               })}
@@ -160,19 +166,20 @@ export function AccountsScreen({householdId}:{householdId:string}){
       </div>
     </section>}
 
-    {!loading&&<ConnectedBanks householdId={householdId} accounts={accounts} onSynced={refreshed}/>}
+    {!loading&&canManage&&<ConnectedBanks householdId={householdId} accounts={accounts} onSynced={refreshed}/>}
     
     {!loading&&<CreditCardManager
       householdId={householdId}
       cards={cards}
       accounts={accounts}
       invoiceImports={invoiceImports}
+      canManage={canManage}
       onCreated={refreshed}
     />}
 
-    <AppNav/>
+    <AppNav canContribute={role!=='read_only'}/>
 
-    {editingAccount&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!savingBalance&&setEditingAccount(null)}>
+    {canManage&&editingAccount&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!savingBalance&&setEditingAccount(null)}>
       <section className="capture-sheet balance-update-sheet" role="dialog" aria-modal="true" aria-label="Atualizar saldo">
         <div className="sheet-handle"/>
         <div className="eyebrow">Saldo atual</div>

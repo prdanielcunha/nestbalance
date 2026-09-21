@@ -7,6 +7,7 @@ import {
   loadHouseholdSettings,
   removeHouseholdMember,
   renameHousehold,
+  revokeHouseholdInvite,
   updateHouseholdMemberRole,
   type HouseholdSettingsPayload
 } from '@/src/lib/repositories/household';
@@ -38,6 +39,7 @@ export function HouseholdSettings({
   const [inviteLink,setInviteLink]=useState('');
   const [creatingInvite,setCreatingInvite]=useState(false);
   const [workingMember,setWorkingMember]=useState('');
+  const [workingInvite,setWorkingInvite]=useState('');
 
   async function refresh(){
     setLoading(true);
@@ -108,6 +110,17 @@ export function HouseholdSettings({
     }catch(err:any){
       setError(String(err?.message||'Não conseguimos atualizar esse acesso.'));
     }finally{setWorkingMember('');}
+  }
+
+  async function revokeInvite(inviteId:string){
+    if(!canManage||workingInvite) return;
+    setWorkingInvite(inviteId); setError('');
+    try{
+      await revokeHouseholdInvite({householdId,inviteId});
+      await refresh();
+    }catch(err:any){
+      setError(String(err?.message||'Não conseguimos cancelar esse convite.'));
+    }finally{setWorkingInvite('');}
   }
 
   async function remove(uid:string){
@@ -217,8 +230,11 @@ export function HouseholdSettings({
         {data.invites.length>0&&<div className="pending-invites">
           <span>Convites pendentes</span>
           {data.invites.map(invite=><div key={invite.id}>
-            <strong>{invite.email||'Link sem e-mail restrito'}</strong>
-            <small>{roleLabel[invite.role]} · {invite.expired?'expirado':`até ${new Intl.DateTimeFormat('pt-BR').format(invite.expiresAtMs)}`}</small>
+            <div><strong>{invite.email||'Link sem e-mail restrito'}</strong>
+            <small>{roleLabel[invite.role]} · {invite.expired?'expirado':`até ${new Intl.DateTimeFormat('pt-BR').format(invite.expiresAtMs)}`}</small></div>
+            <button className="member-remove" disabled={Boolean(workingInvite)} onClick={()=>void revokeInvite(invite.id)}>
+              {workingInvite===invite.id?'Cancelando…':'Cancelar'}
+            </button>
           </div>)}
         </div>}
       </section>}

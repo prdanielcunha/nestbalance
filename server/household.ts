@@ -262,3 +262,39 @@ export async function removeHouseholdMember(req:Request,res:Response){
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'HOUSEHOLD_MEMBER_REMOVE_FAILED');
   }
 }
+
+export async function revokeHouseholdInvite(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    const inviteId=String(req.body?.inviteId||'');
+    await requireHouseholdMember(householdId,user.uid,'manage_household');
+    if(!/^[a-f0-9]{64}$/.test(inviteId)) return error(res,400,'INVALID_INVITE');
+
+    const householdRef=adminDb.doc(`households/${householdId}`);
+    const inviteRef=householdRef.collection('invites').doc(inviteId);
+    await adminDb.runTransaction(async tx=>{
+      const invite=await tx.get(inviteRef);
+      if(!invite.exists) fail('INVITE_NOT_FOUND',404);
+      const data=invite.data()||{};
+      if(data.status==='revoked') return;
+      if(data.status!=='pending') fail('INVITE_NOT_AVAILABLE',409);
+      tx.update(inviteRef,{
+        status:'revoked',
+        revokedBy:user.uid,
+        revokedAt:FieldValue.serverTimestamp()
+      });
+      tx.create(householdRef.collection('auditEvents').doc(),{
+        type:'household.invite_revoked',
+        actorUid:user.uid,
+        inviteId,
+        createdAt:FieldValue.serverTimestamp()
+      });
+    });
+    return res.json({ok:true,inviteId,status:'revoked'});
+  }catch(err:any){
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD','HOUSEHOLD_ACCESS_DENIED','INVITE_NOT_FOUND','INVITE_NOT_AVAILABLE'];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'HOUSEHOLD_INVITE_REVOKE_FAILED');
+  }
+}

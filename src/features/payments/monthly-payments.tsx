@@ -8,11 +8,13 @@ const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 export function MonthlyPayments({
   householdId,
   commitments,
-  onChanged
+  onChanged,
+  canContribute=true
 }:{
   householdId:string;
   commitments:HomeRow[];
   onChanged?:()=>void;
+  canContribute?:boolean;
 }){
   const [workingId,setWorkingId]=useState('');
   const [error,setError]=useState('');
@@ -24,7 +26,7 @@ export function MonthlyPayments({
   ,[commitments]);
 
   async function undoPaid(item:HomeRow){
-    if(workingId||!item.paidThisMonth) return;
+    if(!canContribute||workingId||!item.paidThisMonth) return;
     setWorkingId(item.id);
     setError('');
     try{
@@ -43,7 +45,7 @@ export function MonthlyPayments({
   }
 
   async function markPaid(item:HomeRow){
-    if(workingId||item.paidThisMonth) return;
+    if(!canContribute||workingId||item.paidThisMonth) return;
     setWorkingId(item.id);
     setError('');
     try{
@@ -57,7 +59,6 @@ export function MonthlyPayments({
   }
 
   if(!items.length) return null;
-
   const pending=items.filter(item=>!item.paidThisMonth).length;
 
   return <section className="monthly-payments-section">
@@ -74,16 +75,18 @@ export function MonthlyPayments({
         </div>
         <div className="monthly-payment-action">
           <b>{money.format(item.amountMinor/100)}</b>
-          {item.paidThisMonth
-            ? <div className="paid-actions">
-                <span className="paid-pill">Pago</span>
-                <button className="undo-paid-button" type="button" disabled={Boolean(workingId)} onClick={()=>void undoPaid(item)}>
-                  {workingId===item.id?'Desfazendo…':'Desfazer'}
+          {canContribute
+            ? item.paidThisMonth
+              ? <div className="paid-actions">
+                  <span className="paid-pill">Pago</span>
+                  <button className="undo-paid-button" type="button" disabled={Boolean(workingId)} onClick={()=>void undoPaid(item)}>
+                    {workingId===item.id?'Desfazendo…':'Desfazer'}
+                  </button>
+                </div>
+              : <button type="button" disabled={Boolean(workingId)} onClick={()=>void markPaid(item)}>
+                  {workingId===item.id?'Marcando…':'Paguei'}
                 </button>
-              </div>
-            : <button type="button" disabled={Boolean(workingId)} onClick={()=>void markPaid(item)}>
-                {workingId===item.id?'Marcando…':'Paguei'}
-              </button>}
+            : <span className={item.paidThisMonth?'paid-pill':'role-pill'}>{item.paidThisMonth?'Pago':'Consulta'}</span>}
         </div>
       </article>)}
     </div>

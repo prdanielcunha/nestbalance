@@ -26,6 +26,8 @@ const belvoSource=read('./server/open-finance/belvo.ts');
 const openFinanceCore=read('./src/core/open-finance.ts');
 const financialScreenSource=read('./server/financial-screen.ts');
 const commitmentPaymentsSource=read('./server/commitment-payments.ts');
+const householdSource=read('./server/household.ts');
+const householdCore=read('./src/core/household.ts');
 
 assert.match(firestore,/match \/households\/\{hid\}/);
 assert.match(firestore,/allow read, write: if false;/);
@@ -95,6 +97,13 @@ assert.match(commitmentPaymentsSource,/runTransaction/);
 assert.match(commitmentPaymentsSource,/commitment\.paid/);
 assert.match(commitmentPaymentsSource,/commitment\.payment_reversed/);
 assert.match(cloudrun,/\/api\/commitments\/undo-payment/);
+assert.match(householdSource,/randomBytes\(32\)/);
+assert.match(householdSource,/createHash\('sha256'\)/);
+assert.match(householdSource,/household\.invite_revoked/);
+assert.match(householdSource,/expiresAtMs/);
+assert.match(householdCore,/read_only/);
+assert.match(householdCore,/manage_household/);
+assert.match(cloudrun,/\/api\/household\/invite\/revoke/);
 
 function sourceFiles(root){
   const out=[];

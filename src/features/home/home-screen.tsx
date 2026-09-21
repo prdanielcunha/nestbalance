@@ -9,13 +9,16 @@ import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import { messages } from '@/src/i18n/messages';
+import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
 
-export function HomeScreen({ householdId }: { householdId: string }) {
+export function HomeScreen({ householdId, role }: { householdId: string; role: HouseholdRole }) {
   const t = messages['pt-BR'];
+  const canManage = role === 'owner' || role === 'admin';
+  const canContribute = role !== 'read_only';
   const [transactions, setTransactions] = useState<HomeRow[]>([]);
   const [commitments, setCommitments] = useState<HomeRow[]>([]);
   const [accounts, setAccounts] = useState<HomeAccount[]>([]);
@@ -103,8 +106,8 @@ export function HomeScreen({ householdId }: { householdId: string }) {
       <p>{accounts.length ? (snapshot.futureCommitmentsMinor > 0 ? `${money.format(snapshot.futureCommitmentsMinor/100)} ainda estão comprometidos.` : 'Sem contas pendentes registradas.') : 'Adicione uma conta ou saldo para vermos quanto está realmente disponível.'}</p>
     </section>
 
-    {accounts.length===0 && <AccountOnboarding householdId={householdId} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
-    <MonthlyPayments householdId={householdId} commitments={commitments} onChanged={()=>void refreshHome(true)} />
+    {accounts.length===0 && canManage && <AccountOnboarding householdId={householdId} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
+    <MonthlyPayments householdId={householdId} commitments={commitments} canContribute={canContribute} onChanged={()=>void refreshHome(true)} />
 
     <section className="month-section">
       <div className="section-title"><h2>{t.month}</h2></div>
@@ -121,6 +124,7 @@ export function HomeScreen({ householdId }: { householdId: string }) {
       cards={cards}
       accounts={accounts}
       invoiceImports={invoiceImports}
+      canManage={canManage}
       onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
     />
 
@@ -148,6 +152,6 @@ export function HomeScreen({ householdId }: { householdId: string }) {
       {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?'No cartão':x.source==='credit_card_invoice_payment'?'Fatura paga':x.source==='open_finance'?'Sincronizado':x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
     </section>
 
-    <AppNav/>
+    <AppNav canContribute={canContribute}/>
   </main>;
 }

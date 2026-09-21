@@ -60,3 +60,7 @@ export function updateHouseholdMemberRole(input:{householdId:string;uid:string;r
 export function removeHouseholdMember(input:{householdId:string;uid:string}){
   return post<{ok:true;uid:string}>('/api/household/member/remove',input);
 }
+
+export function revokeHouseholdInvite(input:{householdId:string;inviteId:string}){
+  return post<{ok:true;inviteId:string;status:'revoked'}>('/api/household/invite/revoke',input);
+}
