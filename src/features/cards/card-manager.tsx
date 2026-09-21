@@ -4,7 +4,8 @@ import { CARD_BRANDS, invoiceCycleForPurchase, type CardBrand } from '@/src/core
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { createHouseholdCreditCard } from '@/src/lib/repositories/cards';
 import { InvoiceImportSheet } from '@/src/features/cards/invoice-import-sheet';
-import type { HomeCreditCard } from '@/src/lib/repositories/home';
+import { InvoicePaymentSheet } from '@/src/features/cards/invoice-payment-sheet';
+import type { HomeAccount, HomeCreditCard, HomeInvoiceImport } from '@/src/lib/repositories/home';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const brandLabel:Record<CardBrand,string>={
@@ -23,10 +24,14 @@ function todayIso(){
 export function CreditCardManager({
   householdId,
   cards,
+  accounts,
+  invoiceImports,
   onCreated
 }:{
   householdId:string;
   cards:HomeCreditCard[];
+  accounts:HomeAccount[];
+  invoiceImports:HomeInvoiceImport[];
   onCreated?:()=>void;
 }){
   const [open,setOpen]=useState(false);
@@ -39,6 +44,7 @@ export function CreditCardManager({
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
   const [invoiceCard,setInvoiceCard]=useState<HomeCreditCard|null>(null);
+  const [paymentTarget,setPaymentTarget]=useState<{card:HomeCreditCard;invoice:HomeInvoiceImport}|null>(null);
 
   async function save(){
     const closing=Number(closingDay);
@@ -113,6 +119,10 @@ export function CreditCardManager({
             {cards.map(card=>{
               let cycle:{closingOn:string;dueOn:string;invoiceKey:string}|null=null;
               try{cycle=invoiceCycleForPurchase(todayIso(),card.closingDay,card.dueDay);}catch{}
+              const openInvoices=invoiceImports
+                .filter(invoice=>invoice.cardId===card.id&&invoice.paymentStatus!=='paid'&&invoice.confirmedAmountMinor>0)
+                .sort((a,b)=>String(a.dueOn).localeCompare(String(b.dueOn)));
+              const openInvoice=openInvoices[0]||null;
               return <article className="credit-card-tile" key={card.id}>
                 <div className="credit-card-top">
                   <span>{brandLabel[card.brand as CardBrand]||'Cartão'}</span>
@@ -124,14 +134,36 @@ export function CreditCardManager({
                   <div><span>Vence</span><strong>dia {card.dueDay}</strong></div>
                   <div><span>Limite</span><strong>{card.limitMinor===null?'Não informado':money.format(card.limitMinor/100)}</strong></div>
                 </div>
-                {cycle&&<small>Compras de hoje entram na fatura com vencimento em {new Intl.DateTimeFormat('pt-BR').format(new Date(cycle.dueOn+'T12:00:00'))}.</small>}
-                <button className="invoice-import-button" type="button" onClick={()=>setInvoiceCard(card)}>Importar fatura</button>
+                {openInvoice
+                  ? <div className="card-open-invoice">
+                      <span>{openInvoice.status==='confirmed'?'Fatura aberta':'Fatura em revisão'}</span>
+                      <strong>{money.format(openInvoice.confirmedAmountMinor/100)}</strong>
+                      <small>Vence {new Intl.DateTimeFormat('pt-BR').format(new Date(openInvoice.dueOn+'T12:00:00'))}</small>
+                    </div>
+                  : cycle&&<small>Compras de hoje entram na fatura com vencimento em {new Intl.DateTimeFormat('pt-BR').format(new Date(cycle.dueOn+'T12:00:00'))}.</small>}
+                <div className="card-tile-actions">
+                  <button className="invoice-import-button" type="button" onClick={()=>setInvoiceCard(card)}>Importar fatura</button>
+                  {openInvoice&&<button
+                    className="invoice-pay-button"
+                    type="button"
+                    disabled={openInvoice.status!=='confirmed'}
+                    onClick={()=>setPaymentTarget({card,invoice:openInvoice})}
+                  >{openInvoice.status==='confirmed'?'Pagar fatura':'Revisão pendente'}</button>}
+                </div>
               </article>;
             })}
           </div>}
     </section>
 
     {invoiceCard&&<InvoiceImportSheet householdId={householdId} card={invoiceCard} onClose={()=>setInvoiceCard(null)} onCommitted={()=>{onCreated?.();setInvoiceCard(null);}} />}
+    {paymentTarget&&<InvoicePaymentSheet
+      householdId={householdId}
+      card={paymentTarget.card}
+      invoice={paymentTarget.invoice}
+      accounts={accounts}
+      onClose={()=>setPaymentTarget(null)}
+      onPaid={()=>{onCreated?.();setPaymentTarget(null);}}
+    />}
 
     {open&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!saving&&setOpen(false)}>
       <section className="capture-sheet card-sheet" role="dialog" aria-modal="true" aria-label="Adicionar cartão">
