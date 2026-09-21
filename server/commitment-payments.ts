@@ -43,7 +43,10 @@ function dto(doc:any):PayableCommitment{
     status:String(data.status||'pending'),
     recurring:Boolean(data.recurring),
     recurrence:data.recurrence||null,
-    dueDay:Number.isInteger(data.dueDay)?data.dueDay:null
+    dueDay:Number.isInteger(data.dueDay)?data.dueDay:null,
+    installment:data.installment&&Number.isInteger(data.installment.current)&&Number.isInteger(data.installment.total)
+      ? {current:data.installment.current,total:data.installment.total}
+      : null
   };
 }
 
@@ -77,7 +80,7 @@ export async function findCommitmentPaymentMatches(req:Request,res:Response){
 
     const commitments=commitmentsSnap.docs
       .map(dto)
-      .filter(item=>!(item.recurring===true&&item.recurrence==='monthly'&&paidIds.has(item.id)));
+      .filter(item=>!paidIds.has(item.id));
 
     const matches=matchPayableCommitments({
       amountMinor,
@@ -186,7 +189,29 @@ export async function payCommitment(req:Request,res:Response){
         schemaVersion:1
       });
 
-      if(fresh.recurring===true&&fresh.recurrence==='monthly'){
+      const installment=fresh.installment&&Number.isInteger(fresh.installment.current)&&Number.isInteger(fresh.installment.total)
+        ? {current:Number(fresh.installment.current),total:Number(fresh.installment.total)}
+        : null;
+
+      if(installment){
+        if(installment.current>=installment.total){
+          tx.update(commitmentRef,{
+            status:'paid',
+            paidOn,
+            lastPaidPeriodKey:periodKey,
+            lastPaidOn:paidOn,
+            paymentTransactionId:transactionRef.id,
+            updatedAt:FieldValue.serverTimestamp()
+          });
+        }else{
+          tx.update(commitmentRef,{
+            installment:{current:installment.current+1,total:installment.total},
+            lastPaidPeriodKey:periodKey,
+            lastPaidOn:paidOn,
+            updatedAt:FieldValue.serverTimestamp()
+          });
+        }
+      }else if(fresh.recurring===true&&fresh.recurrence==='monthly'){
         tx.update(commitmentRef,{
           lastPaidPeriodKey:periodKey,
           lastPaidOn:paidOn,
