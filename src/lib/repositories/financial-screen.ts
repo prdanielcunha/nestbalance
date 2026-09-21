@@ -1,5 +1,6 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
+import type { FinancialScope } from '@/src/core/privacy';
 
 export type FinancialScreenCommitResult={
   ok:true;
@@ -16,7 +17,7 @@ export type FinancialScreenCommitResult={
   };
 };
 
-export async function commitFinancialScreen(input:{householdId:string;evidenceId:string}){
+export async function commitFinancialScreen(input:{householdId:string;evidenceId:string;scope?:FinancialScope}){
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');
 
