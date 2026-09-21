@@ -356,6 +356,7 @@ export async function undoCommitmentPayment(req:Request,res:Response){
 
     if(!paymentSnap.exists) return error(res,404,'PAYMENT_NOT_FOUND');
     if(!commitmentSnap.exists) return error(res,404,'COMMITMENT_NOT_FOUND');
+    assertScopedAccess(paymentSnap.data(),user.uid);
     assertScopedAccess(commitmentSnap.data(),user.uid);
 
     const payment=paymentSnap.data()!;
