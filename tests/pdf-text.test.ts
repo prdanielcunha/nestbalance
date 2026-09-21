@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extractNativePdfText, PDF_TEXT_MAX_INPUT_BYTES } from '../server/pdf-text.ts';
-import { extractNativeDocumentText } from '../server/document-text.ts';
+import { extractNativePdfText, PDF_TEXT_MAX_INPUT_BYTES } from '../server/pdf-text.js';
+import { extractNativeDocumentText } from '../server/document-text.js';
 
 function buildPdf(text:string) {
   const payload=Buffer.from(`BT /F1 12 Tf 72 720 Td (${text.replace(/([\\()])/g,'\\$1')}) Tj ET`,'latin1');
