@@ -385,3 +385,10 @@
   .capture-quick-actions button{min-height:78px}
   .capture-paste-hint{display:none}
 }
+
+
+.interpretation-card.needs-choice{border-color:rgba(216,151,52,.28);background:linear-gradient(145deg,rgba(216,151,52,.055),var(--surface-strong))}
+.inline-direction-choice{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+.inline-direction-choice button{border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:8px 9px;border-radius:12px;font-size:10px;font-weight:800}
+.inline-direction-choice button:hover{border-color:rgba(94,106,210,.35);color:var(--iris);background:rgba(94,106,210,.055)}
+@media(max-width:560px){.inline-direction-choice{grid-template-columns:1fr}.inline-direction-choice button{text-align:left}}
