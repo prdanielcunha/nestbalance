@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { visibleDocs } from './privacy.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -19,7 +20,9 @@ function accountDto(doc:any){
     automaticallyInvestedMinor:Number.isSafeInteger(data.automaticallyInvestedMinor)?data.automaticallyInvestedMinor:null,
     balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
     currency:String(data.currency||'BRL'),
-    status:String(data.status||'active')
+    status:String(data.status||'active'),
+    scope:data.scope==='personal'?'personal':'household',
+    scope:data.scope==='personal'?'personal':'household'
   };
 }
 
@@ -33,7 +36,8 @@ function savingsPotDto(doc:any){
     currency:String(data.currency||'BRL'),
     institutionName:typeof data.institutionName==='string'?data.institutionName:null,
     source:typeof data.source==='string'?data.source:null,
-    status:String(data.status||'active')
+    status:String(data.status||'active'),
+    scope:data.scope==='personal'?'personal':'household'
   };
 }
 
@@ -48,7 +52,8 @@ function cardSnapshotDto(doc:any){
     availableLimitMinor:Number.isSafeInteger(data.availableLimitMinor)?data.availableLimitMinor:null,
     totalLimitMinor:Number.isSafeInteger(data.totalLimitMinor)?data.totalLimitMinor:null,
     institutionName:typeof data.institutionName==='string'?data.institutionName:null,
-    source:typeof data.source==='string'?data.source:null
+    source:typeof data.source==='string'?data.source:null,
+    scope:data.scope==='personal'?'personal':'household'
   };
 }
 
@@ -78,7 +83,8 @@ function installmentPlanDto(doc:any){
     totalInstallments:Number(data.totalInstallments||0),
     lastObservedInstallment:Number(data.lastObservedInstallment||0),
     anchorDueOn:String(data.anchorDueOn||''),
-    lastObservedInvoiceKey:String(data.lastObservedInvoiceKey||'')
+    lastObservedInvoiceKey:String(data.lastObservedInvoiceKey||''),
+    scope:data.scope==='personal'?'personal':'household'
   };
 }
 
@@ -94,7 +100,8 @@ function invoiceImportDto(doc:any){
     paymentStatus:String(data.paymentStatus||'unpaid'),
     paidAmountMinor:Number.isSafeInteger(data.paidAmountMinor)?data.paidAmountMinor:0,
     paidOn:typeof data.paidOn==='string'?data.paidOn:null,
-    paidFromAccountId:typeof data.paidFromAccountId==='string'?data.paidFromAccountId:null
+    paidFromAccountId:typeof data.paidFromAccountId==='string'?data.paidFromAccountId:null,
+    scope:data.scope==='personal'?'personal':'household'
   };
 }
 
@@ -118,7 +125,8 @@ function movementDto(doc:any){
     installmentPlanId:typeof data.installmentPlanId==='string'?data.installmentPlanId:null,
     cardId:typeof data.cardId==='string'?data.cardId:null,
     invoiceKey:typeof data.invoiceKey==='string'?data.invoiceKey:null,
-    invoiceImportId:typeof data.invoiceImportId==='string'?data.invoiceImportId:null
+    invoiceImportId:typeof data.invoiceImportId==='string'?data.invoiceImportId:null,
+    scope:data.scope==='personal'?'personal':'household'
   };
 }
 
@@ -152,19 +160,19 @@ export async function getHomeData(req:Request,res:Response){
 
     return res.json({
       ok:true,
-      accounts:accounts.docs.map(accountDto),
-      cards:cards.docs.map(cardDto),
-      transactions:transactions.docs.map(movementDto).sort((a,b)=>
+      accounts:visibleDocs(accounts.docs,user.uid).map(accountDto),
+      cards:visibleDocs(cards.docs,user.uid).map(cardDto),
+      transactions:visibleDocs(transactions.docs,user.uid).map(movementDto).sort((a,b)=>
         String(b.observedOn||'').localeCompare(String(a.observedOn||''))
       ),
-      commitments:commitments.docs.map(doc=>({
+      commitments:visibleDocs(commitments.docs,user.uid).map(doc=>({
         ...movementDto(doc),
         paidThisMonth:paidThisMonth.has(doc.id)
       })),
-      installmentPlans:installmentPlans.docs.map(installmentPlanDto),
-      invoiceImports:invoiceImports.docs.map(invoiceImportDto),
-      savingsPots:savingsPots.docs.map(savingsPotDto),
-      cardSnapshots:cardSnapshots.docs.map(cardSnapshotDto),
+      installmentPlans:visibleDocs(installmentPlans.docs,user.uid).map(installmentPlanDto),
+      invoiceImports:visibleDocs(invoiceImports.docs,user.uid).map(invoiceImportDto),
+      savingsPots:visibleDocs(savingsPots.docs,user.uid).map(savingsPotDto),
+      cardSnapshots:visibleDocs(cardSnapshots.docs,user.uid).map(cardSnapshotDto),
       refreshedAt:new Date().toISOString()
     });
   }catch(err:any){
