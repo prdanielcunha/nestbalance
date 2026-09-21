@@ -67,6 +67,8 @@ export async function createCreditCard(req:Request,res:Response){
 
       tx.create(auditRef,{
         type:'credit_card.created',
+        scope:privacy.scope,
+        ownerUid:privacy.ownerUid,
         actorUid:user.uid,
         entityType:'credit_card',
         entityId:cardRef.id,
