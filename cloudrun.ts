@@ -10,7 +10,9 @@ import { getHomeData } from './server/home.js';
 
 const app = express();
 app.disable('x-powered-by');
-app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'nestbalance-api' }));
+const healthz = (_req: express.Request, res: express.Response) => res.json({ ok: true, service: 'nestbalance-api' });
+app.get('/healthz', healthz);
+app.get('/api/healthz', healthz);
 app.post('/api/evidence/upload', express.raw({ type: '*/*', limit: '20mb' }), uploadEvidence);
 app.use(express.json({ limit: '128kb' }));
 app.post('/api/session/bootstrap', bootstrapSession);
