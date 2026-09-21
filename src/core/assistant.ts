@@ -37,7 +37,7 @@ export type AssistantSource={
 };
 
 export type AssistantAnswer={
-  intent:'remaining_to_pay'|'available_now'|'future_months'|'unsupported';
+  intent:'remaining_to_pay'|'available_now'|'future_months'|'spending_simulation'|'ending_installments'|'unsupported';
   title:string;
   summary:string;
   answerMinor:number|null;
@@ -55,9 +55,38 @@ function positive(value:unknown){
   return Number.isSafeInteger(n)&&n>0?n:0;
 }
 
+function formatMoneyMinor(value:number){
+  return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value/100);
+}
+
+function parseRequestedMoneyMinor(question:string){
+  const normalized=question.normalize('NFKC').replace(/\s+/g,' ').trim();
+  const currencyMatch=normalized.match(/R\$\s*([0-9.]+(?:,[0-9]{1,2})?)/i);
+  const reaisMatch=normalized.match(/([0-9.]+(?:,[0-9]{1,2})?)\s*(?:reais?|conto(?:s)?)/i);
+  const spendMatch=normalized.match(/(?:gastar|gasto|gastasse)\s*(?:de\s*)?([0-9.]+(?:,[0-9]{1,2})?)/i);
+  const raw=(currencyMatch?.[1]||reaisMatch?.[1]||spendMatch?.[1]||'').trim();
+  if(!raw) return null;
+  const number=Number(raw.replace(/\./g,'').replace(',','.'));
+  if(!Number.isFinite(number)||number<=0||number>100_000_000) return null;
+  return Math.round(number*100);
+}
+
 export function classifyAssistantIntent(question:string):AssistantAnswer['intent']{
   const q=normalize(question);
   if(!q) return 'unsupported';
+
+  if(
+    /(?:da|dá) para gastar/.test(q)||
+    /posso gastar/.test(q)||
+    /consigo gastar/.test(q)||
+    /se eu gastar/.test(q)
+  ) return 'spending_simulation';
+
+  if(
+    /parcelas?.*(?:terminam|acabam|finalizam)/.test(q)||
+    /parcelamentos?.*(?:terminam|acabam|finalizam)/.test(q)||
+    /quais .*parcelas?.*logo/.test(q)
+  ) return 'ending_installments';
 
   if(
     /quanto .*falta.*pagar/.test(q)||
@@ -94,6 +123,116 @@ export function answerAssistantQuestion(input:{
   now:Date;
 }):AssistantAnswer{
   const intent=classifyAssistantIntent(input.question);
+
+  if(intent==='spending_simulation'){
+    const spendMinor=parseRequestedMoneyMinor(input.question);
+    if(!spendMinor){
+      return {
+        intent,
+        title:'Qual valor você quer simular?',
+        summary:'Escreva o valor na própria pergunta, por exemplo: “Dá para gastar R$ 500?”.',
+        answerMinor:null,
+        sources:[],
+        cards:[],
+        suggestions:['Dá para gastar R$ 500?','Quanto ainda falta pagar?','Quanto tenho disponível?']
+      };
+    }
+
+    const accountSources=input.accounts
+      .filter(account=>account.status!=='inactive')
+      .map(account=>({
+        kind:'account' as const,
+        id:account.id,
+        label:account.name,
+        amountMinor:Number(account.balanceMinor)||0,
+        detail:'Saldo atual conhecido'
+      }));
+    const commitmentSources=input.commitments
+      .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&positive(item.amountMinor)>0)
+      .map(item=>({
+        kind:'commitment' as const,
+        id:item.id,
+        label:item.description,
+        amountMinor:positive(item.amountMinor),
+        detail:'Compromisso aberto conhecido'
+      }));
+    const invoiceSources=input.invoices
+      .filter(item=>item.paymentStatus!=='paid'&&item.status!=='cancelled')
+      .map(item=>({
+        kind:'invoice' as const,
+        id:item.id,
+        label:`Fatura ${item.invoiceKey}`,
+        amountMinor:Math.max(0,positive(item.confirmedAmountMinor)-positive(item.paidAmountMinor)),
+        detail:item.status==='partial'?'Fatura ainda em revisão':'Fatura aberta confirmada'
+      }))
+      .filter(item=>item.amountMinor>0);
+
+    const availableMinor=accountSources.reduce((sum,item)=>sum+item.amountMinor,0);
+    const obligationsMinor=[...commitmentSources,...invoiceSources].reduce((sum,item)=>sum+item.amountMinor,0);
+    const afterSpendMinor=availableMinor-obligationsMinor-spendMinor;
+    const partialInvoices=input.invoices.filter(item=>item.status==='partial'&&item.paymentStatus!=='paid').length;
+
+    return {
+      intent,
+      title:`Simulação de ${formatMoneyMinor(spendMinor)}`,
+      summary:`Com os saldos e obrigações conhecidos agora, depois desse gasto a projeção ficaria em ${formatMoneyMinor(afterSpendMinor)}.${partialInvoices?` Há ${partialInvoices} fatura${partialInvoices===1?'':'s'} ainda em revisão, então esse valor pode mudar.`:''} Isso é uma simulação, não uma recomendação de gasto.`,
+      answerMinor:afterSpendMinor,
+      sources:[...accountSources,...commitmentSources,...invoiceSources].slice(0,40),
+      cards:[
+        {label:'Disponível agora',amountMinor:availableMinor,detail:`${accountSources.length} conta${accountSources.length===1?'':'s'} conhecida${accountSources.length===1?'':'s'}`},
+        {label:'Obrigações conhecidas',amountMinor:obligationsMinor,detail:`${commitmentSources.length+invoiceSources.length} item${commitmentSources.length+invoiceSources.length===1?'':'s'} aberto${commitmentSources.length+invoiceSources.length===1?'':'s'}`},
+        {label:'Gasto simulado',amountMinor:spendMinor,detail:'Valor informado por você'},
+        {label:'Restaria na projeção',amountMinor:afterSpendMinor,detail:afterSpendMinor>=0?'Após obrigações conhecidas e o gasto simulado':'Ficaria abaixo de zero com os dados conhecidos'}
+      ],
+      suggestions:['Quanto ainda falta pagar?','Quais parcelas terminam logo?','O que já está comprometido nos próximos meses?']
+    };
+  }
+
+  if(intent==='ending_installments'){
+    const active=input.installmentPlans
+      .filter(plan=>plan.status!=='completed'&&plan.status!=='cancelled')
+      .map(plan=>({...plan,remaining:Math.max(0,Number(plan.totalInstallments||0)-Number(plan.lastObservedInstallment||0))}))
+      .filter(plan=>plan.remaining>0&&positive(plan.amountMinor)>0)
+      .sort((a,b)=>a.remaining-b.remaining||positive(b.amountMinor)-positive(a.amountMinor));
+
+    if(!active.length){
+      return {
+        intent,
+        title:'Nenhuma parcela ativa conhecida.',
+        summary:'Não encontrei planos de parcelamento reconciliados ainda.',
+        answerMinor:0,
+        sources:[],
+        cards:[],
+        suggestions:['O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?','Dá para gastar R$ 500?']
+      };
+    }
+
+    const endingSoon=active.filter(plan=>plan.remaining<=3);
+    const visible=active.slice(0,8);
+    const releasedSoonMinor=endingSoon.reduce((sum,plan)=>sum+positive(plan.amountMinor),0);
+
+    return {
+      intent,
+      title:endingSoon.length?'Estas parcelas terminam primeiro.':'Estas são as parcelas mais próximas do fim.',
+      summary:endingSoon.length
+        ? `${endingSoon.length} plano${endingSoon.length===1?' termina':'s terminam'} em até 3 parcelas. Quando acabarem, ${formatMoneyMinor(releasedSoonMinor)} por mês deixam de estar comprometidos, considerando os valores atuais.`
+        : 'Nenhum plano termina nas próximas 3 parcelas, mas estes são os mais próximos do fim.',
+      answerMinor:endingSoon.length?releasedSoonMinor:null,
+      sources:visible.map(plan=>({
+        kind:'installment_plan' as const,
+        id:plan.id,
+        label:plan.description||'Compra parcelada',
+        amountMinor:positive(plan.amountMinor),
+        detail:`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'} de ${plan.totalInstallments}`
+      })),
+      cards:visible.slice(0,6).map(plan=>({
+        label:plan.description||'Compra parcelada',
+        amountMinor:positive(plan.amountMinor),
+        detail:`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'}`
+      })),
+      suggestions:['Dá para gastar R$ 500?','O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?']
+    };
+  }
 
   if(intent==='remaining_to_pay'){
     const commitmentSources=input.commitments
@@ -132,7 +271,7 @@ export function answerAssistantQuestion(input:{
       intent,
       title:total>0?'Ainda há valores conhecidos para pagar.':'Nada pendente conhecido agora.',
       summary:total>0
-        ? `O NestBalance encontrou ${sources.length} obrigação${sources.length===1?'':'ões'} aberta${sources.length===1?'':'s'} no Lar.${partialInvoices?` ${partialInvoices} fatura${partialInvoices===1?' está':'s estão'} em revisão, então o total pode aumentar.`:''}`
+        ? `O NestBalance encontrou ${sources.length} obrigação${sources.length===1?'':'ões'} aberta${sources.length===1?'':'s'} nesta visão.${partialInvoices?` ${partialInvoices} fatura${partialInvoices===1?' está':'s estão'} em revisão, então o total pode aumentar.`:''}`
         : 'Não há compromissos nem faturas abertas confirmadas nos dados atuais.',
       answerMinor:total,
       sources:sources.sort((a,b)=>b.amountMinor-a.amountMinor).slice(0,30),
@@ -168,7 +307,7 @@ export function answerAssistantQuestion(input:{
       intent,
       title:'Saldo disponível conhecido',
       summary:sources.length
-        ? `Somando ${sources.length} conta${sources.length===1?'':'s'} ativa${sources.length===1?'':'s'} do Lar.`
+        ? `Somando ${sources.length} conta${sources.length===1?'':'s'} ativa${sources.length===1?'':'s'} nesta visão.`
         : 'Ainda não há uma conta com saldo disponível para somar.',
       answerMinor:total,
       sources,
@@ -217,11 +356,11 @@ export function answerAssistantQuestion(input:{
 
   return {
     intent:'unsupported',
-    title:'Posso responder com os dados do seu Lar.',
-    summary:'Nesta primeira camada, pergunte sobre saldo disponível, quanto ainda falta pagar ou os próximos meses.',
+    title:'Posso responder com os dados desta visão.',
+    summary:'Pergunte sobre saldo disponível, quanto falta pagar, próximos meses, simulação de gasto ou parcelas que terminam logo.',
     answerMinor:null,
     sources:[],
     cards:[],
-    suggestions:['Quanto ainda falta pagar?','Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
+    suggestions:['Dá para gastar R$ 500?','Quais parcelas terminam logo?','Quanto ainda falta pagar?','Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
   };
 }
