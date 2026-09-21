@@ -10,6 +10,7 @@ import { isOpenAiConfigured } from './ai/openai-client.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
+import { assertScopedAccess } from './privacy.js';
 
 const LOCK_TTL_MS=2*60*1000;
 
@@ -68,6 +69,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     if(!isOpenAiConfigured()) return error(res,503,'AI_NOT_CONFIGURED');
     const resolved=await resolveEvidence(householdId,requestedId);
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
+    assertScopedAccess(resolved.data,user.uid);
 
     const mimeType=String(resolved.data.mimeType||resolved.data.declaredMimeType||'');
     const kind=mimeType.startsWith('image/')?'image':mimeType.startsWith('audio/')?'audio':null;
@@ -211,7 +213,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
       }catch{}
     }
     const safe=[
-      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','AI_NOT_CONFIGURED',
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','AI_NOT_CONFIGURED',
       'AI_IMAGE_TYPE_REQUIRED','AI_IMAGE_TOO_LARGE','AI_AUDIO_TYPE_REQUIRED','AI_AUDIO_TOO_LARGE',
       'EVIDENCE_STORAGE_UNAVAILABLE','EVIDENCE_INVALID_METADATA','EVIDENCE_SIZE_MISMATCH',
       'EVIDENCE_SIGNATURE_MISMATCH','EVIDENCE_HASH_MISMATCH'
