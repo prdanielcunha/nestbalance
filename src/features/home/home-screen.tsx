@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { projectFutureCommitments } from '@/src/core/future-projection';
+import { projectStoredCardPurchases } from '@/src/core/card-purchase-projection';
 import { UniversalCapture } from '@/src/features/capture/universal-capture';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { messages } from '@/src/i18n/messages';
-import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeRow } from '@/src/lib/repositories/home';
+import { loadHomeData, type HomeAccount, type HomeCardPurchase, type HomeCreditCard, type HomeRow } from '@/src/lib/repositories/home';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
@@ -18,6 +19,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   const [commitments, setCommitments] = useState<HomeRow[]>([]);
   const [accounts, setAccounts] = useState<HomeAccount[]>([]);
   const [cards, setCards] = useState<HomeCreditCard[]>([]);
+  const [cardPurchases,setCardPurchases]=useState<HomeCardPurchase[]>([]);
   const [loadingHome,setLoadingHome]=useState(true);
   const [homeError,setHomeError]=useState('');
   const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
@@ -30,6 +32,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
       const data=await loadHomeData(householdId);
       setAccounts(data.accounts);
       setCards(data.cards||[]);
+      setCardPurchases(data.cardPurchases||[]);
       setTransactions(data.transactions);
       setCommitments(data.commitments);
       setHomeError('');
@@ -49,14 +52,52 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
     return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
   }, [householdId, accountCreated, cardCreated]);
 
+  const cardInvoiceProjections=useMemo(()=>projectStoredCardPurchases(
+    cardPurchases
+      .filter(item=>item.invoiceDueOn)
+      .map(item=>({
+        cardId:item.cardId,
+        amountMinor:item.amountMinor,
+        invoiceDueOn:item.invoiceDueOn!,
+        installment:item.installment,
+        status:item.status
+      }))
+  ),[cardPurchases]);
+
+  const currentMonthKey=useMemo(()=>{
+    const now=new Date();
+    return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  },[]);
+
+  const currentCardCommitmentsMinor=useMemo(()=>cardInvoiceProjections
+    .filter(item=>item.dueOn.startsWith(currentMonthKey))
+    .reduce((sum,item)=>sum+item.totalMinor,0),[cardInvoiceProjections,currentMonthKey]);
+
   const snapshot = useMemo(() => {
     const paidExpenseMinor = transactions.filter(x=>x.direction==='expense').reduce((s,x)=>s+x.amountMinor,0);
-    const futureCommitmentsMinor = commitments.filter(x=>x.status!=='paid'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0);
+    const regularCommitmentsMinor = commitments.filter(x=>x.status!=='paid'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0);
+    const futureCommitmentsMinor = regularCommitmentsMinor + currentCardCommitmentsMinor;
     const availableMinor = accounts.reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
     return deriveHomeSnapshot({availableMinor, incomeMinor:0, paidExpenseMinor, futureCommitmentsMinor, dueSoonMinor: futureCommitmentsMinor});
-  }, [transactions, commitments, accounts]);
+  }, [transactions, commitments, accounts, currentCardCommitmentsMinor]);
 
-  const futureMonths=useMemo(()=>projectFutureCommitments(commitments,new Date(),3),[commitments]);
+  const futureMonths=useMemo(()=>{
+    const regular=projectFutureCommitments(commitments,new Date(),3);
+    return regular.map(month=>{
+      const cardTotal=cardInvoiceProjections
+        .filter(item=>item.dueOn.startsWith(month.key))
+        .reduce((sum,item)=>sum+item.totalMinor,0);
+      const cardItems=cardInvoiceProjections
+        .filter(item=>item.dueOn.startsWith(month.key))
+        .reduce((sum,item)=>sum+item.itemCount,0);
+      return {
+        ...month,
+        totalMinor:month.totalMinor+cardTotal,
+        installmentsMinor:month.installmentsMinor+cardTotal,
+        itemCount:month.itemCount+cardItems
+      };
+    });
+  },[commitments,cardInvoiceProjections]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = transactions.length + commitments.length > 0;
 
@@ -87,6 +128,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
     <CreditCardManager
       householdId={householdId}
       cards={cards}
+      invoiceProjections={cardInvoiceProjections}
       onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
     />
 
