@@ -26,8 +26,7 @@ export function CreditCardManager({
   cards,
   accounts,
   invoiceImports,
-  onCreated
-}:{
+  onCreated,\n  canManage=true\n}:{
   householdId:string;
   cards:HomeCreditCard[];
   accounts:HomeAccount[];
@@ -106,15 +105,21 @@ export function CreditCardManager({
     <section className="cards-section">
       <div className="section-title">
         <div><h2>Cartões</h2><span>faturas e parcelas no lugar certo</span></div>
-        <button className="section-action" type="button" onClick={()=>setOpen(true)}>Adicionar cartão</button>
+        {canManage&&<button className="section-action" type="button" onClick={()=>setOpen(true)}>Adicionar cartão</button>}
       </div>
 
       {cards.length===0
-        ? <button className="card-empty" type="button" onClick={()=>setOpen(true)}>
-            <span>Cartão de crédito</span>
-            <strong>Adicione o cartão antes de importar a primeira fatura.</strong>
-            <small>O NestBalance vai usar fechamento e vencimento para entender em qual fatura cada compra entra.</small>
-          </button>
+        ? canManage
+          ? <button className="card-empty" type="button" onClick={()=>setOpen(true)}>
+              <span>Cartão de crédito</span>
+              <strong>Adicione o cartão antes de importar a primeira fatura.</strong>
+              <small>O NestBalance vai usar fechamento e vencimento para entender em qual fatura cada compra entra.</small>
+            </button>
+          : <div className="card-empty readonly">
+              <span>Cartões do Lar</span>
+              <strong>Nenhum cartão foi adicionado ainda.</strong>
+              <small>Um administrador pode cadastrar cartões e importar faturas.</small>
+            </div>
         : <div className="credit-card-grid">
             {cards.map(card=>{
               let cycle:{closingOn:string;dueOn:string;invoiceKey:string}|null=null;
@@ -155,8 +160,8 @@ export function CreditCardManager({
           </div>}
     </section>
 
-    {invoiceCard&&<InvoiceImportSheet householdId={householdId} card={invoiceCard} onClose={()=>setInvoiceCard(null)} onCommitted={()=>{onCreated?.();setInvoiceCard(null);}} />}
-    {paymentTarget&&<InvoicePaymentSheet
+    {canManage&&invoiceCard&&<InvoiceImportSheet householdId={householdId} card={invoiceCard} onClose={()=>setInvoiceCard(null)} onCommitted={()=>{onCreated?.();setInvoiceCard(null);}} />}
+    {canManage&&paymentTarget&&<InvoicePaymentSheet
       householdId={householdId}
       card={paymentTarget.card}
       invoice={paymentTarget.invoice}
@@ -165,7 +170,7 @@ export function CreditCardManager({
       onPaid={()=>{onCreated?.();setPaymentTarget(null);}}
     />}
 
-    {open&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!saving&&setOpen(false)}>
+    {canManage&&open&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!saving&&setOpen(false)}>
       <section className="capture-sheet card-sheet" role="dialog" aria-modal="true" aria-label="Adicionar cartão">
         <div className="sheet-handle"/>
         <div className="eyebrow">Cartão de crédito</div>
