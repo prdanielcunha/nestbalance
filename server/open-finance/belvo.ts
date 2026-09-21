@@ -134,3 +134,26 @@ export async function listBelvoTransactions(linkId:string){
   const body=await jsonRequest(`/api/transactions/?link=${encodeURIComponent(linkId)}&page_size=100`);
   return Array.isArray(body)?body:Array.isArray(body?.results)?body.results:[];
 }
+
+
+export async function deleteBelvoLink(linkId:string){
+  const response=await fetch(`${normalizedBase()}/api/links/${encodeURIComponent(linkId)}/`,{
+    method:'DELETE',
+    headers:{
+      accept:'application/json',
+      authorization:authHeader()
+    }
+  });
+  if(response.status===204) return {deleted:true};
+  const text=await response.text();
+  let body:any=null;
+  try{body=text?JSON.parse(text):null;}catch{body={raw:text};}
+  if(!response.ok){
+    throw Object.assign(new Error('OPEN_FINANCE_PROVIDER_ERROR'),{
+      statusCode:response.status>=500?502:response.status,
+      providerStatus:response.status,
+      providerBody:body
+    });
+  }
+  return {deleted:true};
+}
