@@ -144,7 +144,10 @@ export async function getHomeData(req:Request,res:Response){
     ]);
 
     const paidThisMonth=new Set(
-      commitmentPayments.docs.map(doc=>String(doc.data().commitmentId||'')).filter(Boolean)
+      commitmentPayments.docs
+        .filter(doc=>String(doc.data().status||'paid')!=='reversed')
+        .map(doc=>String(doc.data().commitmentId||''))
+        .filter(Boolean)
     );
 
     return res.json({
