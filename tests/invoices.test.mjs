@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseInvoiceText } from '../.core-dist/core/invoices.js';
+import { installmentPlanKey, invoiceItemDedupKey, parseInvoiceText } from '../.core-dist/core/invoices.js';
 
 test('fatura identifica compras, parcela e ignora total/pagamento',()=>{
   const preview=parseInvoiceText({
@@ -64,4 +64,26 @@ test('linha sem data é preservada para revisão em vez de inventar data',()=>{
   assert.equal(preview.items[0].purchaseOn,null);
   assert.equal(preview.items[0].confidence,'medium');
   assert.deepEqual(preview.items[0].needsReview,['purchase_date']);
+});
+
+
+test('chave de item muda entre parcelas observadas mas é estável na mesma fatura',()=>{
+  const item={id:'inv-1-x',description:'LOJA XPTO',amountMinor:8990,purchaseOn:'2026-07-02',installment:{current:3,total:10}};
+  const a=invoiceItemDedupKey({cardId:'card-1',invoiceKey:'2026-09',item});
+  const b=invoiceItemDedupKey({cardId:'card-1',invoiceKey:'2026-09',item});
+  const c=invoiceItemDedupKey({cardId:'card-1',invoiceKey:'2026-10',item:{...item,installment:{current:4,total:10}}});
+  assert.equal(a,b);
+  assert.notEqual(a,c);
+});
+
+test('plano de parcelas permanece o mesmo na fatura seguinte',()=>{
+  const first=installmentPlanKey({
+    cardId:'card-1',
+    item:{description:'Loja Xpto',amountMinor:8990,purchaseOn:'2026-07-02',installment:{current:3,total:10}}
+  });
+  const next=installmentPlanKey({
+    cardId:'card-1',
+    item:{description:'LOJA XPTO',amountMinor:8990,purchaseOn:'2026-07-02',installment:{current:4,total:10}}
+  });
+  assert.equal(first,next);
 });
