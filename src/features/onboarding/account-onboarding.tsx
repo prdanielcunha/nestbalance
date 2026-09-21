@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { parseMoneyInputToMinor, type AccountType } from '@/src/core/accounts';
 import { createHouseholdAccount } from '@/src/lib/repositories/accounts';
+import { ScopeChoice } from '@/src/features/privacy/scope-choice';
+import type { FinancialScope } from '@/src/core/privacy';
 
 const accountTypes:{value:AccountType;label:string;hint:string}[]=[
   {value:'bank',label:'Conta bancária',hint:'Nubank, Itaú, Caixa…'},
@@ -16,6 +18,7 @@ export function AccountOnboarding({householdId,onCreated,variant='onboarding'}:{
   const [balance,setBalance]=useState('');
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
+  const [scope,setScope]=useState<FinancialScope>('household');
 
   async function save(){
     const balanceMinor=parseMoneyInputToMinor(balance);
@@ -29,8 +32,8 @@ export function AccountOnboarding({householdId,onCreated,variant='onboarding'}:{
     }
     setSaving(true); setError('');
     try{
-      await createHouseholdAccount({householdId,name:name.trim(),type,balanceMinor});
-      setOpen(false); setName(''); setBalance(''); setType('bank');
+      await createHouseholdAccount({householdId,name:name.trim(),type,balanceMinor,scope});
+      setOpen(false); setName(''); setBalance(''); setType('bank'); setScope('household');
       onCreated?.();
     }catch(err:any){
       setError(err?.message==='INVALID_BALANCE'?'Esse saldo parece incorreto.':'Não conseguimos guardar essa conta agora.');
@@ -55,6 +58,8 @@ export function AccountOnboarding({householdId,onCreated,variant='onboarding'}:{
         <div className="eyebrow">Seu dinheiro hoje</div>
         <h2>Onde está esse saldo?</h2>
         <p>Sem agência, conta ou dados bancários. Só o suficiente para o NestBalance organizar sua visão.</p>
+
+        <ScopeChoice value={scope} onChange={setScope} disabled={saving}/>
 
         <div className="account-type-grid">
           {accountTypes.map(item=><button type="button" key={item.value} className={type===item.value?'account-type active':'account-type'} onClick={()=>setType(item.value)}>
