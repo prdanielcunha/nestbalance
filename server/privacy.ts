@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 export type FinancialVisibility = 'household' | 'personal';
 
 export function normalizeFinancialVisibility(value:unknown):FinancialVisibility{
@@ -24,11 +26,5 @@ export function assertCanViewFinancialRecord(data:any,uid:string){
 
 export function personalEvidenceHashIndexId(sha256:string,visibility:FinancialVisibility,uid:string){
   if(visibility==='household') return sha256;
-  const payload=`personal|${uid}|${sha256}`;
-  let hash=2166136261;
-  for(const ch of payload){
-    hash^=ch.charCodeAt(0);
-    hash=Math.imul(hash,16777619);
-  }
-  return `personal_${uid.replace(/[^A-Za-z0-9_-]/g,'').slice(0,40)}_${(hash>>>0).toString(16)}_${sha256.slice(0,24)}`;
+  return 'personal_'+createHash('sha256').update(`personal|${uid}|${sha256}`).digest('hex');
 }
