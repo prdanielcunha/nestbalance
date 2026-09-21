@@ -7,12 +7,16 @@ export type HomeRow={
   amountMinor:number;
   currency:string;
   direction?:'expense'|'income'|'transfer';
+  source?:string|null;
   status?:string;
   dueDay?:number|null;
   recurring?:boolean;
   recurrence?:string|null;
   installment?:{current:number;total:number}|null;
   installmentPlanId?:string|null;
+  cardId?:string|null;
+  invoiceKey?:string|null;
+  invoiceImportId?:string|null;
   observedOn?:string|null;
 };
 
@@ -35,6 +39,19 @@ export type HomeInstallmentPlan={
   lastObservedInstallment:number;
   anchorDueOn:string;
   lastObservedInvoiceKey:string;
+};
+
+export type HomeInvoiceImport={
+  id:string;
+  cardId:string;
+  invoiceKey:string;
+  dueOn:string;
+  status:string;
+  confirmedAmountMinor:number;
+  paymentStatus:string;
+  paidAmountMinor:number;
+  paidOn:string|null;
+  paidFromAccountId:string|null;
 };
 
 export type HomeCreditCard={
@@ -67,6 +84,7 @@ export async function loadHomeData(householdId:string){
     transactions:HomeRow[];
     commitments:HomeRow[];
     installmentPlans:HomeInstallmentPlan[];
+    invoiceImports:HomeInvoiceImport[];
     refreshedAt:string;
   };
 }
