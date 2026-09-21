@@ -10,6 +10,8 @@ const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const time=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
 const starters=[
+  'Dá para gastar R$ 500?',
+  'Quais parcelas terminam logo?',
   'Quanto ainda falta pagar?',
   'Quanto tenho disponível?',
   'O que já está comprometido nos próximos meses?'
@@ -88,7 +90,13 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
     {result&&<section className="assistant-answer" aria-live="polite">
       <div className="assistant-answer-head">
         <div>
-          <span>{result.answer.intent==='unsupported'?'AINDA NÃO SEI RESPONDER':'RESPOSTA COMPROVADA'}</span>
+          <span>{result.answer.intent==='unsupported'
+            ?'AINDA NÃO SEI RESPONDER'
+            :result.answer.intent==='spending_simulation'
+              ?'SIMULAÇÃO COM PREMISSAS'
+              :result.answer.intent==='future_months'||result.answer.intent==='ending_installments'
+                ?'PROJEÇÃO COM DADOS'
+                :'RESPOSTA COMPROVADA'}</span>
           <h2>{result.answer.title}</h2>
           <p>{result.answer.summary}</p>
         </div>
@@ -121,10 +129,10 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
             <b>{money.format(source.amountMinor/100)}</b>
           </article>)}
         </div>
-        <div className="assistant-source-foot">
+        {(result.answer.intent==='remaining_to_pay'||result.answer.intent==='available_now')&&<div className="assistant-source-foot">
           <span>Soma das fontes exibidas</span>
           <strong>{money.format(sourceTotal/100)}</strong>
-        </div>
+        </div>}
       </div>}
 
       <div className="assistant-next-questions">
