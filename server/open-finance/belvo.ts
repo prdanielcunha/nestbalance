@@ -129,3 +129,8 @@ export async function listBelvoBalances(linkId:string){
   const body=await jsonRequest(`/api/br/balances/?link=${encodeURIComponent(linkId)}`);
   return Array.isArray(body)?body:Array.isArray(body?.results)?body.results:[];
 }
+
+export async function listBelvoTransactions(linkId:string){
+  const body=await jsonRequest(`/api/transactions/?link=${encodeURIComponent(linkId)}&page_size=100`);
+  return Array.isArray(body)?body:Array.isArray(body?.results)?body.results:[];
+}
