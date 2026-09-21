@@ -10,6 +10,7 @@ import { analyzeCreditCardInvoiceImage } from './server/invoice-vision.js';
 import { analyzeEvidenceWithAi } from './server/evidence-ai.js';
 import { bootstrapSession } from './server/session.js';
 import { getHomeData } from './server/home.js';
+import { answerFinanceAssistant } from './server/assistant.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -20,6 +21,7 @@ app.post('/api/evidence/upload', express.raw({ type: '*/*', limit: '20mb' }), up
 app.use(express.json({ limit: '128kb' }));
 app.post('/api/session/bootstrap', bootstrapSession);
 app.post('/api/home', getHomeData);
+app.post('/api/assistant/answer', answerFinanceAssistant);
 app.post('/api/evidence/start', startEvidence);
 app.post('/api/evidence/finalize', finalizeEvidence);
 app.post('/api/evidence/analyze-text', analyzeEvidenceText);
