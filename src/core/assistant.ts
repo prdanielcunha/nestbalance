@@ -28,8 +28,14 @@ export type AssistantInstallmentPlan=ProjectionInstallmentPlan&{
   description?:string;
 };
 
+export type AssistantEvidenceMatch={
+  id:string;
+  label:string;
+  detail:string;
+};
+
 export type AssistantSource={
-  kind:'account'|'commitment'|'invoice'|'installment_plan'|'projection';
+  kind:'account'|'commitment'|'invoice'|'installment_plan'|'projection'|'evidence';
   id:string;
   label:string;
   amountMinor:number;
@@ -37,7 +43,7 @@ export type AssistantSource={
 };
 
 export type AssistantAnswer={
-  intent:'remaining_to_pay'|'available_now'|'future_months'|'spending_simulation'|'ending_installments'|'unsupported';
+  intent:'remaining_to_pay'|'available_now'|'future_months'|'spending_simulation'|'ending_installments'|'evidence_lookup'|'unsupported';
   title:string;
   summary:string;
   answerMinor:number|null;
@@ -71,9 +77,23 @@ function parseRequestedMoneyMinor(question:string){
   return Math.round(number*100);
 }
 
+export function assistantEvidenceQuery(question:string){
+  return normalize(question)
+    .replace(/\b(?:ache|encontre|procure|localize|mostre|mostrar|cade|onde|esta|fica|meu|minha|o|a|um|uma|do|da|dos|das)\b/g,' ')
+    .replace(/\b(?:comprovante|recibo|documento|arquivo)\b/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
 export function classifyAssistantIntent(question:string):AssistantAnswer['intent']{
   const q=normalize(question);
   if(!q) return 'unsupported';
+
+  if(
+    /\b(?:ache|encontre|procure|localize|mostre|cade)\b.*\b(?:comprovante|recibo|documento|arquivo|fatura)\b/.test(q)||
+    /\b(?:comprovante|recibo|documento|arquivo)\b.*\b(?:onde|cade|ache|encontre|procure)\b/.test(q)||
+    /\bonde (?:esta|fica).*\b(?:comprovante|recibo|documento|arquivo|fatura)\b/.test(q)
+  ) return 'evidence_lookup';
 
   if(
     /(?:da|dá) para gastar/.test(q)||
@@ -120,9 +140,43 @@ export function answerAssistantQuestion(input:{
   commitments:AssistantCommitment[];
   invoices:AssistantInvoice[];
   installmentPlans:AssistantInstallmentPlan[];
+  evidenceMatches?:AssistantEvidenceMatch[];
   now:Date;
 }):AssistantAnswer{
   const intent=classifyAssistantIntent(input.question);
+
+  if(intent==='evidence_lookup'){
+    const matches=(input.evidenceMatches||[]).slice(0,5);
+    if(!matches.length){
+      return {
+        intent,
+        title:'Não encontrei esse comprovante no Cofre.',
+        summary:'Pesquisei apenas os documentos acessíveis nesta visão. Tente lembrar um valor, mês, estabelecimento ou outra palavra do documento.',
+        answerMinor:null,
+        sources:[],
+        cards:[],
+        suggestions:['Ache o comprovante do IPTU','Quanto ainda falta pagar?','Dá para gastar R$ 500?']
+      };
+    }
+
+    return {
+      intent,
+      title:matches.length===1?'Encontrei este documento.':'Encontrei estes documentos.',
+      summary:matches.length===1
+        ? 'O resultado vem do seu Cofre e respeita a privacidade desta visão.'
+        : `Há ${matches.length} resultados compatíveis no Cofre. Os mais relevantes aparecem primeiro.`,
+      answerMinor:null,
+      sources:matches.map(match=>({
+        kind:'evidence' as const,
+        id:match.id,
+        label:match.label,
+        amountMinor:0,
+        detail:match.detail
+      })),
+      cards:[],
+      suggestions:['Ache o comprovante da luz de setembro','Quais parcelas terminam logo?','Quanto tenho disponível?']
+    };
+  }
 
   if(intent==='spending_simulation'){
     const spendMinor=parseRequestedMoneyMinor(input.question);
