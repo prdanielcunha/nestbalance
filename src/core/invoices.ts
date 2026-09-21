@@ -238,3 +238,41 @@ export function parseInvoiceText(input:{
     futureInstallmentsMinor
   };
 }
+
+
+function normalizeInvoiceKeyText(value:string){
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,80);
+}
+
+export function invoiceItemDedupKey(input:{
+  cardId:string;
+  invoiceKey:string;
+  item:Pick<InvoicePreviewItem,'id'|'description'|'amountMinor'|'purchaseOn'|'installment'>;
+}){
+  return [
+    'invoice_item',
+    input.cardId,
+    input.invoiceKey,
+    input.item.id,
+    input.item.purchaseOn||'nodate',
+    normalizeInvoiceKeyText(input.item.description),
+    input.item.amountMinor,
+    input.item.installment?.current??'single',
+    input.item.installment?.total??'single'
+  ].join('|');
+}
+
+export function installmentPlanKey(input:{
+  cardId:string;
+  item:Pick<InvoicePreviewItem,'description'|'amountMinor'|'purchaseOn'|'installment'>;
+}){
+  if(!input.item.installment||!input.item.purchaseOn) return null;
+  return [
+    'installment_plan',
+    input.cardId,
+    input.item.purchaseOn,
+    normalizeInvoiceKeyText(input.item.description),
+    input.item.amountMinor,
+    input.item.installment.total
+  ].join('|');
+}
