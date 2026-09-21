@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { canViewFinancialRecord, normalizeFinancialVisibility } from './privacy.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -19,7 +20,8 @@ function accountDto(doc:any){
     automaticallyInvestedMinor:Number.isSafeInteger(data.automaticallyInvestedMinor)?data.automaticallyInvestedMinor:null,
     balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
     currency:String(data.currency||'BRL'),
-    status:String(data.status||'active')
+    status:String(data.status||'active'),
+    visibility:normalizeFinancialVisibility(data.scope)
   };
 }
 
@@ -118,7 +120,8 @@ function movementDto(doc:any){
     installmentPlanId:typeof data.installmentPlanId==='string'?data.installmentPlanId:null,
     cardId:typeof data.cardId==='string'?data.cardId:null,
     invoiceKey:typeof data.invoiceKey==='string'?data.invoiceKey:null,
-    invoiceImportId:typeof data.invoiceImportId==='string'?data.invoiceImportId:null
+    invoiceImportId:typeof data.invoiceImportId==='string'?data.invoiceImportId:null,
+    visibility:normalizeFinancialVisibility(data.scope)
   };
 }
 
@@ -134,8 +137,8 @@ export async function getHomeData(req:Request,res:Response){
     const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments,savingsPots,cardSnapshots]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
-      household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
-      household.collection('commitments').orderBy('createdAt','desc').limit(100).get(),
+      household.collection('transactions').orderBy('createdAt','desc').limit(300).get(),
+      household.collection('commitments').orderBy('createdAt','desc').limit(300).get(),
       household.collection('installmentPlans').where('status','==','active').limit(100).get(),
       household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get(),
       household.collection('commitmentPayments').where('periodKey','==',currentMonthKey).limit(200).get(),
@@ -145,6 +148,7 @@ export async function getHomeData(req:Request,res:Response){
 
     const paidThisMonth=new Set(
       commitmentPayments.docs
+        .filter(doc=>canViewFinancialRecord(doc.data(),user.uid))
         .filter(doc=>String(doc.data().status||'paid')!=='reversed')
         .map(doc=>String(doc.data().commitmentId||''))
         .filter(Boolean)
@@ -152,19 +156,19 @@ export async function getHomeData(req:Request,res:Response){
 
     return res.json({
       ok:true,
-      accounts:accounts.docs.map(accountDto),
-      cards:cards.docs.map(cardDto),
-      transactions:transactions.docs.map(movementDto).sort((a,b)=>
+      accounts:accounts.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(accountDto),
+      cards:cards.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(cardDto),
+      transactions:transactions.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(movementDto).sort((a,b)=>
         String(b.observedOn||'').localeCompare(String(a.observedOn||''))
       ),
-      commitments:commitments.docs.map(doc=>({
+      commitments:commitments.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(doc=>({
         ...movementDto(doc),
         paidThisMonth:paidThisMonth.has(doc.id)
       })),
-      installmentPlans:installmentPlans.docs.map(installmentPlanDto),
-      invoiceImports:invoiceImports.docs.map(invoiceImportDto),
-      savingsPots:savingsPots.docs.map(savingsPotDto),
-      cardSnapshots:cardSnapshots.docs.map(cardSnapshotDto),
+      installmentPlans:installmentPlans.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(installmentPlanDto),
+      invoiceImports:invoiceImports.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(invoiceImportDto),
+      savingsPots:savingsPots.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(savingsPotDto),
+      cardSnapshots:cardSnapshots.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(cardSnapshotDto),
       refreshedAt:new Date().toISOString()
     });
   }catch(err:any){
