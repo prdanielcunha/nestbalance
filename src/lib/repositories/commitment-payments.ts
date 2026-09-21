@@ -1,6 +1,12 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 
+function localIsoDate(){
+  const d=new Date();
+  const offset=d.getTimezoneOffset()*60_000;
+  return new Date(d.getTime()-offset).toISOString().slice(0,10);
+}
+
 async function api<T>(path:string,body:unknown):Promise<T>{
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');
@@ -55,5 +61,5 @@ export async function payCommitment(input:{
     periodKey:string;
     paidOn:string;
     transactionId?:string;
-  }>('/api/commitments/pay',input);
+  }>('/api/commitments/pay',{...input,paidOn:input.paidOn||localIsoDate()});
 }
