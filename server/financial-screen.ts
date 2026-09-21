@@ -98,8 +98,6 @@ export async function commitFinancialScreen(req:Request,res:Response){
         ownerUid,
         status:'active',
         source:'screen_import',
-        scope,
-        ownerUid,
         institutionName:screen.institution||null,
         last4:item.last4,
         balanceAsOf:FieldValue.serverTimestamp(),
@@ -125,6 +123,8 @@ export async function commitFinancialScreen(req:Request,res:Response){
         currency:item.currency,
         institutionName:screen.institution||null,
         source:'screen_import',
+        scope,
+        ownerUid,
         status:'active',
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         updatedAt:FieldValue.serverTimestamp(),
@@ -173,6 +173,8 @@ export async function commitFinancialScreen(req:Request,res:Response){
         currency:'BRL',
         direction:'expense',
         source:'screen_import',
+        scope,
+        ownerUid,
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         status:'pending',
         dueDay:dueDay(item.dueOn),
@@ -204,7 +206,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         }
         const observedOn=item.occurredOn||new Date().toISOString().slice(0,10);
         const fingerprint=fingerprintForInterpretation(item,observedOn);
-        const id=hash(['screen_movement',resolved.evidenceId,String(index),fingerprint].join('|')).slice(0,40);
+        const id=hash([scope,ownerUid||'','screen_movement',resolved.evidenceId,String(index),fingerprint].join('|')).slice(0,40);
         const ref=household.collection('transactions').doc(id);
         batch.set(ref,{
           description:item.description,
