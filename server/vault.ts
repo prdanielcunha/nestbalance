@@ -3,6 +3,8 @@ import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
 import { assertScopedAccess, visibleDocs } from './privacy.js';
+import { normalizeFinancialScope } from '../src/core/privacy.js';
+import { searchVaultDocuments } from '../src/core/vault-search.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -67,6 +69,64 @@ export async function listVaultEvidence(req:Request,res:Response){
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'VAULT_LIST_FAILED');
+  }
+}
+
+export async function searchVaultEvidence(req:Request,res:Response){
+  privateJson(res);
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    const query=String(req.body?.query||'').normalize('NFKC').replace(/\s+/g,' ').trim().slice(0,120);
+    const requestedView=req.body?.view==='personal'?'personal':req.body?.view==='all'?'all':'household';
+    if(query.length<2) return res.json({ok:true,items:[],query});
+
+    await requireHouseholdMember(householdId,user.uid);
+    const snapshot=await adminDb.collection('households').doc(householdId)
+      .collection('evidenceAssets').orderBy('createdAt','desc').limit(80).get();
+
+    const candidates=visibleDocs(snapshot.docs,user.uid)
+      .filter(doc=>doc.data().status==='accepted'&&doc.data().immutable===true)
+      .filter(doc=>requestedView==='all'||normalizeFinancialScope(doc.data().scope)===requestedView)
+      .slice(0,40);
+
+    const searchDocs=await Promise.all(candidates.map(async doc=>{
+      const data=doc.data();
+      const version=typeof data.lastExtractionVersion==='string'?data.lastExtractionVersion:'';
+      const extractionSnap=version?await doc.ref.collection('extractions').doc(version).get():null;
+      const extractionData=extractionSnap?.exists?extractionSnap.data():null;
+      const ai=extractionData?.extraction||null;
+      const screen=ai?.screen||null;
+      const signals=Array.isArray(extractionData?.signals?.candidates)?extractionData.signals.candidates:[];
+
+      return {
+        evidenceId:doc.id,
+        originalName:String(data.originalName||'Documento'),
+        createdAtMs:asMillis(data.createdAt),
+        description:typeof ai?.description==='string'?ai.description:null,
+        merchant:typeof ai?.merchant==='string'?ai.merchant:null,
+        payer:typeof ai?.payer==='string'?ai.payer:null,
+        payee:typeof ai?.payee==='string'?ai.payee:null,
+        institution:typeof ai?.institution==='string'?ai.institution:typeof screen?.institution==='string'?screen.institution:null,
+        amountMinor:Number.isSafeInteger(ai?.amountMinor)?ai.amountMinor:null,
+        dateIso:typeof ai?.dateIso==='string'?ai.dateIso:null,
+        transcript:typeof extractionData?.transcript==='string'?extractionData.transcript.slice(0,12000):null,
+        rawText:typeof extractionData?.text==='string'?extractionData.text.slice(0,20000):null,
+        summary:typeof ai?.evidenceSummary==='string'?ai.evidenceSummary:typeof screen?.summary==='string'?screen.summary:null,
+        signals
+      };
+    }));
+
+    const hits=searchVaultDocuments(query,searchDocs,20);
+    const byId=new Map(candidates.map(doc=>[doc.id,doc]));
+    const items=hits.flatMap(hit=>{
+      const doc=byId.get(hit.evidenceId);
+      return doc?[{...evidenceDto(doc),matchReason:hit.reason,matchScore:hit.score}]:[];
+    });
+    return res.json({ok:true,items,query,view:requestedView});
+  }catch(err:any){
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'VAULT_SEARCH_FAILED');
   }
 }
 
