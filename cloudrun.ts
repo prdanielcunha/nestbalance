@@ -3,7 +3,7 @@ import { rateLimit, requestTelemetry, runtimeIdentity, securityHeaders } from '.
 import { commitCapture } from './server/capture.js';
 import { finalizeEvidence, startEvidence, uploadEvidence } from './server/evidence.js';
 import { analyzeEvidenceText } from './server/evidence-analysis.js';
-import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence } from './server/vault.js';
+import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence, searchVaultEvidence } from './server/vault.js';
 import { createAccount, updateAccountBalance } from './server/accounts.js';
 import { createCreditCard } from './server/cards.js';
 import { commitCreditCardInvoice, payCreditCardInvoice, previewCreditCardInvoice, reviewCreditCardInvoice } from './server/invoices.js';
@@ -65,6 +65,7 @@ app.post('/api/evidence/finalize', finalizeEvidence);
 app.post('/api/evidence/analyze-text', analyzeEvidenceText);
 app.post('/api/evidence/analyze-ai', analyzeEvidenceWithAi);
 app.post('/api/vault/list', listVaultEvidence);
+app.post('/api/vault/search', searchVaultEvidence);
 app.post('/api/vault/detail', getVaultEvidenceDetail);
 app.post('/api/vault/preview', previewVaultEvidence);
 app.post('/api/capture/commit', commitCapture);

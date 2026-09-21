@@ -12,6 +12,8 @@ export type VaultItem = {
   extractionState:string;
   lastExtractionVersion:string|null;
   scope?:'household'|'personal';
+  matchReason?:string;
+  matchScore?:number;
 };
 
 export type VaultDetail = {
@@ -52,6 +54,18 @@ export async function listVault(householdId:string) {
   const json=await response.json().catch(()=>({}));
   if(!response.ok) throw new Error(json.error||'VAULT_LIST_FAILED');
   return json as {ok:true;items:VaultItem[]};
+}
+
+export async function searchVault(householdId:string,query:string,view:'household'|'personal'|'all'='household') {
+  const response=await fetch('/api/vault/search',{
+    method:'POST',
+    headers:await authHeaders(),
+    body:JSON.stringify({householdId,query,view}),
+    cache:'no-store'
+  });
+  const json=await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(json.error||'VAULT_SEARCH_FAILED');
+  return json as {ok:true;items:VaultItem[];query:string;view:'household'|'personal'|'all'};
 }
 
 export async function getVaultDetail(householdId:string,evidenceId:string) {
