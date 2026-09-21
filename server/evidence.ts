@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { MAX_EVIDENCE_BYTES, signatureMatchesMime, validateEvidenceDeclaration } from '../src/core/evidence.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { normalizeFinancialVisibility, personalEvidenceHashIndexId, privacyFields } from './privacy.js';
 
 const now = () => FieldValue.serverTimestamp();
 
@@ -21,7 +22,6 @@ async function completeEvidence(args:{
 }){
   const {householdId,evidenceId,userUid,verified}=args;
   const evidenceRef=adminDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`);
-  const hashRef=adminDb.doc(`households/${householdId}/evidenceHashes/${verified.sha256}`);
   let uploadPath='';
   let result:{status:'accepted'|'duplicate';canonicalEvidenceId:string}={status:'accepted',canonicalEvidenceId:evidenceId};
 
@@ -37,6 +37,9 @@ async function completeEvidence(args:{
     }
     if(current.status!=='awaiting_upload') throw Object.assign(new Error('EVIDENCE_NOT_FINALIZABLE'),{statusCode:409});
 
+    const visibility=normalizeFinancialVisibility(current.scope);
+    const hashId=personalEvidenceHashIndexId(verified.sha256,visibility,userUid);
+    const hashRef=adminDb.doc(`households/${householdId}/evidenceHashes/${hashId}`);
     const existingHash=await tx.get(hashRef);
     if(existingHash.exists){
       const canonicalEvidenceId=String(existingHash.data()?.evidenceId||'');
@@ -93,6 +96,7 @@ export async function startEvidence(req: Request, res: Response) {
       mimeType: String(req.body?.mimeType || ''),
       size: Number(req.body?.size || 0)
     });
+    const visibility=normalizeFinancialVisibility(req.body?.visibility);
     if (!validation.ok) return error(res, 400, validation.reason);
 
     const evidenceRef = adminDb.collection('households').doc(householdId).collection('evidenceAssets').doc();
@@ -106,8 +110,9 @@ export async function startEvidence(req: Request, res: Response) {
       declaredMimeType: validation.mimeType,
       declaredSize: validation.size,
       uploadPath,
+      ...privacyFields(visibility,user.uid),
       createdAt: now(),
-      schemaVersion: 1
+      schemaVersion: 2
     });
     return res.status(201).json({ ok: true, evidenceId: evidenceRef.id });
   } catch (err: any) {
