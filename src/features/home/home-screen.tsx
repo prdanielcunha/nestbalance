@@ -7,6 +7,7 @@ import { projectHouseholdFuture } from '@/src/core/future-projection';
 import { UniversalCapture } from '@/src/features/capture/universal-capture';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
+import { ConnectedBanks } from '@/src/features/open-finance/connected-banks';
 import { messages } from '@/src/i18n/messages';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 
@@ -87,6 +88,8 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
     </section>
 
     {accounts.length===0 && <AccountOnboarding householdId={householdId} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
+
+    <ConnectedBanks householdId={householdId} onSynced={()=>void refreshHome(true)} />
     {commitments[0] && <section><div className="section-title"><h2>{t.attention}</h2></div><article className="spotlight-card"><div><span>{commitments[0].dueDay ? `Vence dia ${commitments[0].dueDay}` : 'Próximo compromisso'}</span><h3>{commitments[0].description}</h3></div><strong>{money.format(commitments[0].amountMinor/100)}</strong></article></section>}
 
     <section className="month-section">
