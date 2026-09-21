@@ -16,7 +16,7 @@ export type FinancialScreenCommitResult={
   };
 };
 
-export async function commitFinancialScreen(input:{householdId:string;evidenceId:string}){
+export async function commitFinancialScreen(input:{householdId:string;evidenceId:string;visibility?:'household'|'personal'}){
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');
 
