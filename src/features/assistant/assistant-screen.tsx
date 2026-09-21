@@ -1,5 +1,6 @@
 'use client';
-import { useMemo, useState } from 'react';\nimport Link from 'next/link';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
 import { AppNav } from '@/src/features/navigation/app-nav';
 
