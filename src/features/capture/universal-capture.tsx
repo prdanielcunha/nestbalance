@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
 import { resolveImportedMovementDirection } from '@/src/core/movement-import';
+import { parseFinancialCsv } from '@/src/core/csv-import';
 import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
 import {
@@ -301,6 +302,18 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       if (result.state !== 'extracted') {
         setError('Guardei o original, mas não encontrei texto confiável para organizar automaticamente.');
         return;
+      }
+
+      if(/\.csv$/i.test(activeFile.name)&&result.text){
+        const csv=parseFinancialCsv(result.text);
+        if(csv.state==='parsed'){
+          setInterpretations(csv.items);
+          const attention=csv.items.filter(item=>item.needsReview.length>0).length;
+          setNotice(attention
+            ? `Importei ${csv.items.length} movimentações do arquivo. Só ${attention} precisa${attention===1?'':'m'} de uma conferência rápida.`
+            : `Importei ${csv.items.length} movimentações do arquivo. Tudo pronto para guardar.`);
+          return;
+        }
       }
 
       const suggestion = suggestCaptureFromDocument(activeFile.name, result.signals);
