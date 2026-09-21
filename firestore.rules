@@ -1,68 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function memberPath(hid) { return /databases/$(database)/documents/households/$(hid)/members/$(request.auth.uid); }
-    function isMember(hid) { return signedIn() && exists(memberPath(hid)); }
-    function role(hid) { return get(memberPath(hid)).data.role; }
-    function canAdmin(hid) { return isMember(hid) && role(hid) in ['owner','admin']; }
-
+    // NestBalance browser architecture is Auth-only.
+    // All financial/household access is mediated by the authenticated backend.
     match /users/{uid}/householdRefs/{hid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow create: if signedIn() && request.auth.uid == uid
-                    && getAfter(/databases/$(database)/documents/households/$(hid)/members/$(uid)).data.userId == uid;
-      allow update, delete: if signedIn() && request.auth.uid == uid;
+      allow read, write: if false;
     }
 
     match /households/{hid} {
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow read: if isMember(hid);
-      allow update: if canAdmin(hid) && request.resource.data.ownerUid == resource.data.ownerUid;
-      allow delete: if signedIn() && request.auth.uid == resource.data.ownerUid;
+      allow read, write: if false;
 
-      match /members/{uid} {
-        allow read: if isMember(hid);
-        allow create: if signedIn() && (
-          (canAdmin(hid) && request.resource.data.role in ['admin','member','viewer'] && request.resource.data.userId == uid) ||
-          (uid == request.auth.uid && getAfter(/databases/$(database)/documents/households/$(hid)).data.ownerUid == request.auth.uid && request.resource.data.role == 'owner' && request.resource.data.userId == uid)
-        );
-        allow update: if canAdmin(hid)
-                      && uid != get(/databases/$(database)/documents/households/$(hid)).data.ownerUid
-                      && request.resource.data.userId == resource.data.userId
-                      && request.resource.data.role in ['admin','member','viewer'];
-        allow delete: if canAdmin(hid) && uid != get(/databases/$(database)/documents/households/$(hid)).data.ownerUid;
-      }
-
-      match /accounts/{id} {
-        allow read: if isMember(hid);
-        allow create, update, delete: if false;
-      }
-      match /transactions/{id} {
-        allow read: if isMember(hid);
-        allow create, update, delete: if false;
-      }
-      match /commitments/{id} {
-        allow read: if isMember(hid);
-        allow create, update, delete: if false;
-      }
-      match /evidenceAssets/{id} {
-        allow read, create, update, delete: if false;
-        match /extractions/{extractionId} {
-          allow read, create, update, delete: if false;
-        }
-      }
-      match /evidenceHashes/{id} {
+      match /{document=**} {
         allow read, write: if false;
-      }
-      match /captureFingerprints/{id} {
-        allow read, write: if false;
-      }
-      match /accountKeys/{id} {
-        allow read, write: if false;
-      }
-      match /auditEvents/{id} {
-        allow read: if canAdmin(hid);
-        allow create, update, delete: if false;
       }
     }
   }

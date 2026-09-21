@@ -1,25 +1,55 @@
 # NestBalance
 
-Primeira fundação executável do NestBalance, baseada no Blueprint Master v1.1.
+NestBalance is the personal and family finance product of the MillionsNest ecosystem.
 
-## Estado atual
+## Current executable slice
 
-Implementada a primeira fatia de produto: autenticação Firebase, bootstrap de Household, Home sem dashboard genérico, entrada universal por texto/arquivo, interpretação determinística inicial, confirmação mínima, persistência de Transaction/Commitment, armazenamento imutável da evidência original, Extraction versionada, AuditEvent e Timeline.
+The application now includes:
 
-A camada de IA/vision/OCR ainda não é considerada concluída: o parser atual é deliberadamente determinístico e serve como primeira camada barata do pipeline. Arquivos são preservados, mas a extração visual/PDF/STT será adicionada server-side na próxima fase.
+- Firebase Authentication with server-mediated household bootstrap
+- first-balance onboarding for bank account, wallet or cash
+- Home with available balance, current month, attention and future commitments
+- Universal Capture for text, lists, images, PDFs, TXT/CSV and audio
+- deterministic parsers before AI
+- native PDF text extraction with strict budgets
+- AI vision for financial images with Structured Outputs and human confirmation
+- audio transcription followed by the deterministic finance parser
+- transfer semantics so transfers between own accounts do not become income/expense
+- immutable evidence, SHA-256 deduplication and race-safe capture deduplication
+- premium Vault with server-mediated detail and original preview
+- virtual future projections for recurring commitments and installments
+- PT-BR / EN / ES message architecture
+- responsive light/dark design foundation
 
-## Segurança
+## Browser security boundary
 
-- Household é a fronteira de autorização.
-- Evidência original não pode ser atualizada nem excluída via cliente.
-- Storage é privado e valida membership, MIME e tamanho.
-- Não há credenciais no frontend além da configuração pública Firebase.
-- Nenhum dado real de produção é necessário para desenvolvimento.
+The browser uses Firebase only for Authentication.
 
-## Teste disponível sem dependências externas
+Household bootstrap, Home data, accounts, financial commits, evidence metadata, document analysis, AI analysis and Vault access are handled by `nestbalance-api`. Evidence bytes are uploaded through the API and written to Cloud Storage by the backend.
+
+The repository's `firestore.rules` and `storage.rules` intentionally deny direct NestBalance browser data access and are used by the emulator security suite.
+
+**Do not deploy these standalone rules over the shared MillionsNest Firebase project.** Firebase rules are global to the project and must not overwrite the ecosystem's shared rule set.
+
+## Validation
 
 ```bash
-npm run test:core
+npm run check
+npm run test:rules
+npm run typecheck
+npm run build
+npm run build:cloudrun
 ```
 
-Esse gate compila apenas o núcleo financeiro puro e testa parser, parcelas, fingerprint/deduplicação e cálculo da Home.
+CI runs the same gates before a slice is merged.
+
+## Homologation deployment
+
+A guarded manual workflow is included at `.github/workflows/deploy-homologation.yml`.
+
+It deploys only:
+
+- `nestbalance-api` to Cloud Run
+- the dedicated NestBalance Firebase Hosting site
+
+It does not deploy Firestore or Storage rules. Required environment variables and trust requirements are documented in `docs/RUNTIME_READINESS.md`.
