@@ -567,3 +567,49 @@
 .paid-actions{display:flex;align-items:center;gap:7px}
 .undo-paid-button{border:1px solid var(--line)!important;background:transparent!important;color:var(--muted)!important;padding:7px 9px!important;font-size:10px!important}
 .undo-paid-button:hover{color:var(--ink)!important;border-color:rgba(94,106,210,.3)!important}
+
+/* Household collaboration */
+.avatar-dot{display:block;flex:0 0 auto}
+.household-shell{max-width:980px}
+.household-back{color:var(--muted);text-decoration:none;font-weight:700;font-size:14px}
+.household-hero{padding:18px 0 26px}
+.household-hero>span{font-size:13px;color:var(--iris);font-weight:750;letter-spacing:.04em;text-transform:uppercase}
+.household-hero h1{font-size:clamp(38px,7vw,68px);letter-spacing:-.055em;margin:8px 0 10px;line-height:1}
+.household-hero p{max-width:650px;color:var(--muted);line-height:1.6;margin:0}
+.household-switcher,.household-panel{margin-top:24px}
+.household-choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.household-choice{border:1px solid var(--line);background:var(--surface-strong);color:var(--ink);border-radius:20px;padding:18px;text-align:left;display:flex;flex-direction:column;gap:5px}
+.household-choice span{font-size:12px;color:var(--muted)}
+.household-choice.active{border-color:rgba(94,106,210,.45);box-shadow:0 0 0 3px rgba(94,106,210,.08)}
+.household-panel{border:1px solid var(--line);background:var(--surface-strong);border-radius:26px;padding:22px}
+.household-inline-form{display:grid;grid-template-columns:1fr auto;gap:10px}
+.premium-input{width:100%;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:14px;padding:12px 14px;outline:none}
+.premium-input:focus{border-color:rgba(94,106,210,.55);box-shadow:0 0 0 4px rgba(94,106,210,.1)}
+.member-list{display:flex;flex-direction:column}
+.member-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+.member-row:first-child{border-top:0}
+.member-avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,var(--night),#353d56);color:var(--paper);font-weight:800}
+.member-copy{display:flex;flex-direction:column;min-width:0}
+.member-copy strong,.member-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.member-copy span{font-size:12px;color:var(--muted);margin-top:3px}
+.member-access{display:flex;align-items:center;gap:8px}
+.member-access select{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:12px;padding:9px}
+.role-pill{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:8px 10px}
+.member-remove{border:0;background:transparent;color:var(--danger);font-weight:700;font-size:12px;padding:8px}
+.invite-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px}
+.invite-grid label{display:flex;flex-direction:column;gap:7px}
+.invite-grid label>span{font-size:12px;color:var(--muted)}
+.invite-link-card{margin-top:14px;padding:16px;border-radius:18px;background:rgba(94,106,210,.08);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.invite-link-card span{color:var(--muted);font-size:13px;flex:1 1 260px}
+.pending-invites{margin-top:20px;border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:9px}
+.pending-invites>span{font-size:12px;color:var(--muted)}
+.pending-invites>div{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.pending-invites small{color:var(--muted)}
+.household-safety-note{margin:22px 0;padding:18px;border-radius:20px;background:rgba(15,159,143,.08)}
+.household-safety-note p{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
+@media(max-width:640px){
+  .household-inline-form,.invite-grid{grid-template-columns:1fr}
+  .member-row{grid-template-columns:42px minmax(0,1fr)}
+  .member-access{grid-column:2;justify-content:flex-start;flex-wrap:wrap}
+  .pending-invites>div{align-items:flex-start;flex-direction:column;gap:3px}
+}
