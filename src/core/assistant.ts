@@ -357,7 +357,7 @@ export function answerAssistantQuestion(input:{
   return {
     intent:'unsupported',
     title:'Posso responder com os dados desta visão.',
-    summary:'Pergunte sobre saldo disponível, quanto falta pagar, próximos meses, simulação de gasto ou parcelas que terminam logo.'
+    summary:'Pergunte sobre saldo disponível, quanto falta pagar, próximos meses, simulação de gasto ou parcelas que terminam logo.',
     answerMinor:null,
     sources:[],
     cards:[],
