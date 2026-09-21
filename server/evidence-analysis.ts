@@ -4,7 +4,7 @@ import { detectDocumentSignals } from '../src/core/document-signals.js';
 import { extractNativeDocumentText, DOCUMENT_NATIVE_TEXT_MAX_BYTES } from './document-text.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
-import { assertScopedAccess } from './privacy.js';
+import { assertScopedAccess, requestedScope } from './privacy.js';
 
 const EXTRACTION_VERSION='native-text-v1';
 
@@ -114,6 +114,8 @@ export async function analyzeEvidenceText(req:Request,res:Response) {
       tx.create(auditRef,{
         type:'evidence.native_text_analyzed',
         actorUid:user.uid,
+        scope:requestedScope(evidence.scope),
+        ownerUid:requestedScope(evidence.scope)==='personal'?user.uid:null,
         evidenceId,
         extractionVersion:EXTRACTION_VERSION,
         state:result.state,
