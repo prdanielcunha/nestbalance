@@ -82,7 +82,7 @@ export type AiFinancialExtraction={
   needsConfirmation:boolean;
   ambiguities:string[];
   evidenceSummary:string;
-  screen:AiFinancialScreenSnapshot|null;
+  screen?:AiFinancialScreenSnapshot|null;
 };
 
 function validAmount(value:number|null):value is number{
