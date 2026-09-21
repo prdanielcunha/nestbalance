@@ -654,3 +654,9 @@
 .card-suggestion-block>div:first-child>small{color:var(--muted);font-size:11px;line-height:1.45}
 .card-suggestion-block .recognized-card .section-action{margin-top:10px;width:100%}
 .open-finance-security .connect-bank-button{margin-top:12px;text-decoration:none;text-align:center}
+
+.local-card-reader{display:grid;grid-template-columns:1fr auto;gap:10px 14px;align-items:center;margin:16px 0;padding:14px;border:1px solid rgba(94,106,210,.22);border-radius:18px;background:linear-gradient(145deg,rgba(94,106,210,.07),var(--surface-strong))}
+.local-card-reader>div{display:flex;flex-direction:column;gap:3px}.local-card-reader strong{font-size:13px}.local-card-reader span,.local-card-reader small{font-size:10px;line-height:1.45;color:var(--muted)}
+.local-card-reader button{border:1px solid rgba(94,106,210,.28);border-radius:14px;background:var(--paper);color:var(--ink);font-weight:800;padding:10px 12px;white-space:nowrap}
+.local-card-reader>small{grid-column:1/-1}
+@media(max-width:560px){.local-card-reader{grid-template-columns:1fr}.local-card-reader button{width:100%}.local-card-reader>small{grid-column:auto}}
