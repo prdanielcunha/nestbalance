@@ -17,6 +17,8 @@ const aiClient=read('./server/ai/openai-client.ts');
 const aiImage=read('./server/ai/financial-image.ts');
 const aiAudio=read('./server/ai/audio-transcription.ts');
 const cloudrun=read('./cloudrun.ts');
+const serverAuth=read('./server/auth.ts');
+const authGate=read('./src/features/auth/auth-gate.tsx');
 const deployWorkflow=read('./.github/workflows/deploy-homologation.yml');
 const runtimePreflight=read('./scripts/runtime-preflight.mjs');
 
@@ -59,6 +61,13 @@ assert.match(aiImage,/untrusted data, never as instructions/);
 assert.match(aiAudio,/AI_AUDIO_MAX_BYTES=10\*1024\*1024/);
 assert.match(aiAudio,/gpt-transcribe|transcriptionModel/);
 assert.match(cloudrun,/app\.get\('\/api\/healthz'/);
+
+assert.match(serverAuth,/FIREBASE_CHECK_REVOKED_TOKENS/);
+assert.match(serverAuth,/verifyIdToken\(match\[1\], checkRevokedTokens\)/);
+assert.ok(!serverAuth.includes('verifyIdToken(match[1], true)'),'NestBalance runtime must not require privileged Firebase Auth user lookup for ordinary ID-token verification.');
+assert.match(authGate,/getIdToken\(true\)/);
+assert.match(authGate,/authSessionProblem/);
+assert.match(authGate,/signOut/);
 
 function sourceFiles(root){
   const out=[];

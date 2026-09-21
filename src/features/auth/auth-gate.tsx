@@ -1,26 +1,88 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup } from 'firebase/auth';
+import { useCallback, useEffect, useState } from 'react';
+import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, firebaseConfigured } from '@/src/lib/firebase/client';
 import { bootstrapSession } from '@/src/lib/repositories/session';
 import { messages } from '@/src/i18n/messages';
 
-export function AuthGate({ children }: { children: (ctx: { user: User; householdId: string }) => React.ReactNode }) {
-  const [state, setState] = useState<{user: User; householdId: string} | null>(null);
+type SessionState = { user: User; householdId: string };
+
+export function AuthGate({ children }: { children: (ctx: SessionState) => React.ReactNode }) {
+  const [state, setState] = useState<SessionState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
+  const [sessionError, setSessionError] = useState('');
   const t = messages['pt-BR'];
 
-  useEffect(() => {
-    if (!auth) { setLoading(false); return; }
-    return onAuthStateChanged(auth, async user => {
-      if (!user) { setState(null); setLoading(false); return; }
-      try { setState({ user, householdId: (await bootstrapSession()).householdId }); }
-      finally { setLoading(false); }
-    });
+  const establishSession = useCallback(async (user: User, forceRefresh = false) => {
+    setLoading(true);
+    setSessionError('');
+    try {
+      if (forceRefresh) await user.getIdToken(true);
+      const session = await bootstrapSession();
+      setState({ user, householdId: session.householdId });
+    } catch (error) {
+      setState(null);
+      setSessionError(error instanceof Error ? error.message : 'SESSION_BOOTSTRAP_FAILED');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+    return onAuthStateChanged(auth, user => {
+      if (!user) {
+        setState(null);
+        setSessionError('');
+        setLoading(false);
+        return;
+      }
+      void establishSession(user);
+    });
+  }, [establishSession]);
+
+  async function startGoogleSignIn() {
+    if (!auth) return;
+    setSigningIn(true);
+    setSessionError('');
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (error) {
+      setSessionError(error instanceof Error ? error.message : 'AUTH_SIGN_IN_FAILED');
+    } finally {
+      setSigningIn(false);
+    }
+  }
+
+  async function leaveSession() {
+    if (!auth) return;
+    await signOut(auth);
+    setState(null);
+    setSessionError('');
+  }
 
   if (!firebaseConfigured) return <main className="center-shell"><section className="setup-card"><div className="brand-mark">N</div><h1>NestBalance</h1><p>{t.setupMissing}</p></section></main>;
   if (loading) return <main className="center-shell"><div className="skeleton-card" aria-label="Carregando" /></main>;
-  if (!state) return <main className="center-shell"><section className="login-card"><div><div className="eyebrow">MillionsNest</div><h1>NestBalance</h1><p>{t.brandTagline}</p></div><button className="primary-button" onClick={() => auth && signInWithPopup(auth, new GoogleAuthProvider())}>{t.signIn}</button></section></main>;
+
+  const authenticatedUser = auth?.currentUser ?? null;
+  if (!state && sessionError && authenticatedUser) {
+    return <main className="center-shell"><section className="login-card">
+      <div>
+        <div className="eyebrow">MillionsNest</div>
+        <h1>NestBalance</h1>
+        <p>{t.authSessionProblem}</p>
+      </div>
+      <div className="sheet-actions">
+        <button className="ghost-button" onClick={() => void leaveSession()}>{t.signOut}</button>
+        <button className="primary-button" onClick={() => void establishSession(authenticatedUser, true)}>{t.authRetry}</button>
+      </div>
+    </section></main>;
+  }
+
+  if (!state) return <main className="center-shell"><section className="login-card"><div><div className="eyebrow">MillionsNest</div><h1>NestBalance</h1><p>{t.brandTagline}</p>{sessionError && <p className="error-copy" role="alert">{t.authSignInProblem}</p>}</div><button className="primary-button" disabled={signingIn} onClick={() => void startGoogleSignIn()}>{signingIn ? t.signingIn : t.signIn}</button></section></main>;
   return <>{children(state)}</>;
 }

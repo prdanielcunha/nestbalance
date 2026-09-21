@@ -56,6 +56,12 @@ export async function bootstrapSession(req:Request,res:Response){
     return res.status(created?201:200).json({ok:true,householdId,created});
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION'];
+    if(!safe.includes(err?.message)){
+      console.error('NestBalance session bootstrap failed',{
+        code:typeof err?.code==='string'?err.code:'unknown',
+        name:typeof err?.name==='string'?err.name:'Error'
+      });
+    }
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'SESSION_BOOTSTRAP_FAILED');
   }
 }
