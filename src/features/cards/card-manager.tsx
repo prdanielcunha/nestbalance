@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CARD_BRANDS, invoiceCycleForPurchase, type CardBrand } from '@/src/core/cards';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { createHouseholdCreditCard } from '@/src/lib/repositories/cards';
@@ -29,7 +29,8 @@ export function CreditCardManager({
   accounts,
   invoiceImports,
   onCreated,
-  canManage=true
+  canManage=true,
+  defaultScope='household'
 }:{
   householdId:string;
   cards:HomeCreditCard[];
@@ -37,6 +38,7 @@ export function CreditCardManager({
   invoiceImports:HomeInvoiceImport[];
   onCreated?:()=>void;
   canManage?:boolean;
+  defaultScope?:FinancialScope;
 }){
   const [open,setOpen]=useState(false);
   const [name,setName]=useState('');
@@ -47,7 +49,8 @@ export function CreditCardManager({
   const [limit,setLimit]=useState('');
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
-  const [scope,setScope]=useState<FinancialScope>('household');
+  const [scope,setScope]=useState<FinancialScope>(defaultScope);
+  useEffect(()=>{if(!open)setScope(defaultScope);},[defaultScope,open]);
   const [invoiceCard,setInvoiceCard]=useState<HomeCreditCard|null>(null);
   const [paymentTarget,setPaymentTarget]=useState<{card:HomeCreditCard;invoice:HomeInvoiceImport}|null>(null);
 
@@ -97,7 +100,7 @@ export function CreditCardManager({
       setClosingDay('7');
       setDueDay('14');
       setLimit('');
-      setScope('household');
+      setScope(defaultScope);
       onCreated?.();
     }catch(err:any){
       const code=String(err?.message||'');
