@@ -101,14 +101,20 @@ export async function getHomeData(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid);
 
     const household=adminDb.collection('households').doc(householdId);
-    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports]=await Promise.all([
+    const currentMonthKey=new Date().toISOString().slice(0,7);
+    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(100).get(),
       household.collection('installmentPlans').where('status','==','active').limit(100).get(),
-      household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get()
+      household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get(),
+      household.collection('commitmentPayments').where('periodKey','==',currentMonthKey).limit(200).get()
     ]);
+
+    const paidThisMonth=new Set(
+      commitmentPayments.docs.map(doc=>String(doc.data().commitmentId||'')).filter(Boolean)
+    );
 
     return res.json({
       ok:true,
@@ -117,7 +123,10 @@ export async function getHomeData(req:Request,res:Response){
       transactions:transactions.docs.map(movementDto).sort((a,b)=>
         String(b.observedOn||'').localeCompare(String(a.observedOn||''))
       ),
-      commitments:commitments.docs.map(movementDto),
+      commitments:commitments.docs.map(doc=>({
+        ...movementDto(doc),
+        paidThisMonth:paidThisMonth.has(doc.id)
+      })),
       installmentPlans:installmentPlans.docs.map(installmentPlanDto),
       invoiceImports:invoiceImports.docs.map(invoiceImportDto),
       refreshedAt:new Date().toISOString()
