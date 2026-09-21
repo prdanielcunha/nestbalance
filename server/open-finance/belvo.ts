@@ -59,7 +59,7 @@ export async function createBelvoWidgetAccess(input:{
     password:process.env.BELVO_SECRET_PASSWORD?.trim(),
     scopes:'read_institutions,write_links,read_consents,write_consents,write_consent_callback,delete_consents',
     stale_in:'300d',
-    fetch_resources:['ACCOUNTS','TRANSACTIONS','OWNERS','BILLS','INVESTMENTS','INVESTMENT_TRANSACTIONS'],
+    fetch_resources:['ACCOUNTS','TRANSACTIONS','OWNERS','BILLS'],
     widget:{
       purpose:'Organizar suas finanças pessoais, consolidar saldos, movimentações, faturas e investimentos autorizados por você.',
       openfinance_feature:'consent_link_creation',
