@@ -56,7 +56,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
     const requestedEvidenceId=String(req.body?.evidenceId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
 
     const resolved=await resolveEvidence(householdId,requestedEvidenceId);
     if(!resolved) return error(res,404,'EVIDENCE_NOT_FOUND');
