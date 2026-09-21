@@ -306,7 +306,7 @@ export async function commitCreditCardStatement(req:Request,res:Response){
         sourceKind:preview.sourceKind||'native',
         model:preview.model||null,
         selectedCount:selected.length,
-        currentInvoiceMinor:selected.reduce((sum,item)=>sum+Number(item.amountMinor||0),0),
+        currentInvoiceMinor:selected.reduce<number>((sum,item)=>sum+Number(item.amountMinor||0),0),
         createdBy:user.uid,
         createdAt:FieldValue.serverTimestamp(),
         status:'confirmed'
