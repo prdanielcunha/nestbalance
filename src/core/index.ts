@@ -6,3 +6,4 @@ export * from "./installments.js";
 export * from "./evidence.js";
 export * from "./document-signals.js";
 export * from "./document-suggestion.js";
+export * from "./future-projection.js";

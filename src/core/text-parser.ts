@@ -32,7 +32,7 @@ export function parseFinancialText(input: string): FinancialInterpretation {
   const installmentMatch = text.match(installmentPattern);
   const isIncome = /\b(recebi|receber|entrada|sal[aá]rio|caiu)\b/i.test(text);
   const isPaid = /\b(paguei|pago|gastei|comprei)\b/i.test(text);
-  const recurring = /\b(todo mês|mensal|mensalmente|recorrente)\b/i.test(text) || Boolean(dueMatch && !isPaid);
+  const recurring = /\b(todo mês|mensal|mensalmente|recorrente)\b/i.test(text);
   const needsReview: string[] = [];
 
   if (!amountMatch) needsReview.push("amount");
@@ -59,6 +59,7 @@ export function parseFinancialText(input: string): FinancialInterpretation {
   const description = cleanDescription(text) || "Movimento";
   const kind: FinancialInterpretation["kind"] = recurring || dueDay ? "commitment" : "transaction";
   if (!isPaid && !isIncome && kind === "transaction") needsReview.push("direction");
+  if (dueMatch && !recurring && !installment) needsReview.push("recurrence");
 
   const confidenceScore = Math.max(0, 1 - needsReview.length * 0.22);
   const confidence = confidenceScore >= 0.82 ? "high" : confidenceScore >= 0.55 ? "medium" : "low";

@@ -30,3 +30,10 @@ test('converte lista de bloco de notas em vários itens', () => {
   assert.deepEqual(items.map(x => x.dueDay), [10,18,25]);
   assert.deepEqual(items.map(x => x.money.amountMinor), [11900,128600,78000]);
 });
+
+test('vencimento sozinho não vira recorrência mensal silenciosamente', () => {
+  const result = parseFinancialText('IPTU 2850 dia 10');
+  assert.equal(result.kind, 'commitment');
+  assert.equal(result.recurring, false);
+  assert.equal(result.needsReview.includes('recurrence'), true);
+});

@@ -4,18 +4,32 @@ import Link from 'next/link';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/client';
 import { deriveHomeSnapshot } from '@/src/core/summary';
+import { projectFutureCommitments } from '@/src/core/future-projection';
 import { UniversalCapture } from '@/src/features/capture/universal-capture';
 import { messages } from '@/src/i18n/messages';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
 
-type Row = { id: string; description: string; amountMinor: number; direction?: 'expense'|'income'; status?: string; dueDay?: number|null; createdAt?: {toDate?:()=>Date}|null };
+type Row = {
+  id:string;
+  description:string;
+  amountMinor:number;
+  direction?:'expense'|'income';
+  status?:string;
+  dueDay?:number|null;
+  recurring?:boolean;
+  recurrence?:string|null;
+  installment?:{current:number;total:number}|null;
+  createdAt?:{toDate?:()=>Date}|null;
+};
 
 export function HomeScreen({ householdId, uid }: { householdId: string; uid: string }) {
   const t = messages['pt-BR'];
   const [transactions, setTransactions] = useState<Row[]>([]);
   const [commitments, setCommitments] = useState<Row[]>([]);
   const [accounts, setAccounts] = useState<Row[]>([]);
+  const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
 
   useEffect(() => {
     if (!db) return;
@@ -26,20 +40,61 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   }, [householdId]);
 
   const snapshot = useMemo(() => {
-    const incomeMinor = transactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0);
     const paidExpenseMinor = transactions.filter(x=>x.direction!=='income').reduce((s,x)=>s+x.amountMinor,0);
-    const futureCommitmentsMinor = commitments.filter(x=>x.status!=='paid').reduce((s,x)=>s+x.amountMinor,0);
+    const futureCommitmentsMinor = commitments.filter(x=>x.status!=='paid'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0);
     const availableMinor = accounts.reduce((sum, account) => sum + Number(account.amountMinor ?? 0), 0);
     return deriveHomeSnapshot({availableMinor, incomeMinor:0, paidExpenseMinor, futureCommitmentsMinor, dueSoonMinor: futureCommitmentsMinor});
   }, [transactions, commitments, accounts]);
 
+  const futureMonths=useMemo(()=>projectFutureCommitments(commitments,new Date(),3),[commitments]);
+  const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = transactions.length + commitments.length > 0;
+
   return <main className="app-shell">
     <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="topbar-actions"><Link className="text-link" href="/vault">Cofre</Link><div className="avatar-dot" aria-hidden="true" /></div></header>
-    <section className="hero-balance"><span>{accounts.length ? t.availableNow : 'saldo disponível'}</span><strong>{accounts.length ? money.format(snapshot.availableMinor/100) : '—'}</strong><p>{accounts.length ? (snapshot.futureCommitmentsMinor > 0 ? `${money.format(snapshot.futureCommitmentsMinor/100)} ainda estão comprometidos.` : 'Sem contas pendentes registradas.') : 'Adicione uma conta ou saldo para vermos quanto está realmente disponível.'}</p></section>
+
+    <section className="hero-balance">
+      <span>{accounts.length ? t.availableNow : 'saldo disponível'}</span>
+      <strong>{accounts.length ? money.format(snapshot.availableMinor/100) : '—'}</strong>
+      <p>{accounts.length ? (snapshot.futureCommitmentsMinor > 0 ? `${money.format(snapshot.futureCommitmentsMinor/100)} ainda estão comprometidos.` : 'Sem contas pendentes registradas.') : 'Adicione uma conta ou saldo para vermos quanto está realmente disponível.'}</p>
+    </section>
+
     {commitments[0] && <section><div className="section-title"><h2>{t.attention}</h2></div><article className="spotlight-card"><div><span>{commitments[0].dueDay ? `Vence dia ${commitments[0].dueDay}` : 'Próximo compromisso'}</span><h3>{commitments[0].description}</h3></div><strong>{money.format(commitments[0].amountMinor/100)}</strong></article></section>}
-    <section className="month-section"><div className="section-title"><h2>{t.month}</h2></div><div className="month-grid"><div><span>Entrou</span><strong>{money.format(transactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)/100)}</strong></div><div><span>Já saiu</span><strong>{money.format(snapshot.paidExpenseMinor/100)}</strong></div><div><span>Ainda vai sair</span><strong>{money.format(snapshot.futureCommitmentsMinor/100)}</strong></div><div className="projected"><span>Deve sobrar</span><strong>{accounts.length ? money.format(snapshot.projectedRemainderMinor/100) : '—'}</strong></div></div></section>
-    <section className="timeline-section"><div className="section-title"><h2>Movimentos</h2><span>Timeline</span></div>{!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.direction==='income'?'Entrou':'Saiu'}</span></div><b>{x.direction==='income'?'+':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}</section>
+
+    <section className="month-section">
+      <div className="section-title"><h2>{t.month}</h2></div>
+      <div className="month-grid">
+        <div><span>Entrou</span><strong>{money.format(transactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)/100)}</strong></div>
+        <div><span>Já saiu</span><strong>{money.format(snapshot.paidExpenseMinor/100)}</strong></div>
+        <div><span>Ainda vai sair</span><strong>{money.format(snapshot.futureCommitmentsMinor/100)}</strong></div>
+        <div className="projected"><span>Deve sobrar</span><strong>{accounts.length ? money.format(snapshot.projectedRemainderMinor/100) : '—'}</strong></div>
+      </div>
+    </section>
+
+    <section className="future-section">
+      <div className="section-title"><h2>Próximos meses</h2><span>o que já está comprometido</span></div>
+      <div className="future-grid">
+        {futureMonths.map(item=>{
+          const label=monthName.format(new Date(item.year,item.monthIndex,1));
+          return <button key={item.key} className={expandedFuture===item.key?'future-card active':'future-card'} onClick={()=>setExpandedFuture(value=>value===item.key?null:item.key)}>
+            <span>{label.charAt(0).toUpperCase()+label.slice(1)}</span>
+            <strong>{money.format(item.totalMinor/100)}</strong>
+            <small>{item.itemCount ? `${item.itemCount} compromisso${item.itemCount>1?'s':''}` : 'Nada previsto ainda'}</small>
+          </button>;
+        })}
+      </div>
+      {expandedProjection && <div className="future-breakdown" role="status">
+        <div><span>Parcelas</span><strong>{money.format(expandedProjection.installmentsMinor/100)}</strong></div>
+        <div><span>Contas que se repetem</span><strong>{money.format(expandedProjection.fixedMinor/100)}</strong></div>
+        <p>É uma projeção com o que já foi confirmado. O NestBalance não presume recorrência só porque existe uma data de vencimento.</p>
+      </div>}
+    </section>
+
+    <section className="timeline-section">
+      <div className="section-title"><h2>Movimentos</h2><span>Timeline</span></div>
+      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.direction==='income'?'Entrou':'Saiu'}</span></div><b>{x.direction==='income'?'+':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
+    </section>
+
     <UniversalCapture householdId={householdId} uid={uid} />
   </main>;
 }
