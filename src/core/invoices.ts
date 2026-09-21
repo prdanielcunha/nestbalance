@@ -29,6 +29,8 @@ export type InvoicePreview={
   reconciliationDeltaMinor:number|null;
   observedMinor:number;
   futureInstallmentsMinor:number;
+  reviewVersion?:'human-review-v1';
+  humanReviewed?:boolean;
 };
 
 const moneyPattern=/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})(?!\d)/gi;

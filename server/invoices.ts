@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import {
@@ -8,12 +8,21 @@ import {
   type InvoicePreview,
   type InvoicePreviewItem
 } from '../src/core/invoices.js';
+import {
+  acknowledgeInvoiceVisualReview,
+  addInvoiceReviewItem,
+  removeInvoiceReviewItem,
+  updateInvoiceReviewItem,
+  validateInvoiceReviewItem
+} from '../src/core/invoice-review.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 
 const EXTRACTION_VERSION='native-text-v1';
 const INVOICE_VISION_VERSION='invoice-vision-v1';
 const invoiceVisionDocumentId=(cardId:string)=>`${INVOICE_VISION_VERSION}-${cardId}`;
+const HUMAN_REVIEW_VERSION='human-review-v1';
+const invoiceReviewDocumentId=(cardId:string)=>`${HUMAN_REVIEW_VERSION}-${cardId}`;
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -31,13 +40,37 @@ function hash(value:string){
   return createHash('sha256').update(value).digest('hex');
 }
 
+function previewDigest(preview:InvoicePreview){
+  return hash(JSON.stringify({
+    parserVersion:preview.parserVersion,
+    invoiceKey:preview.invoiceKey,
+    dueOn:preview.dueOn,
+    dueDateSource:preview.dueDateSource,
+    statementTotalMinor:preview.statementTotalMinor,
+    items:preview.items.map(item=>({
+      id:item.id,
+      sourceLine:item.sourceLine,
+      description:item.description,
+      amountMinor:item.amountMinor,
+      purchaseOn:item.purchaseOn,
+      kind:item.kind,
+      installment:item.installment,
+      needsReview:item.needsReview
+    })),
+    globalNeedsReview:preview.globalNeedsReview
+  }));
+}
+
 type InvoiceContext={
   household:FirebaseFirestore.DocumentReference;
   cardId:string;
   card:any;
   evidenceId:string;
   referenceDate:string;
+  basePreview:InvoicePreview;
+  baseDigest:string;
   preview:InvoicePreview;
+  reviewRef:FirebaseFirestore.DocumentReference;
 };
 
 async function loadInvoiceContext(input:{
@@ -75,9 +108,11 @@ async function loadInvoiceContext(input:{
   if(evidence.status!=='accepted'||evidence.immutable!==true) fail('EVIDENCE_NOT_READY',409);
 
   const evidenceRef=household.collection('evidenceAssets').doc(evidenceId);
-  const [nativeExtraction,visionExtraction]=await Promise.all([
+  const reviewRef=evidenceRef.collection('invoiceReviews').doc(invoiceReviewDocumentId(cardId));
+  const [nativeExtraction,visionExtraction,reviewSnap]=await Promise.all([
     evidenceRef.collection('extractions').doc(EXTRACTION_VERSION).get(),
-    evidenceRef.collection('extractions').doc(invoiceVisionDocumentId(cardId)).get()
+    evidenceRef.collection('extractions').doc(invoiceVisionDocumentId(cardId)).get(),
+    reviewRef.get()
   ]);
 
   const closingDay=Number(card.closingDay);
@@ -111,7 +146,31 @@ async function loadInvoiceContext(input:{
 
   if(!preview) fail('EVIDENCE_ANALYSIS_REQUIRED',409);
 
-  return {household,cardId,card,evidenceId,referenceDate:input.referenceDate,preview};
+  const basePreview=preview;
+  const baseDigest=previewDigest(basePreview);
+  if(reviewSnap.exists){
+    const review=reviewSnap.data()!;
+    if(
+      review.reviewVersion===HUMAN_REVIEW_VERSION&&
+      review.baseDigest===baseDigest&&
+      review.preview&&
+      Array.isArray(review.preview.items)
+    ){
+      preview=review.preview as InvoicePreview;
+    }
+  }
+
+  return {
+    household,
+    cardId,
+    card,
+    evidenceId,
+    referenceDate:input.referenceDate,
+    basePreview,
+    baseDigest,
+    preview,
+    reviewRef
+  };
 }
 
 function publicCard(cardId:string,card:any){
@@ -157,6 +216,116 @@ export async function previewCreditCardInvoice(req:Request,res:Response){
       'EMPTY_INVOICE_TEXT','INVALID_REFERENCE_DATE','INVALID_CLOSING_DAY','INVALID_DUE_DAY'
     ];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'INVOICE_PREVIEW_FAILED');
+  }
+}
+
+export async function reviewCreditCardInvoice(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    const cardId=String(req.body?.cardId||'');
+    const evidenceId=String(req.body?.evidenceId||'');
+    const action=String(req.body?.action||'');
+    const referenceDate=referenceDateFrom(req);
+
+    const context=await loadInvoiceContext({householdId,cardId,evidenceId,referenceDate,userUid:user.uid});
+    const importId=hash(`${cardId}|${context.evidenceId}|${context.preview.invoiceKey}`);
+    const importRef=context.household.collection('invoiceImports').doc(importId);
+    const importSnap=await importRef.get();
+    const confirmedItemIds=new Set<string>(
+      importSnap.exists&&Array.isArray(importSnap.data()?.confirmedItemIds)
+        ? importSnap.data()!.confirmedItemIds.map((value:any)=>String(value||'')).filter(Boolean)
+        : []
+    );
+
+    let nextPreview=context.preview;
+    let touchedItemId:string|null=null;
+    let beforeItem:any=null;
+    let afterItem:any=null;
+
+    if(action==='update'){
+      const itemId=String(req.body?.itemId||'');
+      if(!itemId||!context.preview.items.some(item=>item.id===itemId)) return error(res,404,'INVOICE_ITEM_NOT_FOUND');
+      if(confirmedItemIds.has(itemId)) return error(res,409,'INVOICE_ITEM_ALREADY_COMMITTED');
+
+      const validated=validateInvoiceReviewItem(req.body?.item);
+      if(!validated.ok) return error(res,400,validated.reason);
+      beforeItem=context.preview.items.find(item=>item.id===itemId)||null;
+      nextPreview=updateInvoiceReviewItem({preview:context.preview,itemId,draft:validated.value});
+      touchedItemId=itemId;
+      afterItem=nextPreview.items.find(item=>item.id===itemId)||null;
+    }else if(action==='add'){
+      const validated=validateInvoiceReviewItem(req.body?.item);
+      if(!validated.ok) return error(res,400,validated.reason);
+      const itemId=`manual-${randomUUID()}`;
+      nextPreview=addInvoiceReviewItem({preview:context.preview,itemId,draft:validated.value});
+      touchedItemId=itemId;
+      afterItem=nextPreview.items.find(item=>item.id===itemId)||null;
+    }else if(action==='remove'){
+      const itemId=String(req.body?.itemId||'');
+      if(!itemId||!context.preview.items.some(item=>item.id===itemId)) return error(res,404,'INVOICE_ITEM_NOT_FOUND');
+      if(confirmedItemIds.has(itemId)) return error(res,409,'INVOICE_ITEM_ALREADY_COMMITTED');
+      beforeItem=context.preview.items.find(item=>item.id===itemId)||null;
+      nextPreview=removeInvoiceReviewItem({preview:context.preview,itemId});
+      touchedItemId=itemId;
+    }else if(action==='acknowledge_visual'){
+      if(context.preview.items.some(item=>item.needsReview.length>0)){
+        return error(res,409,'INVOICE_ITEMS_STILL_NEED_REVIEW');
+      }
+      nextPreview=acknowledgeInvoiceVisualReview(context.preview);
+    }else{
+      return error(res,400,'INVALID_INVOICE_REVIEW_ACTION');
+    }
+
+    const auditRef=context.household.collection('auditEvents').doc();
+    await adminDb.runTransaction(async tx=>{
+      const reviewSnap=await tx.get(context.reviewRef);
+      const previousRevision=reviewSnap.exists?Number(reviewSnap.data()?.revision||0):0;
+      tx.set(context.reviewRef,{
+        reviewVersion:HUMAN_REVIEW_VERSION,
+        baseDigest:context.baseDigest,
+        preview:nextPreview,
+        revision:previousRevision+1,
+        lastAction:action,
+        updatedBy:user.uid,
+        updatedAt:FieldValue.serverTimestamp(),
+        ...(reviewSnap.exists?{}:{createdBy:user.uid,createdAt:FieldValue.serverTimestamp()})
+      },{merge:true});
+
+      tx.create(auditRef,{
+        type:'credit_card_invoice.reviewed',
+        actorUid:user.uid,
+        cardId,
+        evidenceId:context.evidenceId,
+        invoiceKey:nextPreview.invoiceKey,
+        reviewVersion:HUMAN_REVIEW_VERSION,
+        action,
+        itemId:touchedItemId,
+        before:beforeItem,
+        after:afterItem,
+        reconciliationDeltaMinor:nextPreview.reconciliationDeltaMinor,
+        reviewCount:nextPreview.reviewCount,
+        createdAt:FieldValue.serverTimestamp()
+      });
+    });
+
+    return res.json({
+      ok:true,
+      evidenceId:context.evidenceId,
+      card:publicCard(context.cardId,context.card),
+      preview:nextPreview,
+      reviewedItemId:touchedItemId
+    });
+  }catch(err:any){
+    const safe=[
+      'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
+      'INVALID_CARD','INVALID_EVIDENCE','CARD_NOT_FOUND','CARD_NOT_ACTIVE',
+      'EVIDENCE_NOT_FOUND','CANONICAL_EVIDENCE_NOT_FOUND','EVIDENCE_NOT_READY',
+      'EVIDENCE_ANALYSIS_REQUIRED','CARD_CYCLE_INVALID',
+      'INVOICE_ITEM_NOT_FOUND','INVOICE_ITEM_ALREADY_EXISTS'
+    ];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'INVOICE_REVIEW_FAILED');
   }
 }
 

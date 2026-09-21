@@ -1,8 +1,10 @@
 'use client';
 import { useMemo, useState } from 'react';
+import type { InvoicePreviewItem } from '@/src/core/invoices';
 import type { HomeCreditCard } from '@/src/lib/repositories/home';
 import { ingestEvidence, analyzeEvidenceText, type UploadProgress } from '@/src/lib/repositories/evidence';
-import { analyzeInvoiceImage, commitInvoice, previewInvoice, type InvoicePreviewResponse } from '@/src/lib/repositories/invoices';
+import { analyzeInvoiceImage, commitInvoice, previewInvoice, reviewInvoice, type InvoicePreviewResponse } from '@/src/lib/repositories/invoices';
+import { InvoiceItemEditor } from '@/src/features/cards/invoice-item-editor';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const date=new Intl.DateTimeFormat('pt-BR');
@@ -29,6 +31,7 @@ export function InvoiceImportSheet({
   const [error,setError]=useState('');
   const [result,setResult]=useState<InvoicePreviewResponse|null>(null);
   const [showAll,setShowAll]=useState(false);
+  const [editingItem,setEditingItem]=useState<InvoicePreviewItem|null|'new'>(null);
 
   const clearItems=useMemo(()=>result?.preview.items.filter(item=>item.needsReview.length===0)??[],[result]);
   const reviewItems=useMemo(()=>result?.preview.items.filter(item=>item.needsReview.length>0)??[],[result]);
@@ -83,6 +86,30 @@ export function InvoiceImportSheet({
         setError('Não encontrei texto financeiro suficiente nessa fatura.');
       }else{
         setError('Não consegui entender essa fatura agora. O arquivo original não será duplicado.');
+      }
+    }finally{
+      setWorking(false);
+    }
+  }
+
+  async function acknowledgeVisualReview(){
+    if(!result||working) return;
+    setWorking(true);
+    setError('');
+    try{
+      const reviewed=await reviewInvoice({
+        householdId,
+        cardId:card.id,
+        evidenceId:result.evidenceId,
+        review:{action:'acknowledge_visual'}
+      });
+      setResult(reviewed);
+    }catch(err:any){
+      const code=String(err?.message||'');
+      if(code==='INVOICE_ITEMS_STILL_NEED_REVIEW'){
+        setError('Ainda há itens individuais que precisam de conferência.');
+      }else{
+        setError('Não conseguimos concluir essa conferência agora.');
       }
     }finally{
       setWorking(false);
@@ -184,6 +211,11 @@ export function InvoiceImportSheet({
             : globalReview.includes('no_invoice_items')
               ? 'Não encontrei linhas de compra suficientes nessa imagem.'
               : 'A imagem tem trechos que precisam de uma conferência antes de fechar a fatura.'}</span>
+          <div className="invoice-global-actions">
+            <button type="button" onClick={()=>setEditingItem('new')}>Adicionar item que faltou</button>
+            {globalReview.includes('visual_invoice')&&reviewItems.length===0&&
+              <button type="button" disabled={working} onClick={acknowledgeVisualReview}>Conferi a imagem inteira</button>}
+          </div>
         </div>}
 
         {result.preview.items.length===0
@@ -203,9 +235,15 @@ export function InvoiceImportSheet({
                     <span>Parcela {item.installment.current} de {item.installment.total}</span>
                     <small>{Math.max(0,item.installment.total-item.installment.current)} futura{item.installment.total-item.installment.current===1?'':'s'} projetada{item.installment.total-item.installment.current===1?'':'s'}</small>
                   </div>}
-                  {item.needsReview.length>0&&<em>Confira {item.needsReview.includes('purchase_date')?'a data da compra':'o vencimento usado para projetar as parcelas'}</em>}
+                  <div className="invoice-item-footer">
+                    {item.needsReview.length>0
+                      ? <em>Confira {item.needsReview.includes('purchase_date')?'a data da compra':item.needsReview.includes('invoice_due_date')?'o vencimento usado para projetar as parcelas':'os dados reconhecidos'}</em>
+                      : <span>{result.preview.humanReviewed?'Conferido':'Reconhecido com boa confiança'}</span>}
+                    <button type="button" onClick={()=>setEditingItem(item)}>{item.needsReview.length?'Corrigir':'Editar'}</button>
+                  </div>
                 </article>)}
               </div>
+              <button className="invoice-add-item-button" type="button" onClick={()=>setEditingItem('new')}>Adicionar item que faltou</button>
             </>}
 
         <p className="confidence-note">
@@ -221,6 +259,14 @@ export function InvoiceImportSheet({
           </button>
         </div>
       </>}
+      {result&&editingItem&&<InvoiceItemEditor
+        householdId={householdId}
+        cardId={card.id}
+        evidenceId={result.evidenceId}
+        item={editingItem==='new'?null:editingItem}
+        onClose={()=>setEditingItem(null)}
+        onUpdated={value=>{setResult(value);setEditingItem(null);setError('');}}
+      />}
     </section>
   </div>;
 }
