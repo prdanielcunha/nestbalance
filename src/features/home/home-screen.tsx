@@ -124,6 +124,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       cards={cards}
       accounts={accounts}
       invoiceImports={invoiceImports}
+      canManage={canManage}
       onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
     />
 
