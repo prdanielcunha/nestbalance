@@ -15,7 +15,7 @@ export async function askFinanceAssistant(householdId:string,question:string){
 
   const response=await fetch('/api/assistant/answer',{
     method:'POST',
-    headers:{'content-type':'application/json',authorization:\`Bearer \${token}\`},
+    headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
     body:JSON.stringify({householdId,question}),
     cache:'no-store'
   });
