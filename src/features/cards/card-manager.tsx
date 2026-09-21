@@ -26,7 +26,9 @@ export function CreditCardManager({
   cards,
   accounts,
   invoiceImports,
-  onCreated,\n  canManage=true\n}:{
+  onCreated,
+  canManage=true
+}:{
   householdId:string;
   cards:HomeCreditCard[];
   accounts:HomeAccount[];
