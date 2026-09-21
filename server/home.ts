@@ -18,6 +18,21 @@ function accountDto(doc:any){
   };
 }
 
+function cardDto(doc:any){
+  const data=doc.data();
+  return {
+    id:doc.id,
+    name:String(data.name||'Cartão'),
+    brand:String(data.brand||'other'),
+    closingDay:Number.isInteger(data.closingDay)?data.closingDay:1,
+    dueDay:Number.isInteger(data.dueDay)?data.dueDay:1,
+    last4:typeof data.last4==='string'&&/^\d{4}$/.test(data.last4)?data.last4:null,
+    limitMinor:Number.isSafeInteger(data.limitMinor)?data.limitMinor:null,
+    currency:String(data.currency||'BRL'),
+    status:String(data.status||'active')
+  };
+}
+
 function movementDto(doc:any){
   const data=doc.data();
   return {
@@ -45,8 +60,9 @@ export async function getHomeData(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid);
 
     const household=adminDb.collection('households').doc(householdId);
-    const [accounts,transactions,commitments]=await Promise.all([
+    const [accounts,cards,transactions,commitments]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
+      household.collection('creditCards').where('status','==','active').limit(25).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(100).get()
     ]);
@@ -54,6 +70,7 @@ export async function getHomeData(req:Request,res:Response){
     return res.json({
       ok:true,
       accounts:accounts.docs.map(accountDto),
+      cards:cards.docs.map(cardDto),
       transactions:transactions.docs.map(movementDto),
       commitments:commitments.docs.map(movementDto),
       refreshedAt:new Date().toISOString()
