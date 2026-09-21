@@ -17,6 +17,7 @@ function cleanDescription(text: string): string {
     .replace(dueDayPattern, " ")
     .replace(installmentPattern, " ")
     .replace(/\b(todo mês|mensal|mensalmente|recorrente)\b/gi, " ")
+    .replace(/\bentre minhas contas\b/gi, " ")
     .replace(/\b(paguei|recebi|gastei|comprei|pagar|receber|transferi|transferência|transferencia)\b/gi, " ")
     .replace(/[·|]/g, " ")
     .replace(/\s+/g, " ")
