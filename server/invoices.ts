@@ -184,11 +184,11 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
     const importRef=context.household.collection('invoiceImports').doc(importId);
     const auditRef=context.household.collection('auditEvents').doc();
 
-    let created=0;
-    let duplicates=0;
     const planIds=[...planGroups.keys()];
 
-    await adminDb.runTransaction(async tx=>{
+    const transactionResult=await adminDb.runTransaction(async tx=>{
+      let created=0;
+      let duplicates=0;
       const itemKeyRefs=itemEntries.map(entry=>context.household.collection('invoiceItemKeys').doc(entry.keyId));
       const itemKeySnaps=await Promise.all(itemKeyRefs.map(ref=>tx.get(ref)));
       const planEntries=[...planGroups.entries()];
@@ -304,7 +304,11 @@ export async function commitCreditCardInvoice(req:Request,res:Response){
         installmentPlanIds:planIds,
         createdAt:FieldValue.serverTimestamp()
       });
+
+      return {created,duplicates};
     });
+
+    const {created,duplicates}=transactionResult;
 
     return res.status(created>0?201:200).json({
       ok:true,
