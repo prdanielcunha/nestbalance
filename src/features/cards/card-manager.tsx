@@ -15,7 +15,7 @@ const brandLabel:Record<CardBrand,string>={
   mastercard:'Mastercard',
   elo:'Elo',
   amex:'American Express',
-  other:'Outro'
+  other:'Não sei / Outro'
 };
 
 function inferBrand(value:string):CardBrand{
@@ -240,7 +240,7 @@ export function CreditCardManager({
         <ScopeChoice value={scope} onChange={setScope} disabled={saving}/>
 
         <label className="field-label" htmlFor="card-name">Nome do cartão</label>
-        <input id="card-name" className="premium-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Ex.: Nubank Ultravioleta" maxLength={60}/>
+        <input id="card-name" className="premium-input" value={name} onChange={e=>{const next=e.target.value;setName(next);const detected=inferBrand(next);if(detected!=='other')setBrand(detected);}} placeholder="Ex.: Nubank Ultravioleta" maxLength={60}/>
 
         <label className="field-label">Bandeira</label>
         <div className="card-brand-grid">
@@ -248,6 +248,7 @@ export function CreditCardManager({
             {brandLabel[value]}
           </button>)}
         </div>
+        <small className="field-help">Não chutamos a bandeira. Se o nome ou um print permitir identificar com segurança, ela é preenchida; caso contrário, você confirma.</small>
 
         <div className="card-form-grid">
           <div>
