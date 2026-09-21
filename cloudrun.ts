@@ -4,6 +4,7 @@ import { finalizeEvidence, startEvidence, uploadEvidence } from './server/eviden
 import { analyzeEvidenceText } from './server/evidence-analysis.js';
 import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence } from './server/vault.js';
 import { createAccount } from './server/accounts.js';
+import { createCreditCard } from './server/cards.js';
 import { analyzeEvidenceWithAi } from './server/evidence-ai.js';
 import { bootstrapSession } from './server/session.js';
 import { getHomeData } from './server/home.js';
@@ -26,6 +27,7 @@ app.post('/api/vault/detail', getVaultEvidenceDetail);
 app.post('/api/vault/preview', previewVaultEvidence);
 app.post('/api/capture/commit', commitCapture);
 app.post('/api/accounts/create', createAccount);
+app.post('/api/cards/create', createCreditCard);
 app.use((_req, res) => res.status(404).json({ ok: false, error: 'NOT_FOUND' }));
 
 const port = Number(process.env.PORT || 8080);
