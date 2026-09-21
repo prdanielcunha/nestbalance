@@ -11,13 +11,13 @@ function localIsoDate() {
 
 export type CommitResult = { status: 'created' | 'duplicate'; id: string; evidenceId?: string | null };
 
-async function commitOnServer(householdId: string, sourceText: string, observedOn: string, evidenceId?: string | null): Promise<CommitResult> {
+async function commitOnServer(householdId: string, sourceText: string, observedOn: string, evidenceId?: string | null, visibility:'household'|'personal'='household'): Promise<CommitResult> {
   const token = await auth?.currentUser?.getIdToken();
   if (!token) throw new Error('AUTH_REQUIRED');
   const response = await fetch('/api/capture/commit', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-    body: JSON.stringify({ householdId, sourceText, evidenceId: evidenceId || null, observedOn })
+    body: JSON.stringify({ householdId, sourceText, evidenceId: evidenceId || null, observedOn, visibility })
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(json.error || 'CAPTURE_COMMIT_FAILED');
@@ -31,12 +31,14 @@ export async function commitInterpretation(args: {
   file?: File | null;
   evidenceId?: string | null;
   onUploadProgress?: (progress: UploadProgress) => void;
+  visibility?: 'household'|'personal';
 }): Promise<CommitResult> {
   const { householdId, interpretation, file, onUploadProgress } = args;
+  const visibility=args.visibility??'household';
   let evidenceId: string | null = args.evidenceId ?? null;
   if (file && !evidenceId) {
-    const evidence = await ingestEvidence(householdId, file, onUploadProgress);
+    const evidence = await ingestEvidence(householdId, file, onUploadProgress, visibility);
     evidenceId = evidence.canonicalEvidenceId;
   }
-  return commitOnServer(householdId, interpretation.sourceText, interpretation.occurredOn || localIsoDate(), evidenceId);
+  return commitOnServer(householdId, interpretation.sourceText, interpretation.occurredOn || localIsoDate(), evidenceId, visibility);
 }
