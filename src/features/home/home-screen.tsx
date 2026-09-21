@@ -62,17 +62,14 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
 
   const snapshot = useMemo(() => {
     const availableMinor = accounts.reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
-    const incomeMinor = transactions
-      .filter(x=>x.direction==='income'&&x.status!=='cancelled')
-      .reduce((sum,item)=>sum+item.amountMinor,0);
     return deriveHomeSnapshot({
       availableMinor,
-      incomeMinor,
+      incomeMinor:0,
       paidExpenseMinor:cashView.paidExpenseMinor,
       futureCommitmentsMinor:cashView.futureCommitmentsMinor,
       dueSoonMinor:cashView.futureCommitmentsMinor
     });
-  }, [transactions, accounts, cashView]);
+  }, [accounts, cashView]);
 
   const futureMonths=useMemo(()=>projectHouseholdFuture(commitments,installmentPlans,new Date(),3),[commitments,installmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
