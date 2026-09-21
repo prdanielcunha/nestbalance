@@ -95,7 +95,7 @@ export function AssistantScreen({householdId}:{householdId:string}){
       </div>
 
       {result.answer.cards.length>0&&<div className="assistant-card-grid">
-        {result.answer.cards.map((card,index)=><article key={\`\${card.label}-\${index}\`}>
+        {result.answer.cards.map((card,index)=><article key={`${card.label}-${index}`}>
           <span>{card.label}</span>
           <strong>{money.format(card.amountMinor/100)}</strong>
           <small>{card.detail}</small>
@@ -111,7 +111,7 @@ export function AssistantScreen({householdId}:{householdId:string}){
           <small>Atualizado às {time.format(new Date(result.asOf))}</small>
         </div>
         <div className="assistant-source-list">
-          {result.answer.sources.map(source=><article key={\`\${source.kind}-\${source.id}\`}>
+          {result.answer.sources.map(source=><article key={`${source.kind}-${source.id}`}>
             <div>
               <strong>{source.label}</strong>
               <span>{source.detail}</span>
