@@ -53,6 +53,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [recording,setRecording]=useState(false);
+  const [showAllReview,setShowAllReview]=useState(false);
   const imageInputRef=useRef<HTMLInputElement|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const textRef=useRef<HTMLTextAreaElement|null>(null);
@@ -94,6 +95,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   function clearAll() {
     stopRecorderTracks();
     setRecording(false);
+    setShowAllReview(false);
     setOpen(false);
     onClose?.();
     setText('');
@@ -388,8 +390,17 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     }
   }
 
-  const reviewCount = interpretations.filter(x => x.confidence !== 'high').length;
+  const indexedInterpretations=interpretations.map((item,index)=>({item,index}));
+  const attentionInterpretations=indexedInterpretations.filter(({item})=>item.confidence!=='high'||item.needsReview.includes('direction'));
+  const readyInterpretations=indexedInterpretations.filter(({item})=>item.confidence==='high'&&!item.needsReview.includes('direction'));
+  const reviewCount = attentionInterpretations.length;
   const unresolvedDirectionCount=interpretations.filter(x=>x.needsReview.includes('direction')).length;
+  const visibleInterpretations=showAllReview
+    ? indexedInterpretations
+    : attentionInterpretations.length
+      ? attentionInterpretations
+      : indexedInterpretations.slice(0,3);
+  const hiddenReadyCount=showAllReview?0:Math.max(0,interpretations.length-visibleInterpretations.length);
   const organizedLabel = interpretations.length === 1
     ? (interpretations[0].kind === 'commitment'
         ? 'Conta para pagar'
@@ -529,7 +540,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             </div>
           </div>
 
-          <div className="review-list">{interpretations.map((interpretation, index) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
+          {interpretations.length>1&&<div className="capture-review-summary">
+            <div><strong>{readyInterpretations.length}</strong><span>já organizado{readyInterpretations.length===1?'':'s'}</span></div>
+            <div className={attentionInterpretations.length?'attention':''}><strong>{attentionInterpretations.length}</strong><span>para conferir</span></div>
+          </div>}
+
+          <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
             <div><strong>{interpretation.description}</strong><b>{money.format(interpretation.money.amountMinor / 100)}</b></div>
             <span>{interpretation.kind === 'commitment'
               ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta para pagar')
@@ -551,6 +567,13 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                 </div>
               : interpretation.confidence !== 'high' && <em>Confira este item</em>}
           </div>)}</div>
+
+          {hiddenReadyCount>0&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(true)}>
+            Ver {hiddenReadyCount} item{hiddenReadyCount===1?'':'s'} já organizado{hiddenReadyCount===1?'':'s'}
+          </button>}
+          {showAllReview&&interpretations.length>3&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(false)}>
+            Mostrar só o que importa
+          </button>}
 
           {reviewCount > 0 && <p className="confidence-note">{unresolvedDirectionCount
             ? `Só ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' precisa':'s precisam'} de uma resposta rápida. O restante já está organizado.`
