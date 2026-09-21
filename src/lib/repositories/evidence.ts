@@ -18,12 +18,12 @@ async function api<T>(path: string, body: unknown): Promise<T> {
   return json as T;
 }
 
-export async function ingestEvidence(householdId: string, file: File, onProgress?: (progress: UploadProgress) => void) {
+export async function ingestEvidence(householdId: string, file: File, onProgress?: (progress: UploadProgress) => void, visibility:'household'|'personal'='household') {
   const token = await auth?.currentUser?.getIdToken();
   if (!token) throw new Error('AUTH_REQUIRED');
 
   const started = await api<{evidenceId:string}>('/api/evidence/start', {
-    householdId, originalName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size
+    householdId, originalName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, visibility
   });
 
   return new Promise<{status:'accepted'|'duplicate';evidenceId:string;canonicalEvidenceId:string}>((resolve,reject)=>{
