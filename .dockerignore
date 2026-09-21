@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+.core-dist
+server-dist
+.git
+.github
+.env
+.env.*
+*.log
+README.md
+tests
