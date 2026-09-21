@@ -20,7 +20,8 @@ test('login shell has no serious accessibility violations',async({page})=>{
   expect(severe,severe.map(item=>item.id+': '+item.help).join('\n')).toEqual([]);
 });
 
-test('primary sign-in action is keyboard reachable',async({page})=>{
+test('primary sign-in action is keyboard reachable',async({page},testInfo)=>{
+  test.skip(testInfo.project.name.startsWith('mobile-'),'Keyboard focus is enforced on the desktop project; mobile has a touch-target gate.');
   await page.goto('/');
   await page.keyboard.press('Tab');
   for(let i=0;i<8;i++){
@@ -29,6 +30,16 @@ test('primary sign-in action is keyboard reachable',async({page})=>{
     await page.keyboard.press('Tab');
   }
   throw new Error('Google sign-in was not reachable by keyboard within the first focusable controls.');
+});
+
+test('primary sign-in action has a 44px touch target on mobile',async({page},testInfo)=>{
+  test.skip(!testInfo.project.name.startsWith('mobile-'),'Touch-target sizing is enforced on the mobile project.');
+  await page.goto('/');
+  const button=page.getByRole('button',{name:/Entrar com Google|Continue with Google/i});
+  const box=await button.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(44);
 });
 
 test('dark color scheme keeps login shell visible',async({browser})=>{
