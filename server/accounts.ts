@@ -54,6 +54,8 @@ export async function createAccount(req:Request,res:Response){
       tx.create(keyRef,{accountId:accountRef.id,createdAt:FieldValue.serverTimestamp()});
       tx.create(auditRef,{
         type:'account.created',
+        scope:privacy.scope,
+        ownerUid:privacy.ownerUid,
         actorUid:user.uid,
         entityType:'account',
         entityId:accountRef.id,
@@ -106,6 +108,8 @@ export async function updateAccountBalance(req:Request,res:Response){
       });
       tx.create(auditRef,{
         type:'account.balance_updated',
+        scope:data.scope==='personal'?'personal':'household',
+        ownerUid:data.scope==='personal'?user.uid:null,
         actorUid:user.uid,
         entityType:'account',
         entityId:accountId,
