@@ -5,6 +5,7 @@ import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
+import { ConnectedBanks } from '@/src/features/open-finance/connected-banks';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInvoiceImport } from '@/src/lib/repositories/home';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
@@ -39,7 +40,12 @@ export function AccountsScreen({householdId}:{householdId:string}){
 
   useEffect(()=>{void load();},[householdId,refreshKey]);
 
-  const total=useMemo(()=>accounts.reduce((sum,item)=>sum+item.balanceMinor,0),[accounts]);
+  const spendableTotal=useMemo(()=>accounts
+    .filter(item=>item.connectedProductType!=='investment')
+    .reduce((sum,item)=>sum+item.balanceMinor,0),[accounts]);
+  const investmentTotal=useMemo(()=>accounts
+    .filter(item=>item.connectedProductType==='investment')
+    .reduce((sum,item)=>sum+item.balanceMinor,0),[accounts]);
 
   function refreshed(){
     setRefreshKey(value=>value+1);
@@ -84,8 +90,12 @@ export function AccountsScreen({householdId}:{householdId:string}){
 
     <section className="area-hero accounts-hero">
       <span>Onde seu dinheiro está</span>
-      <h1>{accounts.length?money.format(total/100):'Suas contas em um só lugar.'}</h1>
-      <p>{accounts.length?'Saldo total conhecido nas contas ativas do Lar.':'Adicione conta bancária, carteira digital ou dinheiro sem informar agência ou número da conta.'}</p>
+      <h1>{accounts.length?money.format(spendableTotal/100):'Suas contas em um só lugar.'}</h1>
+      <p>{accounts.length
+        ? investmentTotal>0
+          ? `${money.format(investmentTotal/100)} estão separados como investimentos e não entram no dinheiro disponível.`
+          : 'Saldo disponível conhecido nas contas ativas do Lar.'
+        : 'Adicione uma conta manualmente ou conecte seu banco com Open Finance.'}</p>
     </section>
 
     {error&&<p className="error-copy" role="alert">{error}</p>}
@@ -97,15 +107,31 @@ export function AccountsScreen({householdId}:{householdId:string}){
         : accounts.length===0
           ? <div className="empty-state"><h3>Nenhum saldo informado ainda.</h3><p>Use “Adicionar conta” para começar.</p></div>
           : <div className="account-balance-grid">
-              {accounts.map(account=><article className="account-balance-tile" key={account.id}>
-                <span>{typeLabel[account.type]||'Conta'}</span>
-                <h3>{account.name}</h3>
-                <strong>{money.format(account.balanceMinor/100)}</strong>
-                <div className="account-balance-foot"><small>Saldo atual informado</small><button type="button" onClick={()=>openBalance(account)}>Atualizar</button></div>
-              </article>)}
+              {accounts.map(account=>{
+                const connected=account.source==='open_finance';
+                const investment=account.connectedProductType==='investment';
+                return <article className={connected?'account-balance-tile connected':'account-balance-tile'} key={account.id}>
+                  <span>{investment?'Investimento':connected?'Conta conectada':typeLabel[account.type]||'Conta'}</span>
+                  <h3>{account.name}</h3>
+                  <strong>{money.format(account.balanceMinor/100)}</strong>
+                  {account.automaticallyInvestedMinor&&account.automaticallyInvestedMinor>0
+                    ? <small>{money.format(account.automaticallyInvestedMinor/100)} aplicado automaticamente</small>
+                    : null}
+                  <div className="account-balance-foot">
+                    <small>{connected
+                      ? `${account.institutionName||'Open Finance'} · saldo sincronizado`
+                      : 'Saldo atual informado'}</small>
+                    {connected
+                      ? <span className="synced-account-pill">Automático</span>
+                      : <button type="button" onClick={()=>openBalance(account)}>Atualizar</button>}
+                  </div>
+                </article>;
+              })}
             </div>}
     </section>
 
+    {!loading&&<ConnectedBanks householdId={householdId} accounts={accounts} onSynced={refreshed}/>}
+    
     {!loading&&<CreditCardManager
       householdId={householdId}
       cards={cards}
