@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { answerAssistantQuestion } from '../src/core/assistant.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { canViewFinancialRecord } from './privacy.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -80,10 +81,10 @@ export async function answerFinanceAssistant(req:Request,res:Response){
 
     const answer=answerAssistantQuestion({
       question,
-      accounts:accounts.docs.map(accountDto),
-      commitments:commitments.docs.map(commitmentDto),
-      invoices:invoices.docs.map(invoiceDto),
-      installmentPlans:plans.docs.map(planDto),
+      accounts:accounts.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(accountDto),
+      commitments:commitments.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(commitmentDto),
+      invoices:invoices.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(invoiceDto),
+      installmentPlans:plans.docs.filter(doc=>canViewFinancialRecord(doc.data(),user.uid)).map(planDto),
       now:new Date()
     });
 
