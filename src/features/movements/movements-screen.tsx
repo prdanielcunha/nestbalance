@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
+import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const date=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
@@ -31,6 +32,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   const [error,setError]=useState('');
   const [filter,setFilter]=useState<Filter>('all');
   const [query,setQuery]=useState('');
+  const [view,setView]=useState<FinancialView>('household');
 
   async function load(){
     setLoading(true);
@@ -47,17 +49,19 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
 
   useEffect(()=>{void load();},[householdId]);
 
+  const scopedRows=useMemo(()=>rows.filter(row=>inFinancialView(row.scope,view)),[rows,view]);
+
   const summary=useMemo(()=>({
-    income:rows.filter(x=>x.direction==='income'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
-    cashExpense:rows.filter(x=>x.direction==='expense'&&x.source!=='credit_card_invoice'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
-    card:rows.filter(x=>x.source==='credit_card_invoice'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
-    transfers:rows.filter(x=>x.direction==='transfer'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0)
-  }),[rows]);
+    income:scopedRows.filter(x=>x.direction==='income'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
+    cashExpense:scopedRows.filter(x=>x.direction==='expense'&&x.source!=='credit_card_invoice'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
+    card:scopedRows.filter(x=>x.source==='credit_card_invoice'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
+    transfers:scopedRows.filter(x=>x.direction==='transfer'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0)
+  }),[scopedRows]);
 
   const visible=useMemo(()=>{
     const q=query.trim().toLocaleLowerCase('pt-BR');
-    return rows.filter(row=>matchesFilter(row,filter)&&(!q||row.description.toLocaleLowerCase('pt-BR').includes(q)));
-  },[rows,filter,query]);
+    return scopedRows.filter(row=>matchesFilter(row,filter)&&(!q||row.description.toLocaleLowerCase('pt-BR').includes(q)));
+  },[scopedRows,filter,query]);
 
   const filters:{value:Filter;label:string}[]=[
     {value:'all',label:'Todos'},
@@ -71,6 +75,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     <header className="topbar">
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Movimentos</span></div>
     </header>
+    <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="area-hero">
       <span>Seu histórico</span>
