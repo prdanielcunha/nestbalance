@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
+import { resolveImportedMovementDirection } from '@/src/core/movement-import';
 import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
 import {
@@ -254,6 +255,14 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         try{
           const ai=await analyzeEvidenceAi(householdId,evidenceId);
           setAiAnalysis(ai);
+          if(ai.kind==='image'&&ai.movementList&&ai.parsedInterpretations?.length){
+            setInterpretations(ai.parsedInterpretations);
+            const unresolved=ai.parsedInterpretations.filter(item=>item.needsReview.includes('direction')).length;
+            setNotice(unresolved
+              ? `Encontrei ${ai.parsedInterpretations.length} movimentações. Só ${unresolved} precisa${unresolved===1?'':'m'} que você diga se entrou ou saiu.`
+              : `Encontrei ${ai.parsedInterpretations.length} movimentações e organizei a lista. Confira e guarde.`);
+            return;
+          }
           if(ai.kind==='audio'){
             const transcript=ai.transcript?.trim()||'';
             if(!transcript||!ai.parsedInterpretations?.length){
@@ -332,8 +341,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     prepareAiReview(pendingAi.extraction,pendingAi.amountMinor,direction);
   }
 
+  function chooseImportedDirection(index:number,direction:ConfirmedDirection){
+    setInterpretations(items=>items.map((item,itemIndex)=>
+      itemIndex===index?resolveImportedMovementDirection(item,direction):item
+    ));
+  }
+
   async function confirm() {
     if (!interpretations.length) return;
+    const unresolved=interpretations.filter(item=>item.needsReview.includes('direction')).length;
+    if(unresolved){
+      setError(`Só falta dizer o que aconteceu em ${unresolved} item${unresolved===1?'':'s'}.`);
+      return;
+    }
     setSaving(true);
     setUpload(null);
     setError('');
@@ -369,6 +389,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   }
 
   const reviewCount = interpretations.filter(x => x.confidence !== 'high').length;
+  const unresolvedDirectionCount=interpretations.filter(x=>x.needsReview.includes('direction')).length;
   const organizedLabel = interpretations.length === 1
     ? (interpretations[0].kind === 'commitment'
         ? 'Conta para pagar'
@@ -508,16 +529,32 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             </div>
           </div>
 
-          <div className="review-list">{interpretations.map((interpretation, index) => <div className="interpretation-card" key={`${interpretation.description}-${index}`}>
+          <div className="review-list">{interpretations.map((interpretation, index) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
             <div><strong>{interpretation.description}</strong><b>{money.format(interpretation.money.amountMinor / 100)}</b></div>
             <span>{interpretation.kind === 'commitment'
-              ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta a pagar')
-              : interpretation.direction==='transfer'?'Transferência':'Movimento'}</span>
+              ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta para pagar')
+              : interpretation.needsReview.includes('direction')
+                ? 'Só falta dizer se entrou ou saiu'
+                : interpretation.direction==='income'
+                  ? 'Dinheiro que entrou'
+                  : interpretation.direction==='transfer'
+                    ? 'Só mudou de conta'
+                    : 'Dinheiro que saiu'}
+              {interpretation.occurredOn?` · ${new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit'}).format(new Date(interpretation.occurredOn+'T12:00:00'))}`:''}
+            </span>
             {interpretation.installment && <span>Parcela {interpretation.installment.current} de {interpretation.installment.total}</span>}
-            {interpretation.confidence !== 'high' && <em>Confira este item</em>}
+            {interpretation.needsReview.includes('direction')
+              ? <div className="inline-direction-choice">
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'expense')}>Eu paguei</button>
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'income')}>Eu recebi</button>
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'transfer')}>Mudou de conta</button>
+                </div>
+              : interpretation.confidence !== 'high' && <em>Confira este item</em>}
           </div>)}</div>
 
-          {reviewCount > 0 && <p className="confidence-note">Revise o que veio do documento. O NestBalance não confirma sozinho quando existe dúvida.</p>}
+          {reviewCount > 0 && <p className="confidence-note">{unresolvedDirectionCount
+            ? `Só ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' precisa':'s precisam'} de uma resposta rápida. O restante já está organizado.`
+            : 'O que estava claro já foi organizado. Confira apenas os itens sinalizados.'}</p>}
           {upload && <div className="upload-status" role="status" aria-live="polite">
             <div><span>{upload.phase === 'uploading' ? 'Guardando original…' : 'Conferindo arquivo…'}</span><b>{upload.percent}%</b></div>
             <progress max="100" value={upload.percent}>{upload.percent}%</progress>
@@ -527,7 +564,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>Corrigir</button>
-            <button className="primary-button" disabled={working} onClick={confirm}>{saving ? (upload?.phase === 'verifying' ? 'Conferindo…' : 'Guardando…') : 'Guardar'}</button>
+            <button className="primary-button" disabled={working||unresolvedDirectionCount>0} onClick={confirm}>{saving
+              ? (upload?.phase === 'verifying' ? 'Conferindo…' : 'Guardando…')
+              : unresolvedDirectionCount
+                ? `Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`
+                : 'Guardar'}</button>
           </div>
         </>}
       </section>
