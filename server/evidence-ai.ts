@@ -10,7 +10,7 @@ import { isOpenAiConfigured } from './ai/openai-client.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
-import { assertScopedAccess } from './privacy.js';
+import { assertScopedAccess, requestedScope } from './privacy.js';
 
 const LOCK_TTL_MS=2*60*1000;
 
@@ -192,6 +192,8 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
       tx.create(auditRef,{
         type:'evidence.ai_analyzed',
         actorUid:user.uid,
+        scope:requestedScope(resolved.data.scope),
+        ownerUid:requestedScope(resolved.data.scope)==='personal'?user.uid:null,
         evidenceId:resolved.evidenceId,
         analysisVersion,
         mediaKind:kind,
