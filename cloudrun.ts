@@ -5,11 +5,15 @@ import { analyzeEvidenceText } from './server/evidence-analysis.js';
 import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence } from './server/vault.js';
 import { createAccount } from './server/accounts.js';
 import { analyzeEvidenceWithAi } from './server/evidence-ai.js';
+import { bootstrapSession } from './server/session.js';
+import { getHomeData } from './server/home.js';
 
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '128kb' }));
 app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'nestbalance-api' }));
+app.post('/api/session/bootstrap', bootstrapSession);
+app.post('/api/home', getHomeData);
 app.post('/api/evidence/start', startEvidence);
 app.post('/api/evidence/finalize', finalizeEvidence);
 app.post('/api/evidence/analyze-text', analyzeEvidenceText);
