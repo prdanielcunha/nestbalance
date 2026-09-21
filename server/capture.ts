@@ -12,7 +12,7 @@ export async function commitCapture(req: Request, res: Response) {
   try {
     const user = await requireFirebaseUser(req);
     const householdId = String(req.body?.householdId || '');
-    await requireHouseholdMember(householdId, user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
     const sourceText = String(req.body?.sourceText || '').trim();
     if (!sourceText || sourceText.length > 8000) return error(res, 400, 'INVALID_CAPTURE_TEXT');
     const observedOn = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body?.observedOn || '')) ? String(req.body.observedOn) : new Date().toISOString().slice(0,10);

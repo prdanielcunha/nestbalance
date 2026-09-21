@@ -68,7 +68,7 @@ export async function findCommitmentPaymentMatches(req:Request,res:Response){
   try{
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
 
     const amountMinor=Number(req.body?.amountMinor);
     if(!Number.isSafeInteger(amountMinor)||amountMinor<=0) return error(res,400,'INVALID_PAYMENT_AMOUNT');
@@ -117,7 +117,7 @@ export async function payCommitment(req:Request,res:Response){
     const paidOn=validIso(req.body?.paidOn)||new Date().toISOString().slice(0,10);
     const evidenceId=req.body?.evidenceId?String(req.body.evidenceId):null;
 
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
     if(!/^[A-Za-z0-9_-]{6,128}$/.test(commitmentId)) return error(res,400,'INVALID_COMMITMENT');
 
     const household=adminDb.collection('households').doc(householdId);
@@ -270,7 +270,7 @@ export async function findCommitmentPaymentMatchesBatch(req:Request,res:Response
   try{
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
 
     const rawItems=Array.isArray(req.body?.items)?req.body.items.slice(0,80):[];
     const items=rawItems.map((item:any,index:number)=>({
@@ -327,7 +327,7 @@ export async function undoCommitmentPayment(req:Request,res:Response){
     const commitmentId=String(req.body?.commitmentId||'');
     const periodKey=String(req.body?.periodKey||'');
 
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
     if(!/^[A-Za-z0-9_-]{6,128}$/.test(commitmentId)) return error(res,400,'INVALID_COMMITMENT');
     if(!(periodKey==='once'||/^\d{4}-\d{2}$/.test(periodKey))) return error(res,400,'INVALID_PAYMENT_PERIOD');
 

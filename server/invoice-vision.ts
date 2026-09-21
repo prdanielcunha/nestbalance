@@ -67,7 +67,7 @@ export async function analyzeCreditCardInvoiceImage(req:Request,res:Response){
     const requestedEvidenceId=String(req.body?.evidenceId||'');
     const referenceDate=referenceDateFrom(req);
 
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_finance');
     if(!validId(cardId)) return error(res,400,'INVALID_CARD');
     if(!isOpenAiConfigured()) return error(res,503,'AI_NOT_CONFIGURED');
 

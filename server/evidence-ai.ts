@@ -63,7 +63,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
     const requestedId=String(req.body?.evidenceId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
 
     if(!isOpenAiConfigured()) return error(res,503,'AI_NOT_CONFIGURED');
     const resolved=await resolveEvidence(householdId,requestedId);

@@ -2,10 +2,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, firebaseConfigured } from '@/src/lib/firebase/client';
-import { bootstrapSession } from '@/src/lib/repositories/session';
+import { bootstrapSession, type HouseholdSessionOption } from '@/src/lib/repositories/session';
 import { messages } from '@/src/i18n/messages';
 
-type SessionState = { user: User; householdId: string };
+export type SessionState = {
+  user: User;
+  householdId: string;
+  households: HouseholdSessionOption[];
+};
 
 export function AuthGate({ children }: { children: (ctx: SessionState) => React.ReactNode }) {
   const [state, setState] = useState<SessionState | null>(null);
@@ -20,7 +24,7 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     try {
       if (forceRefresh) await user.getIdToken(true);
       const session = await bootstrapSession();
-      setState({ user, householdId: session.householdId });
+      setState({ user, householdId: session.householdId, households: session.households || [] });
     } catch (error) {
       setState(null);
       setSessionError(error instanceof Error ? error.message : 'SESSION_BOOTSTRAP_FAILED');

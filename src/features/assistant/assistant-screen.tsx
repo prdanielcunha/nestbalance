@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
 import { AppNav } from '@/src/features/navigation/app-nav';
 
@@ -42,7 +43,7 @@ export function AssistantScreen({householdId}:{householdId:string}){
         <div className="eyebrow">NestBalance</div>
         <span className="topbar-subtitle">Assistente</span>
       </div>
-<div className="avatar-dot" aria-hidden="true" />
+<Link href="/household" className="avatar-dot" aria-label="Lar e acessos" />
     </header>
 
     <section className="assistant-hero">

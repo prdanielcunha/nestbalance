@@ -83,7 +83,7 @@ async function loadInvoiceContext(input:{
   const {householdId,cardId,userUid}=input;
   let evidenceId=input.evidenceId;
 
-  await requireHouseholdMember(householdId,userUid);
+  await requireHouseholdMember(householdId,userUid,'manage_finance');
   if(!validId(cardId)) fail('INVALID_CARD',400);
   if(!validId(evidenceId)) fail('INVALID_EVIDENCE',400);
 
@@ -550,7 +550,7 @@ export async function payCreditCardInvoice(req:Request,res:Response){
       ? String(req.body.paidOn)
       : new Date().toISOString().slice(0,10);
 
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_finance');
     if(!validId(invoiceImportId)) return error(res,400,'INVALID_INVOICE_IMPORT');
     if(!validId(accountId)) return error(res,400,'INVALID_ACCOUNT');
 

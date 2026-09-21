@@ -14,7 +14,7 @@ export async function createAccount(req:Request,res:Response){
   try{
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_finance');
     const validated=validateAccountDraft({
       name:req.body?.name,
       type:req.body?.type,
@@ -74,7 +74,7 @@ export async function updateAccountBalance(req:Request,res:Response){
     const accountId=String(req.body?.accountId||'');
     const balanceMinor=Number(req.body?.balanceMinor);
 
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_finance');
     if(!/^[A-Za-z0-9_-]{6,128}$/.test(accountId)) return error(res,400,'INVALID_ACCOUNT');
     if(!Number.isSafeInteger(balanceMinor)||Math.abs(balanceMinor)>1_000_000_000_000){
       return error(res,400,'INVALID_BALANCE');

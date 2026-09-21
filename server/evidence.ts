@@ -87,7 +87,7 @@ export async function startEvidence(req: Request, res: Response) {
   try {
     const user = await requireFirebaseUser(req);
     const householdId = String(req.body?.householdId || '');
-    await requireHouseholdMember(householdId, user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
     const validation = validateEvidenceDeclaration({
       originalName: String(req.body?.originalName || ''),
       mimeType: String(req.body?.mimeType || ''),
@@ -121,7 +121,7 @@ export async function uploadEvidence(req:Request,res:Response){
     const user=await requireFirebaseUser(req);
     const householdId=String(req.header('x-nestbalance-household-id')||'');
     const evidenceId=String(req.header('x-nestbalance-evidence-id')||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
     if(!/^[A-Za-z0-9_-]{6,128}$/.test(evidenceId)) return error(res,400,'INVALID_EVIDENCE');
 
     const evidenceRef=adminDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`);
@@ -205,7 +205,7 @@ export async function finalizeEvidence(req: Request, res: Response) {
     const user = await requireFirebaseUser(req);
     const householdId = String(req.body?.householdId || '');
     const evidenceId = String(req.body?.evidenceId || '');
-    await requireHouseholdMember(householdId, user.uid);
+    await requireHouseholdMember(householdId,user.uid,'contribute');
     if (!/^[A-Za-z0-9_-]{6,128}$/.test(evidenceId)) return error(res, 400, 'INVALID_EVIDENCE');
 
     const evidenceRef = adminDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`);

@@ -14,7 +14,7 @@ export async function createCreditCard(req:Request,res:Response){
   try{
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    await requireHouseholdMember(householdId,user.uid,'manage_finance');
 
     const validated=validateCreditCardDraft({
       name:req.body?.name,
