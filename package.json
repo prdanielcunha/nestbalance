@@ -1,6 +1,6 @@
 {
   "name": "nestbalance",
-  "version": "0.1.0",
+  "version": "0.2.0-beta.1",
   "private": true,
   "engines": {
     "node": ">=22"
@@ -18,7 +18,8 @@
     "test:rules": "firebase emulators:exec --only firestore --project demo-nestbalance-rules \"node --test tests/firestore-rules.test.mjs\"",
     "check:ci": "npm run check && npm run test:rules && npm run typecheck && npm run build && npm run build:cloudrun",
     "test:document": "tsx --test tests/pdf-text.test.ts tests/vault-verifier.test.ts",
-    "deploy:preflight": "node scripts/runtime-preflight.mjs"
+    "deploy:preflight": "node scripts/runtime-preflight.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "firebase": "12.19.0",
@@ -40,6 +41,8 @@
     "esbuild": "^0.25.0",
     "@firebase/rules-unit-testing": "^5.0.0",
     "firebase-tools": "^15.0.0",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "@playwright/test": "1.63.0",
+    "@axe-core/playwright": "4.13.0"
   }
 }
