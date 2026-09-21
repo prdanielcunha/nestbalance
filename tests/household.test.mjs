@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canHouseholdRole, isAssignableHouseholdRole, normalizeHouseholdRole } from '../.core-dist/household.js';
+import { canHouseholdRole, isAssignableHouseholdRole, normalizeHouseholdRole } from '../.core-dist/core/household.js';
 
 test('household roles enforce least privilege',()=>{
   assert.equal(canHouseholdRole('owner','owner'),true);
