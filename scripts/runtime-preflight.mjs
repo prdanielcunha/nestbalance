@@ -1,15 +1,12 @@
 const required = [
   'GCP_PROJECT_ID',
+  'GCP_PROJECT_NUMBER',
   'GCP_REGION',
   'GCP_WIF_PROVIDER',
   'GCP_DEPLOY_SERVICE_ACCOUNT',
   'NESTBALANCE_RUNTIME_SERVICE_ACCOUNT',
   'FIREBASE_HOSTING_SITE',
-  'FIREBASE_STORAGE_BUCKET',
-  'NEXT_PUBLIC_FIREBASE_API_KEY',
-  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
-  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-  'NEXT_PUBLIC_FIREBASE_APP_ID'
+  'FIREBASE_STORAGE_BUCKET'
 ];
 
 const missing = required.filter((key) => !String(process.env[key] || '').trim());
@@ -18,15 +15,32 @@ if (missing.length) {
   process.exit(1);
 }
 
-const project = process.env.GCP_PROJECT_ID.trim();
-if (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID.trim() !== project) {
-  console.error('NEXT_PUBLIC_FIREBASE_PROJECT_ID must match GCP_PROJECT_ID.');
+const expected = {
+  projectId: 'millionsnest',
+  projectNumber: '555464791734',
+  region: 'us-central1',
+  bucket: 'millionsnest.firebasestorage.app',
+  hostingSite: 'mn-nestbalance-555464791734'
+};
+
+if (process.env.GCP_PROJECT_ID.trim() !== expected.projectId) {
+  console.error('Refusing deploy outside the official MillionsNest project.');
   process.exit(1);
 }
-
-const site = process.env.FIREBASE_HOSTING_SITE.trim().toLowerCase();
-if (!site.includes('nestbalance')) {
-  console.error('FIREBASE_HOSTING_SITE must be a dedicated NestBalance site. Refusing a generic/shared site.');
+if (process.env.GCP_PROJECT_NUMBER.trim() !== expected.projectNumber) {
+  console.error('GCP project number does not match MillionsNest.');
+  process.exit(1);
+}
+if (process.env.GCP_REGION.trim() !== expected.region) {
+  console.error('NestBalance Cloud Run region must remain us-central1 to match the certified Firebase rewrite.');
+  process.exit(1);
+}
+if (process.env.FIREBASE_STORAGE_BUCKET.trim() !== expected.bucket) {
+  console.error('Storage bucket does not match the official MillionsNest bucket.');
+  process.exit(1);
+}
+if (process.env.FIREBASE_HOSTING_SITE.trim() !== expected.hostingSite) {
+  console.error('Hosting site must be the dedicated NestBalance site.');
   process.exit(1);
 }
 
@@ -39,22 +53,18 @@ for (const key of ['GCP_DEPLOY_SERVICE_ACCOUNT','NESTBALANCE_RUNTIME_SERVICE_ACC
 }
 
 if (process.env.GCP_DEPLOY_SERVICE_ACCOUNT.trim() === process.env.NESTBALANCE_RUNTIME_SERVICE_ACCOUNT.trim()) {
-  console.error('Deploy and runtime service accounts must be different (least privilege).');
+  console.error('Deploy and runtime service accounts must be different.');
   process.exit(1);
 }
 
-if (!/^projects\/\d+\/locations\/global\/workloadIdentityPools\/[^/]+\/providers\/[^/]+$/.test(process.env.GCP_WIF_PROVIDER.trim())) {
-  console.error('GCP_WIF_PROVIDER has an invalid Workload Identity Provider resource name.');
+const provider = process.env.GCP_WIF_PROVIDER.trim();
+if (provider !== 'projects/555464791734/locations/global/workloadIdentityPools/mn-prod-github/providers/github') {
+  console.error('Unexpected Workload Identity Provider.');
   process.exit(1);
 }
 
-if (!/^https?:\/\//.test(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN.trim()) && !/^[a-z0-9.-]+$/i.test(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN.trim())) {
-  console.error('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN is invalid.');
-  process.exit(1);
-}
-
-console.log('NestBalance runtime/deploy preflight: PASS');
-console.log(`Project: ${project}`);
-console.log(`Region: ${process.env.GCP_REGION.trim()}`);
-console.log(`Hosting site: ${process.env.FIREBASE_HOSTING_SITE.trim()}`);
-console.log(`AI secret configured: ${Boolean(String(process.env.OPENAI_SECRET_NAME || '').trim())}`);
+console.log('NestBalance MillionsNest runtime preflight: PASS');
+console.log(`Project: ${expected.projectId} (${expected.projectNumber})`);
+console.log(`Region: ${expected.region}`);
+console.log(`Hosting: ${expected.hostingSite}.web.app`);
+console.log(`AI secret requested: ${Boolean(String(process.env.OPENAI_SECRET_NAME || '').trim())}`);
