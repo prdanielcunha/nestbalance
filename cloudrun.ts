@@ -12,7 +12,7 @@ import { bootstrapSession } from './server/session.js';
 import { getHomeData } from './server/home.js';
 import { answerFinanceAssistant } from './server/assistant.js';
 import { commitFinancialScreen } from './server/financial-screen.js';
-import { findCommitmentPaymentMatches, findCommitmentPaymentMatchesBatch, payCommitment } from './server/commitment-payments.js';
+import { findCommitmentPaymentMatches, findCommitmentPaymentMatchesBatch, payCommitment, undoCommitmentPayment } from './server/commitment-payments.js';
 import { completeOpenFinanceConnection, disconnectOpenFinanceConnection, listOpenFinanceConnections, startOpenFinanceConnection, syncOpenFinanceConnection } from './server/open-finance.js';
 
 const app = express();
@@ -29,6 +29,7 @@ app.post('/api/financial-screen/commit', commitFinancialScreen);
 app.post('/api/commitments/match-payment', findCommitmentPaymentMatches);
 app.post('/api/commitments/match-payments', findCommitmentPaymentMatchesBatch);
 app.post('/api/commitments/pay', payCommitment);
+app.post('/api/commitments/undo-payment', undoCommitmentPayment);
 app.post('/api/open-finance/list', listOpenFinanceConnections);
 app.post('/api/open-finance/start', startOpenFinanceConnection);
 app.post('/api/open-finance/complete', completeOpenFinanceConnection);

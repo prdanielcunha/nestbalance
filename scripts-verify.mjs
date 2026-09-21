@@ -93,6 +93,8 @@ assert.match(financialScreenSource,/vision-v2/);
 assert.match(commitmentPaymentsSource,/commitmentPayments/);
 assert.match(commitmentPaymentsSource,/runTransaction/);
 assert.match(commitmentPaymentsSource,/commitment\.paid/);
+assert.match(commitmentPaymentsSource,/commitment\.payment_reversed/);
+assert.match(cloudrun,/\/api\/commitments\/undo-payment/);
 
 function sourceFiles(root){
   const out=[];
