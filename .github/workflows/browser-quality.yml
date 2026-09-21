@@ -37,8 +37,8 @@ jobs:
       - name: Build exported web app
         run: npm run build
 
-      - name: Install browser engines
-        run: npx playwright install --with-deps chromium webkit
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Mobile desktop accessibility smoke
         run: npm run test:e2e
