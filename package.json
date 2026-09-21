@@ -12,18 +12,24 @@
     "typecheck": "tsc --noEmit",
     "test:core": "rm -rf .core-dist && tsc -p tsconfig.core.json && node --test tests/*.test.mjs",
     "check": "npm run test:core && npm run test:security:static",
-    "test:security:static": "node scripts-verify.mjs"
+    "test:security:static": "node scripts-verify.mjs",
+    "build:cloudrun": "esbuild cloudrun.ts --bundle --platform=node --format=esm --packages=external --outfile=server-dist/server.mjs",
+    "start:cloudrun": "node server-dist/server.mjs"
   },
   "dependencies": {
     "firebase": "12.19.0",
     "next": "16.3.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "~5.8.3"
+    "typescript": "~5.8.3",
+    "@types/express": "^5.0.3",
+    "esbuild": "^0.25.0"
   }
 }
