@@ -34,9 +34,9 @@ function markDocumentDerived(items: FinancialInterpretation[]) {
   }));
 }
 
-export function UniversalCapture({ householdId, uid, onCommitted }: { householdId: string; uid: string; onCommitted?: () => void }) {
+export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=false, showTrigger=true, onClose }: { householdId: string; uid: string; onCommitted?: () => void; defaultOpen?: boolean; showTrigger?: boolean; onClose?: () => void }) {
   const t = messages['pt-BR'];
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [preparedEvidenceId, setPreparedEvidenceId] = useState<string | null>(null);
@@ -63,6 +63,7 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
 
   function clearAll() {
     setOpen(false);
+    onClose?.();
     setText('');
     setFile(null);
     setPreparedEvidenceId(null);
@@ -286,7 +287,7 @@ export function UniversalCapture({ householdId, uid, onCommitted }: { householdI
     : `${interpretations.length} itens financeiros`;
 
   return <>
-    <button className="capture-fab" onClick={() => setOpen(true)} aria-label={t.add}>＋ <span>{t.add}</span></button>
+    {showTrigger&&<button className="capture-fab" onClick={() => setOpen(true)} aria-label={t.add}>＋ <span>{t.add}</span></button>}
     {open && <div className="sheet-backdrop" role="presentation" onMouseDown={e => e.target === e.currentTarget && reset()}>
       <section className="capture-sheet" role="dialog" aria-modal="true" aria-label={t.captureTitle}>
         {!interpretations.length ? <>

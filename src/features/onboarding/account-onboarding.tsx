@@ -9,7 +9,7 @@ const accountTypes:{value:AccountType;label:string;hint:string}[]=[
   {value:'cash',label:'Dinheiro',hint:'O que está em espécie'}
 ];
 
-export function AccountOnboarding({householdId,onCreated}:{householdId:string;onCreated?:()=>void}){
+export function AccountOnboarding({householdId,onCreated,variant='onboarding'}:{householdId:string;onCreated?:()=>void;variant?:'onboarding'|'compact'}){
   const [open,setOpen]=useState(false);
   const [type,setType]=useState<AccountType>('bank');
   const [name,setName]=useState('');
@@ -38,14 +38,16 @@ export function AccountOnboarding({householdId,onCreated}:{householdId:string;on
   }
 
   return <>
-    <section className="first-money-card">
-      <div>
-        <span>Comece por aqui</span>
-        <h2>Onde está seu dinheiro hoje?</h2>
-        <p>Adicione uma conta ou dinheiro em espécie. Depois disso, a Home já consegue mostrar quanto você realmente tem disponível.</p>
-      </div>
-      <button className="primary-button" onClick={()=>setOpen(true)}>Adicionar meu saldo</button>
-    </section>
+    {variant==='onboarding'
+      ? <section className="first-money-card">
+          <div>
+            <span>Comece por aqui</span>
+            <h2>Onde está seu dinheiro hoje?</h2>
+            <p>Adicione uma conta ou dinheiro em espécie. Depois disso, a Home já consegue mostrar quanto você realmente tem disponível.</p>
+          </div>
+          <button className="primary-button" onClick={()=>setOpen(true)}>Adicionar meu saldo</button>
+        </section>
+      : <button className="section-action account-compact-add" type="button" onClick={()=>setOpen(true)}>Adicionar conta</button>}
 
     {open&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!saving&&setOpen(false)}>
       <section className="capture-sheet account-sheet" role="dialog" aria-modal="true" aria-label="Adicionar saldo">

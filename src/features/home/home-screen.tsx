@@ -1,19 +1,18 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { deriveCashView } from '@/src/core/cash-view';
 import { projectHouseholdFuture } from '@/src/core/future-projection';
-import { UniversalCapture } from '@/src/features/capture/universal-capture';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
+import { AppNav } from '@/src/features/navigation/app-nav';
 import { messages } from '@/src/i18n/messages';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
 
-export function HomeScreen({ householdId, uid }: { householdId: string; uid: string }) {
+export function HomeScreen({ householdId }: { householdId: string }) {
   const t = messages['pt-BR'];
   const [transactions, setTransactions] = useState<HomeRow[]>([]);
   const [commitments, setCommitments] = useState<HomeRow[]>([]);
@@ -76,7 +75,7 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   const hasData = transactions.length + commitments.length + installmentPlans.length + invoiceImports.length > 0;
 
   return <main className="app-shell">
-    <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="topbar-actions"><Link className="text-link" href="/assistant">Assistente</Link><Link className="text-link" href="/vault">Cofre</Link><div className="avatar-dot" aria-hidden="true" /></div></header>
+    <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="avatar-dot" aria-hidden="true" /></header>
 
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
     {loadingHome && <div className="home-loading-line" aria-label="Atualizando visão financeira" />}
@@ -131,6 +130,6 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
       {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?'No cartão':x.source==='credit_card_invoice_payment'?'Fatura paga':x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
     </section>
 
-    <UniversalCapture householdId={householdId} uid={uid} onCommitted={()=>void refreshHome(true)} />
+    <AppNav/>
   </main>;
 }

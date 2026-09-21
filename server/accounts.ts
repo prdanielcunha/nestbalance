@@ -64,3 +64,55 @@ export async function createAccount(req:Request,res:Response){
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'ACCOUNT_CREATE_FAILED');
   }
 }
+
+
+export async function updateAccountBalance(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    const accountId=String(req.body?.accountId||'');
+    const balanceMinor=Number(req.body?.balanceMinor);
+
+    await requireHouseholdMember(householdId,user.uid);
+    if(!/^[A-Za-z0-9_-]{6,128}$/.test(accountId)) return error(res,400,'INVALID_ACCOUNT');
+    if(!Number.isSafeInteger(balanceMinor)||Math.abs(balanceMinor)>1_000_000_000_000){
+      return error(res,400,'INVALID_BALANCE');
+    }
+
+    const household=adminDb.collection('households').doc(householdId);
+    const accountRef=household.collection('accounts').doc(accountId);
+    const auditRef=household.collection('auditEvents').doc();
+
+    let previousBalanceMinor=0;
+    await adminDb.runTransaction(async tx=>{
+      const snap=await tx.get(accountRef);
+      if(!snap.exists) throw Object.assign(new Error('ACCOUNT_NOT_FOUND'),{statusCode:404});
+      const data=snap.data()!;
+      if(data.status!=='active') throw Object.assign(new Error('ACCOUNT_NOT_ACTIVE'),{statusCode:409});
+      previousBalanceMinor=Number(data.balanceMinor??data.amountMinor??0);
+
+      tx.update(accountRef,{
+        balanceMinor,
+        amountMinor:balanceMinor,
+        balanceAsOf:FieldValue.serverTimestamp(),
+        updatedAt:FieldValue.serverTimestamp(),
+        lastBalanceUpdatedBy:user.uid
+      });
+      tx.create(auditRef,{
+        type:'account.balance_updated',
+        actorUid:user.uid,
+        entityType:'account',
+        entityId:accountId,
+        previousBalanceMinor,
+        balanceMinor,
+        createdAt:FieldValue.serverTimestamp()
+      });
+    });
+
+    return res.json({ok:true,accountId,previousBalanceMinor,balanceMinor});
+  }catch(err:any){
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE'];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'ACCOUNT_BALANCE_UPDATE_FAILED');
+  }
+}
