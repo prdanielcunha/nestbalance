@@ -116,7 +116,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       {loading
         ? <div className="account-balance-grid">{[0,1].map(i=><div className="account-balance-tile skeleton-line" key={i}/>)}</div>
         : accounts.length===0
-          ? <div className="empty-state"><h3>Nenhum saldo informado ainda.</h3><p>Use “Adicionar conta” para começar.</p></div>
+          ? <div className="empty-state"><h3>Nenhum saldo informado ainda.</h3><p>{canManage?'Use “Adicionar conta” para começar.':'Um administrador ainda não adicionou contas a este Lar.'}</p></div>
           : <div className="account-balance-grid">
               {accounts.map(account=>{
                 const connected=account.source==='open_finance';
@@ -134,7 +134,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
                       : 'Saldo atual informado'}</small>
                     {connected
                       ? <span className="synced-account-pill">Automático</span>
-                      : <button type="button" onClick={()=>openBalance(account)}>Atualizar</button>}
+                      : canManage&&<button type="button" onClick={()=>openBalance(account)}>Atualizar</button>}
                   </div>
                 </article>;
               })}
@@ -173,6 +173,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       cards={cards}
       accounts={accounts}
       invoiceImports={invoiceImports}
+      canManage={canManage}
       onCreated={refreshed}
     />}
 
