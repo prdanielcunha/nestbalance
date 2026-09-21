@@ -1,4 +1,5 @@
 import express from 'express';
+import { rateLimit, requestTelemetry, securityHeaders } from './server/http-runtime.js';
 import { commitCapture } from './server/capture.js';
 import { finalizeEvidence, startEvidence, uploadEvidence } from './server/evidence.js';
 import { analyzeEvidenceText } from './server/evidence-analysis.js';
@@ -20,25 +21,34 @@ import { deleteHousehold, deletePersonalData, exportPrivacyData, getPrivacyStatu
 
 const app = express();
 app.disable('x-powered-by');
-const healthz = (_req: express.Request, res: express.Response) => res.json({ ok: true, service: 'nestbalance-api' });
+app.use(securityHeaders);
+app.use(requestTelemetry);
+const healthz = (_req: express.Request, res: express.Response) => res.json({
+  ok:true,
+  service:'nestbalance-api',
+  environment:process.env.NESTBALANCE_ENV||'unknown',
+  release:String(process.env.NESTBALANCE_RELEASE_SHA||'').slice(0,12)||null
+});
 app.get('/healthz', healthz);
 app.get('/api/healthz', healthz);
+app.use('/api',rateLimit({windowMs:60_000,max:180,namespace:'api'}));
+const sensitiveLimit=rateLimit({windowMs:60_000,max:12,namespace:'sensitive'});
 app.post('/api/evidence/upload', express.raw({ type: '*/*', limit: '20mb' }), uploadEvidence);
 app.use(express.json({ limit: '128kb' }));
 app.post('/api/session/bootstrap', bootstrapSession);
 app.post('/api/session/select-household', selectHousehold);
 app.post('/api/household/settings', getHouseholdSettings);
 app.post('/api/household/rename', renameHousehold);
-app.post('/api/household/invite', createHouseholdInvite);
+app.post('/api/household/invite', sensitiveLimit, createHouseholdInvite);
 app.post('/api/household/invite/accept', acceptHouseholdInvite);
 app.post('/api/household/invite/revoke', revokeHouseholdInvite);
-app.post('/api/household/member/role', updateHouseholdMemberRole);
-app.post('/api/household/member/remove', removeHouseholdMember);
+app.post('/api/household/member/role', sensitiveLimit, updateHouseholdMemberRole);
+app.post('/api/household/member/remove', sensitiveLimit, removeHouseholdMember);
 app.post('/api/privacy/status', getPrivacyStatus);
 app.post('/api/privacy/consent', recordPrivacyConsent);
-app.post('/api/privacy/export', exportPrivacyData);
-app.post('/api/privacy/delete-personal', deletePersonalData);
-app.post('/api/privacy/delete-household', deleteHousehold);
+app.post('/api/privacy/export', sensitiveLimit, exportPrivacyData);
+app.post('/api/privacy/delete-personal', sensitiveLimit, deletePersonalData);
+app.post('/api/privacy/delete-household', sensitiveLimit, deleteHousehold);
 app.post('/api/home', getHomeData);
 app.post('/api/assistant/answer', answerFinanceAssistant);
 app.post('/api/financial-screen/commit', commitFinancialScreen);
