@@ -1,0 +1,62 @@
+'use client';
+import { auth } from '@/src/lib/firebase/client';
+import type { HouseholdRole } from '@/src/core/household';
+
+export type HouseholdMember={
+  uid:string;
+  role:HouseholdRole;
+  displayName:string|null;
+  email:string|null;
+  photoURL:string|null;
+  joinedAtMs:number|null;
+};
+export type HouseholdInviteSummary={
+  id:string;
+  role:HouseholdRole;
+  email:string|null;
+  expiresAtMs:number;
+  expired:boolean;
+};
+export type HouseholdSettingsPayload={
+  ok:true;
+  household:{id:string;name:string;currency:string;locale:string;ownerUid:string};
+  currentRole:HouseholdRole;
+  members:HouseholdMember[];
+  invites:HouseholdInviteSummary[];
+};
+
+async function authToken(){
+  const value=await auth?.currentUser?.getIdToken();
+  if(!value) throw new Error('AUTH_REQUIRED');
+  return value;
+}
+async function post<T>(path:string,body:Record<string,unknown>):Promise<T>{
+  const response=await fetch(path,{
+    method:'POST',
+    headers:{authorization:`Bearer ${await authToken()}`,'content-type':'application/json'},
+    body:JSON.stringify(body),
+    cache:'no-store'
+  });
+  const json=await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(json.error||'HOUSEHOLD_REQUEST_FAILED');
+  return json as T;
+}
+
+export function loadHouseholdSettings(householdId:string){
+  return post<HouseholdSettingsPayload>('/api/household/settings',{householdId});
+}
+export function renameHousehold(householdId:string,name:string){
+  return post<{ok:true;name:string}>('/api/household/rename',{householdId,name});
+}
+export function createHouseholdInvite(input:{householdId:string;role:'admin'|'member'|'read_only';email?:string}){
+  return post<{ok:true;token:string;role:HouseholdRole;email:string|null;expiresAtMs:number}>('/api/household/invite',input);
+}
+export function acceptHouseholdInvite(token:string){
+  return post<{ok:true;householdId:string;role:HouseholdRole}>('/api/household/invite/accept',{token});
+}
+export function updateHouseholdMemberRole(input:{householdId:string;uid:string;role:'admin'|'member'|'read_only'}){
+  return post<{ok:true;uid:string;role:HouseholdRole}>('/api/household/member/role',input);
+}
+export function removeHouseholdMember(input:{householdId:string;uid:string}){
+  return post<{ok:true;uid:string}>('/api/household/member/remove',input);
+}
