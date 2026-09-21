@@ -11,6 +11,7 @@ import { analyzeEvidenceWithAi } from './server/evidence-ai.js';
 import { bootstrapSession } from './server/session.js';
 import { getHomeData } from './server/home.js';
 import { answerFinanceAssistant } from './server/assistant.js';
+import { findCommitmentPaymentMatches, payCommitment } from './server/commitment-payments.js';
 import { completeOpenFinanceConnection, disconnectOpenFinanceConnection, listOpenFinanceConnections, startOpenFinanceConnection, syncOpenFinanceConnection } from './server/open-finance.js';
 
 const app = express();
@@ -23,6 +24,8 @@ app.use(express.json({ limit: '128kb' }));
 app.post('/api/session/bootstrap', bootstrapSession);
 app.post('/api/home', getHomeData);
 app.post('/api/assistant/answer', answerFinanceAssistant);
+app.post('/api/commitments/match-payment', findCommitmentPaymentMatches);
+app.post('/api/commitments/pay', payCommitment);
 app.post('/api/open-finance/list', listOpenFinanceConnections);
 app.post('/api/open-finance/start', startOpenFinanceConnection);
 app.post('/api/open-finance/complete', completeOpenFinanceConnection);
