@@ -380,19 +380,8 @@ export async function undoCommitmentPayment(req:Request,res:Response){
         ? freshTransaction.data()!.installment
         : transaction.installment||null;
 
-      tx.update(paymentRef,{
-        status:'reversed',
-        reversedBy:user.uid,
-        reversedAt:FieldValue.serverTimestamp()
-      });
-
-      if(freshTransaction.exists){
-        tx.update(transactionRef,{
-          status:'reversed',
-          reversedBy:user.uid,
-          reversedAt:FieldValue.serverTimestamp()
-        });
-      }
+      tx.delete(paymentRef);
+      if(freshTransaction.exists) tx.delete(transactionRef);
 
       if(paidInstallment&&Number.isInteger(paidInstallment.current)&&Number.isInteger(paidInstallment.total)){
         tx.update(commitmentRef,{
@@ -426,6 +415,9 @@ export async function undoCommitmentPayment(req:Request,res:Response){
         periodKey,
         paymentId,
         transactionId,
+        amountMinor:Number(freshPayment.data()?.amountMinor||0),
+        paidOn:String(freshPayment.data()?.paidOn||''),
+        evidenceId:freshPayment.data()?.evidenceId||null,
         createdAt:FieldValue.serverTimestamp()
       });
     });
