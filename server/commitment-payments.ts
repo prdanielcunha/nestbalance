@@ -270,7 +270,7 @@ export async function payCommitment(req:Request,res:Response){
     const safe=[
       'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','FINANCIAL_PRIVACY_DENIED',
       'INVALID_COMMITMENT','COMMITMENT_NOT_FOUND','COMMITMENT_CANCELLED',
-      'INVALID_PAYMENT_DATE','EVIDENCE_NOT_FOUND','EVIDENCE_NOT_READY'
+      'INVALID_PAYMENT_DATE','EVIDENCE_NOT_FOUND','EVIDENCE_NOT_READY','PRIVACY_SCOPE_MISMATCH'
     ];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'COMMITMENT_PAYMENT_FAILED');
   }
