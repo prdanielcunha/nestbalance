@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       confirm:
@@ -21,7 +24,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name == 'push' || inputs.confirm == 'DEPLOY_NESTBALANCE_HOMOLOG'
+    if: github.event_name == 'push' || inputs.confirm == 'DEPLOY_NESTBALANCE_HOMOLOG' || (github.event_name == 'pull_request' && github.head_ref == 'ops/observable-homologation-deploy')
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
