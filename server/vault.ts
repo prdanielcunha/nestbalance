@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
-import { assertCanViewFinancialRecord, canViewFinancialRecord } from './privacy.js';
+import { assertCanViewFinancialRecord, canViewFinancialRecord, normalizeFinancialVisibility } from './privacy.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
 
 function error(res:Response,status:number,code:string){
@@ -29,7 +29,8 @@ function evidenceDto(doc:any){
     size:Number(data.verifiedSize||data.declaredSize||0),
     createdAtMs:asMillis(data.createdAt),
     extractionState:data.extractionState||'pending',
-    lastExtractionVersion:data.lastExtractionVersion||null
+    lastExtractionVersion:data.lastExtractionVersion||null,
+    visibility:normalizeFinancialVisibility(data.scope)
   };
 }
 
