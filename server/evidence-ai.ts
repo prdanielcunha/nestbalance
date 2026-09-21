@@ -76,14 +76,15 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
     const existing=await extractionRef.get();
     if(existing.exists) return res.json(publicExtraction(existing.data()));
 
-    lockRef=resolved.ref.collection('analysisLocks').doc(analysisVersion);
+    const activeLockRef=resolved.ref.collection('analysisLocks').doc(analysisVersion);
+    lockRef=activeLockRef;
     requestId=randomUUID();
     const nowMs=Date.now();
     let acquired=false;
     let racedExtraction:any=null;
 
     await adminDb.runTransaction(async tx=>{
-      const [freshExtraction,lock]=await Promise.all([tx.get(extractionRef),tx.get(lockRef)]);
+      const [freshExtraction,lock]=await Promise.all([tx.get(extractionRef),tx.get(activeLockRef)]);
       if(freshExtraction.exists){
         racedExtraction=freshExtraction.data();
         return;
@@ -92,7 +93,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
       if(lockData&&Number(lockData.expiresAtMs||0)>nowMs){
         return;
       }
-      tx.set(lockRef,{
+      tx.set(activeLockRef,{
         requestId,
         actorUid:user.uid,
         createdAt:FieldValue.serverTimestamp(),
@@ -161,7 +162,7 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
       const fresh=await tx.get(extractionRef);
       if(fresh.exists){
         finalData=fresh.data();
-        tx.delete(lockRef);
+        tx.delete(activeLockRef);
         return;
       }
       tx.create(extractionRef,persisted);
