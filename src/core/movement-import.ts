@@ -1,5 +1,5 @@
-import { parseFinancialText } from './text-parser.js';
-import type { FinancialInterpretation } from './types.js';
+import { parseFinancialText } from './text-parser';
+import type { FinancialInterpretation } from './types';
 
 export type ImportedMovementDirection='expense'|'income'|'transfer'|'unknown';
 
