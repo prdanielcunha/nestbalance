@@ -15,6 +15,7 @@ function accountDto(doc:any){
     connectedProductType:typeof data.connectedProductType==='string'?data.connectedProductType:null,
     source:typeof data.source==='string'?data.source:null,
     institutionName:typeof data.institutionName==='string'?data.institutionName:null,
+    connectionId:typeof data.connectionId==='string'?data.connectionId:null,
     automaticallyInvestedMinor:Number.isSafeInteger(data.automaticallyInvestedMinor)?data.automaticallyInvestedMinor:null,
     balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
     currency:String(data.currency||'BRL'),
@@ -103,7 +104,7 @@ export async function getHomeData(req:Request,res:Response){
     const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
-      household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
+      household.collection('transactions').orderBy('observedOn','desc').limit(150).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(100).get(),
       household.collection('installmentPlans').where('status','==','active').limit(100).get(),
       household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get()
