@@ -8,14 +8,17 @@ import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding'
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
 import { AppNav } from '@/src/features/navigation/app-nav';
-import { messages } from '@/src/i18n/messages';\nimport type { HouseholdRole } from '@/src/core/household';
+import { messages } from '@/src/i18n/messages';
+import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
 
 export function HomeScreen({ householdId, role }: { householdId: string; role: HouseholdRole }) {
-  const t = messages['pt-BR'];\n  const canManage = role === 'owner' || role === 'admin';\n  const canContribute = role !== 'read_only';
+  const t = messages['pt-BR'];
+  const canManage = role === 'owner' || role === 'admin';
+  const canContribute = role !== 'read_only';
   const [transactions, setTransactions] = useState<HomeRow[]>([]);
   const [commitments, setCommitments] = useState<HomeRow[]>([]);
   const [accounts, setAccounts] = useState<HomeAccount[]>([]);
