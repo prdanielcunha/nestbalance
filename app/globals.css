@@ -396,3 +396,19 @@
 .legal-card p{color:var(--muted);line-height:1.65;font-size:13px}
 @media(max-width:900px){.institution-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.open-finance-hero{grid-template-columns:1fr}}
 @media(max-width:600px){.institution-grid{grid-template-columns:1fr}.institution-card p{min-height:0}.open-finance-hero{padding:18px}.legal-card{padding:22px}.legal-card h1{font-size:28px}}
+
+
+.connected-bank-money{display:grid;grid-template-columns:1fr;gap:5px;padding:10px 11px;border:1px solid var(--line);border-radius:14px;background:rgba(94,106,210,.045)}
+.connected-bank-money>div{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.connected-bank-money small{font-size:10px;color:var(--muted)}
+.connected-bank-money strong{font-size:12px;font-variant-numeric:tabular-nums}
+.connected-bank-actions{display:grid;grid-template-columns:1fr auto;gap:7px}
+.connected-bank-actions button{width:auto}
+.disconnect-bank-button{color:var(--muted)!important;background:transparent!important}
+.bank-disconnect-sheet{max-width:590px}
+.bank-revoke-note{display:flex;flex-direction:column;gap:4px;margin-top:18px;padding:15px 16px;border:1px solid rgba(181,83,83,.18);border-radius:18px;background:rgba(181,83,83,.045)}
+.bank-revoke-note strong{font-size:12px}
+.bank-revoke-note span{font-size:11px;line-height:1.5;color:var(--muted)}
+.danger-button{border:1px solid rgba(181,83,83,.25);background:rgba(181,83,83,.1);color:#a04747;padding:11px 15px;border-radius:14px;font-size:12px;font-weight:850}
+.danger-button:disabled{opacity:.5}
+@media(max-width:600px){.connected-bank-actions{grid-template-columns:1fr}.connected-bank-actions button{width:100%}}
