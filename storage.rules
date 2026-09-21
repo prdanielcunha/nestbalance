@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function member(hid) { return signedIn() && firestore.exists(/databases/(default)/documents/households/$(hid)/members/$(request.auth.uid)); }
+    function allowedType() {
+      return request.resource.contentType.matches('image/.*') ||
+             request.resource.contentType == 'application/pdf' ||
+             request.resource.contentType.matches('audio/.*') ||
+             request.resource.contentType == 'text/csv' ||
+             request.resource.contentType == 'text/plain';
+    }
+    match /nestbalance/households/{hid}/evidence/{evidenceId}/{fileName} {
+      allow read: if member(hid);
+      allow create: if member(hid) && request.resource.size < 20 * 1024 * 1024 && allowedType()
+                    && request.resource.metadata.householdId == hid
+                    && request.resource.metadata.uploaderUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}
