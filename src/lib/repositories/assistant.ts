@@ -1,6 +1,7 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { AssistantAnswer } from '@/src/core/assistant';
+import type { FinancialView } from '@/src/features/privacy/scope-view-switch';
 
 export type AssistantAnswerResponse={
   ok:true;
@@ -9,14 +10,14 @@ export type AssistantAnswerResponse={
   asOf:string;
 };
 
-export async function askFinanceAssistant(householdId:string,question:string){
+export async function askFinanceAssistant(householdId:string,question:string,view:FinancialView='household'){
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');
 
   const response=await fetch('/api/assistant/answer',{
     method:'POST',
     headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
-    body:JSON.stringify({householdId,question}),
+    body:JSON.stringify({householdId,question,view}),
     cache:'no-store'
   });
   const json=await response.json().catch(()=>({}));
