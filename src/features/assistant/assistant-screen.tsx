@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import type { HouseholdRole } from '@/src/core/household';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const time=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -13,7 +14,7 @@ const starters=[
   'O que já está comprometido nos próximos meses?'
 ];
 
-export function AssistantScreen({householdId}:{householdId:string}){
+export function AssistantScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
   const [question,setQuestion]=useState('');
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
@@ -136,6 +137,6 @@ export function AssistantScreen({householdId}:{householdId:string}){
       <p>Essa primeira camada não usa opinião nem aconselhamento de investimento. Ela calcula e explica o que já existe nos seus dados.</p>
     </section>
 
-    <AppNav/>
+    <AppNav canContribute={role!=='read_only'}/>
   </main>;
 }
