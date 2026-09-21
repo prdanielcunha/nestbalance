@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { CARD_BRANDS, invoiceCycleForPurchase, type CardBrand } from '@/src/core/cards';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { createHouseholdCreditCard } from '@/src/lib/repositories/cards';
+import { InvoiceImportSheet } from '@/src/features/cards/invoice-import-sheet';
 import type { HomeCreditCard } from '@/src/lib/repositories/home';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
@@ -37,6 +38,7 @@ export function CreditCardManager({
   const [limit,setLimit]=useState('');
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState('');
+  const [invoiceCard,setInvoiceCard]=useState<HomeCreditCard|null>(null);
 
   async function save(){
     const closing=Number(closingDay);
@@ -123,10 +125,13 @@ export function CreditCardManager({
                   <div><span>Limite</span><strong>{card.limitMinor===null?'Não informado':money.format(card.limitMinor/100)}</strong></div>
                 </div>
                 {cycle&&<small>Compras de hoje entram na fatura com vencimento em {new Intl.DateTimeFormat('pt-BR').format(new Date(cycle.dueOn+'T12:00:00'))}.</small>}
+                <button className="invoice-import-button" type="button" onClick={()=>setInvoiceCard(card)}>Importar fatura</button>
               </article>;
             })}
           </div>}
     </section>
+
+    {invoiceCard&&<InvoiceImportSheet householdId={householdId} card={invoiceCard} onClose={()=>setInvoiceCard(null)} />}
 
     {open&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!saving&&setOpen(false)}>
       <section className="capture-sheet card-sheet" role="dialog" aria-modal="true" aria-label="Adicionar cartão">
