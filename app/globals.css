@@ -286,6 +286,9 @@
 .assistant-sources-title strong{display:block;margin-top:3px;font-size:12px}
 .assistant-sources-title small{color:var(--muted);font-size:10px}
 .assistant-source-list{max-height:320px;overflow:auto}
+
+.assistant-source-action{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:999px;color:var(--iris);font-size:12px;font-weight:800;text-decoration:none;white-space:nowrap;background:var(--paper)}
+.assistant-source-action:hover{background:var(--surface-strong)}
 .assistant-source-list article{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:12px 16px;border-top:1px solid var(--line)}
 .assistant-source-list article:first-child{border-top:0}
 .assistant-source-list article>div{min-width:0}
