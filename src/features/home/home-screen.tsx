@@ -1,50 +1,54 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase/client';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { projectFutureCommitments } from '@/src/core/future-projection';
 import { UniversalCapture } from '@/src/features/capture/universal-capture';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { messages } from '@/src/i18n/messages';
+import { loadHomeData, type HomeAccount, type HomeRow } from '@/src/lib/repositories/home';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const monthName = new Intl.DateTimeFormat('pt-BR',{month:'long'});
 
-type Row = {
-  id:string;
-  description:string;
-  amountMinor:number;
-  direction?:'expense'|'income'|'transfer';
-  status?:string;
-  dueDay?:number|null;
-  recurring?:boolean;
-  recurrence?:string|null;
-  installment?:{current:number;total:number}|null;
-  createdAt?:{toDate?:()=>Date}|null;
-};
-
 export function HomeScreen({ householdId, uid }: { householdId: string; uid: string }) {
   const t = messages['pt-BR'];
-  const [transactions, setTransactions] = useState<Row[]>([]);
-  const [commitments, setCommitments] = useState<Row[]>([]);
-  const [accounts, setAccounts] = useState<Row[]>([]);
+  const [transactions, setTransactions] = useState<HomeRow[]>([]);
+  const [commitments, setCommitments] = useState<HomeRow[]>([]);
+  const [accounts, setAccounts] = useState<HomeAccount[]>([]);
+  const [loadingHome,setLoadingHome]=useState(true);
+  const [homeError,setHomeError]=useState('');
   const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
   const [accountCreated,setAccountCreated]=useState(0);
 
+  async function refreshHome(silent=false){
+    if(!silent) setLoadingHome(true);
+    try{
+      const data=await loadHomeData(householdId);
+      setAccounts(data.accounts);
+      setTransactions(data.transactions);
+      setCommitments(data.commitments);
+      setHomeError('');
+    }catch{
+      setHomeError('Não conseguimos atualizar sua visão financeira agora.');
+    }finally{
+      if(!silent) setLoadingHome(false);
+    }
+  }
+
   useEffect(() => {
-    if (!db) return;
-    const u1 = onSnapshot(query(collection(db,'households',householdId,'transactions'), orderBy('createdAt','desc')), s => setTransactions(s.docs.map(d=>({id:d.id,...d.data()} as Row))));
-    const u2 = onSnapshot(query(collection(db,'households',householdId,'commitments'), orderBy('createdAt','desc')), s => setCommitments(s.docs.map(d=>({id:d.id,...d.data()} as Row))));
-    const u3 = onSnapshot(collection(db,'households',householdId,'accounts'), s => setAccounts(s.docs.map(d=>({id:d.id,...d.data()} as Row))));
-    return () => { u1(); u2(); u3(); };
+    void refreshHome();
+    const onFocus=()=>void refreshHome(true);
+    const onVisibility=()=>{ if(document.visibilityState==='visible') void refreshHome(true); };
+    window.addEventListener('focus',onFocus);
+    document.addEventListener('visibilitychange',onVisibility);
+    return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
   }, [householdId, accountCreated]);
 
   const snapshot = useMemo(() => {
     const paidExpenseMinor = transactions.filter(x=>x.direction==='expense').reduce((s,x)=>s+x.amountMinor,0);
     const futureCommitmentsMinor = commitments.filter(x=>x.status!=='paid'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0);
-    const availableMinor = accounts.reduce((sum, account) => sum + Number((account as Row & {balanceMinor?:number}).balanceMinor ?? account.amountMinor ?? 0), 0);
+    const availableMinor = accounts.reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
     return deriveHomeSnapshot({availableMinor, incomeMinor:0, paidExpenseMinor, futureCommitmentsMinor, dueSoonMinor: futureCommitmentsMinor});
   }, [transactions, commitments, accounts]);
 
@@ -55,13 +59,15 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
   return <main className="app-shell">
     <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><div className="topbar-actions"><Link className="text-link" href="/vault">Cofre</Link><div className="avatar-dot" aria-hidden="true" /></div></header>
 
+    {homeError && <p className="error-copy" role="alert">{homeError}</p>}
+    {loadingHome && <div className="home-loading-line" aria-label="Atualizando visão financeira" />}
     <section className="hero-balance">
       <span>{accounts.length ? t.availableNow : 'saldo disponível'}</span>
       <strong>{accounts.length ? money.format(snapshot.availableMinor/100) : '—'}</strong>
       <p>{accounts.length ? (snapshot.futureCommitmentsMinor > 0 ? `${money.format(snapshot.futureCommitmentsMinor/100)} ainda estão comprometidos.` : 'Sem contas pendentes registradas.') : 'Adicione uma conta ou saldo para vermos quanto está realmente disponível.'}</p>
     </section>
 
-    {accounts.length===0 && <AccountOnboarding householdId={householdId} onCreated={()=>setAccountCreated(v=>v+1)} />}
+    {accounts.length===0 && <AccountOnboarding householdId={householdId} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
     {commitments[0] && <section><div className="section-title"><h2>{t.attention}</h2></div><article className="spotlight-card"><div><span>{commitments[0].dueDay ? `Vence dia ${commitments[0].dueDay}` : 'Próximo compromisso'}</span><h3>{commitments[0].description}</h3></div><strong>{money.format(commitments[0].amountMinor/100)}</strong></article></section>}
 
     <section className="month-section">
@@ -98,6 +104,6 @@ export function HomeScreen({ householdId, uid }: { householdId: string; uid: str
       {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{transactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.direction==='income'?'Entrou':x.direction==='transfer'?'Transferência':'Saiu'}</span></div><b>{x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {money.format(x.amountMinor/100)}</b></article>)}</div>}
     </section>
 
-    <UniversalCapture householdId={householdId} uid={uid} />
+    <UniversalCapture householdId={householdId} uid={uid} onCommitted={()=>void refreshHome(true)} />
   </main>;
 }
