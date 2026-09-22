@@ -8,10 +8,13 @@ import {
   removeHouseholdMember,
   renameHousehold,
   revokeHouseholdInvite,
+  updateHouseholdLocale,
   updateHouseholdMemberRole,
   type HouseholdSettingsPayload
 } from '@/src/lib/repositories/household';
 import { selectHousehold, type HouseholdSessionOption } from '@/src/lib/repositories/session';
+import { localeLabel, type AppLocale } from '@/src/core/locale';
+import { useI18n } from '@/src/i18n/locale-provider';
 
 const roleLabel={
   owner:'Dono do Lar',
@@ -40,6 +43,9 @@ export function HouseholdSettings({
   const [creatingInvite,setCreatingInvite]=useState(false);
   const [workingMember,setWorkingMember]=useState('');
   const [workingInvite,setWorkingInvite]=useState('');
+  const [locale,setLocale]=useState<AppLocale>('pt-BR');
+  const [savingLocale,setSavingLocale]=useState(false);
+  const {t,locale:activeLocale,formatDate}=useI18n();
 
   async function refresh(){
     setLoading(true);
@@ -48,6 +54,7 @@ export function HouseholdSettings({
       const next=await loadHouseholdSettings(householdId);
       setData(next);
       setName(next.household.name);
+      setLocale(next.household.locale);
     }catch(err:any){
       setError(String(err?.message||'Não conseguimos abrir as configurações do Lar.'));
     }finally{
@@ -80,6 +87,69 @@ export function HouseholdSettings({
     }catch(err:any){
       setError(String(err?.message||'Não conseguimos atualizar o nome.'));
     }finally{setSavingName(false);}
+  }
+
+  async function saveLocale(){
+    if(!canManage||savingLocale||!data||locale===data.household.locale) return;
+    setSavingLocale(true); setError('');
+    try{
+      await updateHouseholdLocale(householdId,locale);
+      window.location.reload();
+    }catch(err:any){
+      setError(String(err?.message||'Não conseguimos atualizar o idioma.'));
+      setLocale(data.household.locale);
+    }finally{setSavingLocale(false);}
+  }
+
+  function personName(uid:string|null){
+    if(!uid) return activeLocale==='en'?'NestBalance':activeLocale==='es'?'NestBalance':'NestBalance';
+    if(uid===user.uid) return activeLocale==='en'?'You':activeLocale==='es'?'Tú':'Você';
+    const member=data?.members.find(item=>item.uid===uid);
+    return member?.displayName||member?.email||(activeLocale==='en'?'A household member':activeLocale==='es'?'Una persona del hogar':'Uma pessoa do Lar');
+  }
+
+  function activityText(type:string,targetUid:string|null,scope:'household'|'personal'){
+    const target=personName(targetUid);
+    if(activeLocale==='en'){
+      if(type==='household.renamed') return 'updated the household name.';
+      if(type==='household.locale_changed') return 'changed the household language.';
+      if(type==='household.invite_created') return 'created a household invite.';
+      if(type==='household.invite_revoked') return 'cancelled a household invite.';
+      if(type==='household.member_role_changed') return `changed access for ${target}.`;
+      if(type==='household.member_removed') return `removed ${target} from the household.`;
+      if(type==='recurrence.confirmed') return 'confirmed a monthly recurring item.';
+      if(type.startsWith('capture.')) return scope==='personal'?'added a private financial record.':'added a household financial record.';
+      if(type.includes('payment')) return 'updated a payment.';
+      if(type.includes('invoice')) return 'updated a card statement.';
+      if(type.includes('account')) return 'updated an account.';
+      return 'made an important household update.';
+    }
+    if(activeLocale==='es'){
+      if(type==='household.renamed') return 'actualizó el nombre del hogar.';
+      if(type==='household.locale_changed') return 'cambió el idioma del hogar.';
+      if(type==='household.invite_created') return 'creó una invitación al hogar.';
+      if(type==='household.invite_revoked') return 'canceló una invitación al hogar.';
+      if(type==='household.member_role_changed') return `cambió el acceso de ${target}.`;
+      if(type==='household.member_removed') return `eliminó a ${target} del hogar.`;
+      if(type==='recurrence.confirmed') return 'confirmó un gasto mensual recurrente.';
+      if(type.startsWith('capture.')) return scope==='personal'?'agregó un registro financiero privado.':'agregó un registro financiero del hogar.';
+      if(type.includes('payment')) return 'actualizó un pago.';
+      if(type.includes('invoice')) return 'actualizó un resumen de tarjeta.';
+      if(type.includes('account')) return 'actualizó una cuenta.';
+      return 'hizo una actualización importante en el hogar.';
+    }
+    if(type==='household.renamed') return 'atualizou o nome do Lar.';
+    if(type==='household.locale_changed') return 'alterou o idioma do Lar.';
+    if(type==='household.invite_created') return 'criou um convite para o Lar.';
+    if(type==='household.invite_revoked') return 'cancelou um convite do Lar.';
+    if(type==='household.member_role_changed') return `alterou o acesso de ${target}.`;
+    if(type==='household.member_removed') return `removeu ${target} do Lar.`;
+    if(type==='recurrence.confirmed') return 'confirmou um item recorrente mensal.';
+    if(type.startsWith('capture.')) return scope==='personal'?'adicionou um registro financeiro pessoal.':'adicionou um registro financeiro do Lar.';
+    if(type.includes('payment')) return 'atualizou um pagamento.';
+    if(type.includes('invoice')) return 'atualizou uma fatura.';
+    if(type.includes('account')) return 'atualizou uma conta.';
+    return 'fez uma atualização importante no Lar.';
   }
 
   async function makeInvite(){
@@ -178,6 +248,21 @@ export function HouseholdSettings({
       </section>
 
       <section className="household-panel">
+        <div className="section-title"><div><h2>{t.language}</h2><span>{t.languageHint}</span></div></div>
+        <div className="household-inline-form">
+          <select className="premium-input" value={locale} onChange={e=>setLocale(e.target.value as AppLocale)} disabled={!canManage||savingLocale}>
+            <option value="pt-BR">{localeLabel('pt-BR')}</option>
+            <option value="en">{localeLabel('en')}</option>
+            <option value="es">{localeLabel('es')}</option>
+          </select>
+          {canManage&&<button className="primary-button" disabled={savingLocale||!data||locale===data.household.locale} onClick={()=>void saveLocale()}>
+            {savingLocale?(activeLocale==='en'?'Saving…':activeLocale==='es'?'Guardando…':'Salvando…'):t.save}
+          </button>}
+        </div>
+        <p className="household-helper">{activeLocale==='en'?'Dates, money and the main navigation follow this language. Personal financial privacy does not change.':activeLocale==='es'?'Las fechas, el dinero y la navegación principal siguen este idioma. La privacidad financiera personal no cambia.':'Datas, dinheiro e a navegação principal seguem este idioma. A privacidade financeira pessoal não muda.'}</p>
+      </section>
+
+      <section className="household-panel">
         <div className="section-title"><div><h2>Pessoas</h2><span>{data.members.length} membro{data.members.length===1?'':'s'}</span></div></div>
         <div className="member-list">
           {data.members.map(member=><article className="member-row" key={member.uid}>
@@ -238,6 +323,21 @@ export function HouseholdSettings({
           </div>)}
         </div>}
       </section>}
+
+      <section className="household-panel household-activity-panel">
+        <div className="section-title"><div><h2>{t.recentActivity}</h2><span>{t.recentActivityHint}</span></div></div>
+        {data.activity.length===0
+          ? <p className="household-helper">{t.noRecentActivity}</p>
+          : <div className="household-activity-list">
+              {data.activity.map(item=><article className="household-activity-row" key={item.id}>
+                <div className="member-avatar">{personName(item.actorUid).slice(0,1).toUpperCase()}</div>
+                <div>
+                  <p><strong>{personName(item.actorUid)}</strong> {activityText(item.type,item.targetUid,item.scope)}</p>
+                  <span>{item.createdAtMs?formatDate(item.createdAtMs,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}{item.scope==='personal'?(activeLocale==='en'?' · private':activeLocale==='es'?' · privado':' · pessoal'):''}</span>
+                </div>
+              </article>)}
+            </div>}
+      </section>
 
       <section className="household-panel privacy-entry-card"><div><div className="eyebrow">Privacidade</div><h2>Lar, Pessoal e seus dados</h2><p>Veja o que é compartilhado, exporte seus dados ou controle exclusões.</p></div><Link href="/privacy" className="primary-button privacy-entry-link">Abrir privacidade</Link></section>
 
