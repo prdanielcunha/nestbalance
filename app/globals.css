@@ -660,3 +660,10 @@
 .local-card-reader button{border:1px solid rgba(94,106,210,.28);border-radius:14px;background:var(--paper);color:var(--ink);font-weight:800;padding:10px 12px;white-space:nowrap}
 .local-card-reader>small{grid-column:1/-1}
 @media(max-width:560px){.local-card-reader{grid-template-columns:1fr}.local-card-reader button{width:100%}.local-card-reader>small{grid-column:auto}}
+
+.gemini-fallback-card{display:grid;gap:12px;margin:14px 0;padding:16px;border:1px solid rgba(94,106,210,.24);border-radius:18px;background:linear-gradient(145deg,rgba(94,106,210,.07),var(--surface-strong))}
+.gemini-fallback-card>div{display:flex;flex-direction:column;gap:4px}
+.gemini-fallback-card strong{font-size:13px}
+.gemini-fallback-card span,.gemini-fallback-card small{font-size:10px;line-height:1.5;color:var(--muted)}
+.gemini-fallback-card button{border:1px solid rgba(94,106,210,.3);border-radius:14px;background:var(--paper);color:var(--ink);font-weight:800;padding:11px 14px;text-align:center}
+.gemini-fallback-card button:disabled{opacity:.55;cursor:not-allowed}
