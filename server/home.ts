@@ -159,7 +159,7 @@ export async function getHomeData(req:Request,res:Response){
       household.collection('cardSnapshots').limit(50).get(),
       household.collection('recurrenceDismissals').limit(100).get(),
       household.collection('categoryRules').limit(200).get(),
-      household.collection('attentionDismissals').limit(200).get()
+      household.collection('attentionDismissals').where('userUid','==',user.uid).limit(100).get()
     ]);
 
     const categoryRules=categoryRulesSnap.docs
