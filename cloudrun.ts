@@ -23,6 +23,7 @@ import { confirmRecurringSuggestion, dismissRecurringSuggestion } from './server
 import { updateTransactionCategory } from './server/categories.js';
 import { updateProactivityPreferences } from './server/proactivity.js';
 import { dismissAttention } from './server/attention.js';
+import { listSecurityDevices, revokeNestBalanceSessions } from './server/security.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -55,6 +56,8 @@ app.post('/api/privacy/consent', recordPrivacyConsent);
 app.post('/api/privacy/export', sensitiveLimit, exportPrivacyData);
 app.post('/api/privacy/delete-personal', sensitiveLimit, deletePersonalData);
 app.post('/api/privacy/delete-household', sensitiveLimit, deleteHousehold);
+app.post('/api/security/devices', listSecurityDevices);
+app.post('/api/security/revoke-sessions', sensitiveLimit, revokeNestBalanceSessions);
 app.post('/api/home', getHomeData);
 app.post('/api/assistant/answer', answerFinanceAssistant);
 app.post('/api/ai/gemini/status', getGeminiFallbackStatus);
