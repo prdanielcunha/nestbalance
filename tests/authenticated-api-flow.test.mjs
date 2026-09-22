@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { deleteApp, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const apiBase='http://127.0.0.1:8181';
 const authHost=process.env.FIREBASE_AUTH_EMULATOR_HOST||'127.0.0.1:9099';
@@ -66,6 +68,9 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
   let serverLog='';
   server.stdout.on('data',chunk=>{ serverLog+=String(chunk); });
   server.stderr.on('data',chunk=>{ serverLog+=String(chunk); });
+
+  const seedApp=initializeApp({projectId:'demo-nestbalance-auth'},'nestbalance-auth-flow-seeder');
+  const seedDb=getFirestore(seedApp);
 
   try{
     const health=await waitForHealth();
@@ -279,6 +284,7 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     const partnerAfterOwnerRevocation=await post('/api/home',partner.token,{householdId});
     assert.equal(partnerAfterOwnerRevocation.json.ok,true);
   }finally{
+    await deleteApp(seedApp);
     server.kill('SIGTERM');
     await new Promise(resolve=>{
       if(server.exitCode!==null) return resolve();
