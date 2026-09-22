@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import type { HouseholdRole } from '@/src/core/household';
 import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
@@ -45,7 +46,14 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
     }
   }
 
-  useEffect(()=>{void load();},[householdId,refreshKey]);
+  useEffect(()=>{
+    void load();
+    const onFocus=()=>void load(true);
+    const onVisibility=()=>{if(document.visibilityState==='visible') void load(true);};
+    window.addEventListener('focus',onFocus);
+    document.addEventListener('visibilitychange',onVisibility);
+    return ()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisibility);};
+  },[householdId,refreshKey]);
 
   const viewAccounts=useMemo(()=>accounts.filter(item=>inFinancialView(item.scope,view)),[accounts,view]);
   const viewCards=useMemo(()=>cards.filter(item=>inFinancialView(item.scope,view)),[cards,view]);
@@ -113,7 +121,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navAccounts}</span></div>
       <div className="topbar-actions">
         {canManage&&<AccountOnboarding householdId={householdId} variant="compact" defaultScope={defaultCreateScope} onCreated={refreshed}/>}
-        <Link href="/household" className="avatar-dot" aria-label={t.householdSettings}/>
+        <HouseholdLink/>
       </div>
     </header>
     <ScopeViewSwitch value={view} onChange={setView}/>
@@ -136,6 +144,10 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
               'Agrega tu primera cuenta o envía una captura, extracto o archivo. NestBalance organiza lo que reconoce y pregunta solo lo que falta.'
             )
           : l('Um administrador pode adicionar contas; você pode consultar o que já existe.','An administrator can add accounts; you can view what is already here.','Un administrador puede agregar cuentas; tú puedes consultar lo que ya existe.')}</p>
+      {canManage&&<div className="area-hero-actions">
+        <Link className="primary-button" href="/add?return=/accounts">{l('Enviar print ou arquivo','Send screenshot or file','Enviar captura o archivo')}</Link>
+        <span>{l('Você também pode usar “Adicionar conta” acima para informar só o saldo.','You can also use “Add account” above to enter just the balance.','También puedes usar “Agregar cuenta” arriba para informar solo el saldo.')}</span>
+      </div>}
     </section>
 
     {error&&<p className="error-copy" role="alert">{error}</p>}
