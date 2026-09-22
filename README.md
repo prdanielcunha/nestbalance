@@ -2,7 +2,7 @@
 
 ## Stable release
 
-Current stable version: **1.1.0**. The current product/release closure is documented in `docs/RELEASE_1.1.md`; the 1.0 certification history remains in `docs/RELEASE_1.0.md` and `docs/RELEASE_CANDIDATE_1.0.md`. Privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
+Current stable version: **1.2.0**. The current product/release closure is documented in `docs/RELEASE_1.2.md`; the 1.1 and 1.0 certification history remains in the prior release notes. Privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
 
 NestBalance is the personal and family finance product of the MillionsNest ecosystem.
 
@@ -21,7 +21,7 @@ The application now includes:
 - transfer semantics so transfers between own accounts do not become income/expense
 - immutable evidence, SHA-256 deduplication and race-safe capture deduplication
 - premium Documents memory with contextual search, server-mediated detail and original preview
-- consolidated Cofrinhos with screenshot-first import, goals, cross-bank grouping and transfer-safe semantics
+- consolidated Cofrinhos with screenshot-first import, manual creation, photos, goals, deadlines, history and assistive automations, with cross-bank grouping and transfer-safe semantics
 - virtual future projections for recurring commitments and installments
 - PT-BR / EN / ES runtime localization across the primary financial, family, assistant and privacy flows
 - editable and learned spending categories, explainable anomalies and quiet per-member attention preferences
