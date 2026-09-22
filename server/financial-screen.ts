@@ -5,9 +5,11 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { buildImportedMovements } from '../src/core/movement-import.js';
 import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
 import type { AiFinancialScreenSnapshot } from '../src/core/ai-financial.js';
+import { normalizeSavingsPotName } from '../src/core/savings-pots.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { assertScopedAccess, requestedScope } from './privacy.js';
+import { ScreenSnapshotSchema } from './ai/financial-image.js';
 
 const ANALYSIS_VERSION='vision-v2';
 
@@ -66,12 +68,45 @@ export async function commitFinancialScreen(req:Request,res:Response){
     const ownerUid=scope==='personal'?user.uid:null;
 
     const extractionSnap=await resolved.ref.collection('extractions').doc(ANALYSIS_VERSION).get();
-    if(!extractionSnap.exists) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
-    const extraction=extractionSnap.data()?.extraction;
-    const screen=extraction?.screen as AiFinancialScreenSnapshot|null|undefined;
-    if(!screen) return error(res,409,'SCREEN_SNAPSHOT_UNAVAILABLE');
+    const extraction=extractionSnap.exists?extractionSnap.data()?.extraction:null;
+    const persistedScreen=extraction?.screen as AiFinancialScreenSnapshot|null|undefined;
+    const reviewed=ScreenSnapshotSchema.safeParse(req.body?.screenSnapshot);
+    const screen=persistedScreen??(reviewed.success?reviewed.data:null);
+    if(!screen){
+      if(!extractionSnap.exists&&req.body?.screenSnapshot===undefined) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
+      return error(res,409,'SCREEN_SNAPSHOT_UNAVAILABLE');
+    }
+    const analysisSource=persistedScreen
+      ? 'server_vision'
+      : ['gemini_text','local_ocr','client_reviewed'].includes(String(req.body?.analysisSource||''))
+        ? String(req.body.analysisSource)
+        : 'client_reviewed';
 
     const household=adminDb.collection('households').doc(householdId);
+    const existingPotDocs=screen.pots.length
+      ? (await household.collection('savingsPots').where('status','==','active').limit(200).get()).docs
+      : [];
+    const potIdentity=(institution:unknown,name:unknown)=>[
+      scope,
+      ownerUid||'',
+      normalizeSavingsPotName(String(institution||'')),
+      normalizeSavingsPotName(String(name||''))
+    ].join('|');
+    const existingPotsByIdentity=new Map<string,FirebaseFirestore.QueryDocumentSnapshot>();
+    for(const doc of existingPotDocs){
+      const data=doc.data();
+      const existingScope=data.scope==='personal'?'personal':'household';
+      const existingOwner=existingScope==='personal'?String(data.ownerUid||''):'';
+      if(existingScope!==scope||(scope==='personal'&&existingOwner!==user.uid)) continue;
+      const identity=[
+        existingScope,
+        existingOwner,
+        normalizeSavingsPotName(String(data.institutionName||'')),
+        normalizeSavingsPotName(String(data.name||''))
+      ].join('|');
+      if(!existingPotsByIdentity.has(identity)) existingPotsByIdentity.set(identity,doc);
+    }
+
     const batch=adminDb.batch();
     let accounts=0;
     let pots=0;
@@ -109,19 +144,29 @@ export async function commitFinancialScreen(req:Request,res:Response){
       accounts++;
     }
 
+    const seenPotIdentities=new Set<string>();
     for(const item of screen.pots.slice(0,30)){
       if(item.confidence<0.86||!Number.isSafeInteger(item.balanceMinor)||item.balanceMinor<0){
         skipped++;
         continue;
       }
-      const key=hash([scope,ownerUid||'','screen_pot',screen.institution||'',item.name].join('|'));
-      const ref=household.collection('savingsPots').doc(key.slice(0,40));
+      const identity=potIdentity(screen.institution,item.name);
+      if(seenPotIdentities.has(identity)){
+        skipped++;
+        continue;
+      }
+      seenPotIdentities.add(identity);
+      const existing=existingPotsByIdentity.get(identity);
+      const key=hash([scope,ownerUid||'','screen_pot',normalizeSavingsPotName(screen.institution||''),normalizeSavingsPotName(item.name)].join('|'));
+      const ref=existing?.ref??household.collection('savingsPots').doc(key.slice(0,40));
       batch.set(ref,{
         name:safeName(item.name,'Dinheiro guardado'),
         balanceMinor:item.balanceMinor,
         goalMinor:Number.isSafeInteger(item.goalMinor)?item.goalMinor:null,
         currency:item.currency,
         institutionName:screen.institution||null,
+        normalizedName:normalizeSavingsPotName(item.name),
+        normalizedInstitution:normalizeSavingsPotName(screen.institution||''),
         source:'screen_import',
         scope,
         ownerUid,
@@ -129,7 +174,8 @@ export async function commitFinancialScreen(req:Request,res:Response){
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         updatedAt:FieldValue.serverTimestamp(),
         importedBy:user.uid,
-        schemaVersion:1
+        analysisSource,
+        schemaVersion:2
       },{merge:true});
       pots++;
     }
@@ -242,6 +288,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
       evidenceId:resolved.evidenceId,
       screenType:screen.screenType,
       institution:screen.institution,
+      analysisSource,
       counts:{accounts,pots,cards,commitments,movements,skipped},
       createdAt:FieldValue.serverTimestamp()
     });
@@ -252,6 +299,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
       evidenceId:resolved.evidenceId,
       screenType:screen.screenType,
       institution:screen.institution,
+      analysisSource,
       counts:{accounts,pots,cards,commitments,movements,skipped}
     });
   }catch(err:any){

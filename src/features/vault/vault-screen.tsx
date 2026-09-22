@@ -50,7 +50,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   async function load() {
     setLoading(true); setError('');
     try { setItems((await listVault(householdId)).items); }
-    catch { setError('Não conseguimos abrir seu Cofre agora.'); }
+    catch { setError('Não conseguimos abrir seus Documentos agora.'); }
     finally { setLoading(false); }
   }
 
@@ -71,7 +71,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
     const timer=window.setTimeout(()=>{
       void searchVault(householdId,normalized,view)
         .then(result=>{if(!cancelled)setSearchResults(result.items);})
-        .catch(()=>{if(!cancelled){setSearchResults([]);setSearchError('Não conseguimos pesquisar seu Cofre agora.');}})
+        .catch(()=>{if(!cancelled){setSearchResults([]);setSearchError('Não conseguimos pesquisar seus Documentos agora.');}})
         .finally(()=>{if(!cancelled)setSearching(false);});
     },350);
 
@@ -116,7 +116,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
 
   return <main className="app-shell vault-shell">
     <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Cofre</span></div>
+      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Documentos</span></div>
 <Link href="/household" className="avatar-dot" aria-label="Lar e acessos" />
     </header>
     <ScopeViewSwitch value={view} onChange={setView}/>
@@ -127,7 +127,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
       <p>Comprovantes, faturas e arquivos originais ficam preservados. O NestBalance separa o que você enviou do que ele entendeu.</p>
     </section>
 
-    <section className="vault-search-panel" aria-label="Pesquisar no Cofre">
+    <section className="vault-search-panel" aria-label="Pesquisar nos Documentos">
       <label htmlFor="vault-search">Encontre pelo que você lembra</label>
       <div className="vault-search-input">
         <input
@@ -146,9 +146,9 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
 
     {(error||searchError) && <p className="error-copy" role="alert">{error||searchError}</p>}
 
-    {loading ? <div className="vault-list" aria-label="Carregando Cofre">{[0,1,2].map(i=><div className="vault-row skeleton-line" key={i} />)}</div>
+    {loading ? <div className="vault-list" aria-label="Carregando Documentos">{[0,1,2].map(i=><div className="vault-row skeleton-line" key={i} />)}</div>
     : normalizedQuery.length>=2&&!searching&&displayItems.length===0 ? <section className="empty-state"><h3>Nada encontrado com essa lembrança.</h3><p>Tente um valor, mês, estabelecimento ou outra palavra que aparecia no comprovante.</p></section>
-    : visibleItems.length===0&&normalizedQuery.length<2 ? <section className="empty-state"><h3>Seu Cofre começa com o primeiro envio.</h3><p>Quando você enviar um comprovante, fatura ou documento pela Entrada universal, o original aparecerá aqui.</p></section>
+    : visibleItems.length===0&&normalizedQuery.length<2 ? <section className="empty-state"><h3>Seus Documentos começa com o primeiro envio.</h3><p>Quando você enviar um comprovante, fatura ou documento pela Entrada universal, o original aparecerá aqui.</p></section>
     : <section className="vault-list" aria-label={normalizedQuery.length>=2?'Resultados da busca':'Documentos guardados'}>
       {displayItems.map(item=><button className="vault-row" key={item.evidenceId} onClick={()=>openItem(item)}>
         <div className="vault-file-mark">{typeLabel(item.mimeType).slice(0,1)}</div>

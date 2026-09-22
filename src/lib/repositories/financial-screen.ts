@@ -1,12 +1,14 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { FinancialScope } from '@/src/core/privacy';
+import type { AiFinancialScreenSnapshot } from '@/src/core/ai-financial';
 
 export type FinancialScreenCommitResult={
   ok:true;
   evidenceId:string;
   screenType:string;
   institution:string|null;
+  analysisSource:string;
   counts:{
     accounts:number;
     pots:number;
@@ -17,7 +19,13 @@ export type FinancialScreenCommitResult={
   };
 };
 
-export async function commitFinancialScreen(input:{householdId:string;evidenceId:string;scope?:FinancialScope}){
+export async function commitFinancialScreen(input:{
+  householdId:string;
+  evidenceId:string;
+  scope?:FinancialScope;
+  screenSnapshot?:AiFinancialScreenSnapshot|null;
+  analysisSource?:'server_vision'|'gemini_text'|'local_ocr'|'client_reviewed';
+}){
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');
 

@@ -5,6 +5,7 @@ import { finalizeEvidence, startEvidence, uploadEvidence } from './server/eviden
 import { analyzeEvidenceText } from './server/evidence-analysis.js';
 import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence, searchVaultEvidence } from './server/vault.js';
 import { createAccount, updateAccountBalance } from './server/accounts.js';
+import { upsertSavingsPot } from './server/savings-pots.js';
 import { createCreditCard } from './server/cards.js';
 import { commitCreditCardInvoice, payCreditCardInvoice, previewCreditCardInvoice, reviewCreditCardInvoice } from './server/invoices.js';
 import { analyzeCreditCardInvoiceImage } from './server/invoice-vision.js';
@@ -88,6 +89,7 @@ app.post('/api/vault/preview', previewVaultEvidence);
 app.post('/api/capture/commit', commitCapture);
 app.post('/api/accounts/create', createAccount);
 app.post('/api/accounts/update-balance', updateAccountBalance);
+app.post('/api/savings-pots/upsert', upsertSavingsPot);
 app.post('/api/cards/create', createCreditCard);
 app.post('/api/invoices/preview', previewCreditCardInvoice);
 app.post('/api/invoices/review', reviewCreditCardInvoice);

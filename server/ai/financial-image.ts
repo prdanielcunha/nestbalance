@@ -6,7 +6,7 @@ import { getOpenAi, visionModel } from './openai-client.js';
 export const AI_IMAGE_MAX_BYTES=8*1024*1024;
 
 const MoneyCurrency=z.enum(['BRL','USD','EUR']);
-const ScreenSnapshotSchema=z.object({
+export const ScreenSnapshotSchema=z.object({
   screenType:z.enum(['single_event','account_home','transaction_list','card_home','card_statement','retail_account','savings_pots','mixed','other']),
   institution:z.string().max(120).nullable(),
   accounts:z.array(z.object({

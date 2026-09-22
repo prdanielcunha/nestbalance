@@ -1113,3 +1113,107 @@
   .pwa-install-card{display:grid;grid-template-columns:1fr}
   .pwa-install-card>.primary-button{width:100%}
 }
+
+
+/* Cofrinhos — consolidated savings goals */
+.pots-shell{max-width:1040px}
+.pots-quick-grid .pots-action-tile{
+  width:100%;
+  text-align:left;
+  color:var(--ink);
+  text-decoration:none;
+  font:inherit;
+  cursor:pointer;
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.pots-quick-grid .pots-action-tile:hover{
+  transform:translateY(-2px);
+  border-color:rgba(94,106,210,.28);
+  box-shadow:0 14px 38px rgba(25,31,52,.07);
+}
+.pots-quick-grid .pots-action-tile:active{transform:translateY(0) scale(.995)}
+.savings-pot-card progress{
+  display:block;
+  width:100%;
+  height:7px;
+  margin-top:12px;
+  border:0;
+  border-radius:999px;
+  overflow:hidden;
+  background:var(--line);
+}
+.savings-pot-card progress::-webkit-progress-bar{background:var(--line);border-radius:999px}
+.savings-pot-card progress::-webkit-progress-value{background:var(--iris);border-radius:999px}
+.savings-pot-card progress::-moz-progress-bar{background:var(--iris);border-radius:999px}
+.savings-pot-card .account-balance-foot{
+  padding-top:8px;
+  margin-top:9px;
+  border-top:1px solid var(--line);
+}
+.pot-text-input{
+  width:100%;
+  min-height:48px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:var(--paper);
+  color:var(--ink);
+  font:inherit;
+  padding:0 14px;
+  outline:none;
+}
+.pot-text-input:focus{
+  border-color:rgba(94,106,210,.6);
+  box-shadow:0 0 0 3px rgba(94,106,210,.09);
+}
+@media(max-width:560px){
+  .pots-shell .topbar-actions{gap:8px}
+  .pots-shell .topbar-actions .ghost-button{padding-inline:8px}
+}
+
+.screen-pot-review{
+  display:grid;
+  gap:8px;
+  margin:14px 0 12px;
+}
+.screen-pot-review-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 13px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:var(--paper);
+}
+.screen-pot-review-row>div:first-child{min-width:0}
+.screen-pot-review-row strong,
+.screen-pot-review-row span,
+.screen-pot-review-row b,
+.screen-pot-review-row small{display:block}
+.screen-pot-review-row strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.screen-pot-review-row span{margin-top:2px;color:var(--muted);font-size:9px}
+.screen-pot-review-row>div:last-child{text-align:right;white-space:nowrap}
+.screen-pot-review-row b{font-size:13px;font-variant-numeric:tabular-nums}
+.screen-pot-review-row small{margin-top:2px;color:var(--muted);font-size:9px}
+
+.screen-pot-source-confirm{
+  margin:14px 0 10px;
+  padding:14px;
+  border:1px solid rgba(94,106,210,.22);
+  border-radius:16px;
+  background:rgba(94,106,210,.055);
+}
+.screen-pot-source-confirm label{
+  display:block;
+  margin-bottom:8px;
+  font-size:11px;
+  font-weight:850;
+  color:var(--ink);
+}
+.screen-pot-source-confirm small{
+  display:block;
+  margin-top:7px;
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.45;
+}
