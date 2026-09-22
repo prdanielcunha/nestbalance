@@ -112,6 +112,7 @@ export async function upsertSavingsPot(req:Request,res:Response){
       actorUid:user.uid,
       savingsPotId:ref.id,
       scope,
+      ownerUid,
       balanceMinor,
       goalMinor,
       institutionName,
