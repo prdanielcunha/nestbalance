@@ -7,6 +7,8 @@ import { parseInvoiceText } from '../.core-dist/core/invoices.js';
 import { answerAssistantQuestion } from '../.core-dist/core/assistant.js';
 import { searchVaultDocuments } from '../.core-dist/core/vault-search.js';
 import { parseSavingsPotsFromOcr } from '../.core-dist/core/savings-pot-import.js';
+import { parseRecurringCommitmentsFromOcr } from '../.core-dist/core/recurring-commitment-import.js';
+import { parseAccountBalanceFromOcr } from '../.core-dist/core/account-balance-import.js';
 
 /**
  * Product-level contract for the mandatory NestBalance demo moments.
@@ -161,5 +163,40 @@ test('demo contract 6: a savings-pots screenshot becomes structured goals withou
   assert.equal(screen.pots[0].balanceMinor,101568);
   assert.equal(screen.pots[0].goalMinor,255000);
   assert.equal(screen.movements.length,0);
+  assert.equal(screen.commitments.length,0);
+});
+
+
+test('real-life contract 7: a recurring-debts note becomes monthly obligations, not unrelated amounts',()=>{
+  const screen=parseRecurringCommitmentsFromOcr([
+    'Débitos recorrentes',
+    'Débito Data Valor',
+    'Studio Z 5 300',
+    'Itaú 8 121,32',
+    'Internet vivo 20 166',
+    'Carro 20 1.300'
+  ].join('\n'));
+  assert.ok(screen);
+  assert.equal(screen.commitments.length,4);
+  assert.equal(screen.commitments.every(item=>item.recurring===true),true);
+  assert.equal(screen.commitments.find(item=>item.description==='Carro')?.amountMinor,130000);
+  assert.equal(screen.movements.length,0);
+});
+
+test('real-life contract 8: a bank home screenshot prioritizes the labeled balance over loans and card values',()=>{
+  const screen=parseAccountBalanceFromOcr([
+    'Saldo',
+    'R$ 2724',
+    'Bradesco R$ 0,05',
+    'Empréstimos',
+    'R$ 420',
+    'Cartão de crédito',
+    'Limite disponível R$ 2.25828',
+    'Total até hoje R$ 26293'
+  ].join('\n'));
+  assert.ok(screen);
+  assert.equal(screen.accounts.length,1);
+  assert.equal(screen.accounts[0].balanceMinor,2724);
+  assert.equal(screen.cards.length,0);
   assert.equal(screen.commitments.length,0);
 });
