@@ -159,15 +159,19 @@ export async function commitFinancialScreen(req:Request,res:Response){
       const existing=existingPotsByIdentity.get(identity);
       const key=hash([scope,ownerUid||'','screen_pot',normalizeSavingsPotName(screen.institution||''),normalizeSavingsPotName(item.name)].join('|'));
       const ref=existing?.ref??household.collection('savingsPots').doc(key.slice(0,40));
+      const previousBalanceMinor=existing?Math.max(0,Number(existing.data().balanceMinor||0)):0;
+      const delta=item.balanceMinor-previousBalanceMinor;
       batch.set(ref,{
         name:safeName(item.name,'Dinheiro guardado'),
         balanceMinor:item.balanceMinor,
-        goalMinor:Number.isSafeInteger(item.goalMinor)?item.goalMinor:null,
+        ...(Number.isSafeInteger(item.goalMinor)&&item.goalMinor!>0?{goalMinor:item.goalMinor}:{}),
+        ...(item.targetDate?{targetDate:item.targetDate}:{}),
         currency:item.currency,
         institutionName:screen.institution||null,
         normalizedName:normalizeSavingsPotName(item.name),
         normalizedInstitution:normalizeSavingsPotName(screen.institution||''),
         source:'screen_import',
+        trackingMode:'bank_mirror',
         scope,
         ownerUid,
         status:'active',
@@ -175,8 +179,23 @@ export async function commitFinancialScreen(req:Request,res:Response){
         updatedAt:FieldValue.serverTimestamp(),
         importedBy:user.uid,
         analysisSource,
-        schemaVersion:2
+        schemaVersion:3
       },{merge:true});
+      if(!existing||delta!==0){
+        batch.create(household.collection('savingsPotActivities').doc(),{
+          savingsPotId:ref.id,
+          type:'screen_sync',
+          amountMinor:Math.abs(delta),
+          resultingBalanceMinor:item.balanceMinor,
+          currency:item.currency,
+          scope,
+          ownerUid,
+          actorUid:user.uid,
+          source:'screen_import',
+          evidenceId:resolved.evidenceId,
+          createdAt:FieldValue.serverTimestamp()
+        });
+      }
       pots++;
     }
 

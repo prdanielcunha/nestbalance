@@ -13,6 +13,7 @@ export type AiFinancialPotSnapshot={
   name:string;
   balanceMinor:number;
   goalMinor:number|null;
+  targetDate:string|null;
   currency:'BRL'|'USD'|'EUR';
   confidence:number;
 };

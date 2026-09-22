@@ -63,3 +63,10 @@ test('recognizes a pot when OCR merges name, balance and goal on one line',()=>{
   assert.equal(screen.pots[0].balanceMinor,101568);
   assert.equal(screen.pots[0].goalMinor,255000);
 });
+
+
+test('recognizes an explicit Cofrinho deadline without guessing a year',()=>{
+  const screen=parseSavingsPotsFromOcr('Cofrinhos\nViagem\nR$ 500,00\nMeta: R$ 3.000,00\nPrazo: 15/12/2026');
+  assert.ok(screen);
+  assert.equal(screen.pots[0].targetDate,'2026-12-15');
+});

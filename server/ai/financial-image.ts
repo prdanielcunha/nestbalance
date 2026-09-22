@@ -21,6 +21,7 @@ export const ScreenSnapshotSchema=z.object({
     name:z.string().min(1).max(120),
     balanceMinor:z.number().int().min(0).max(1_000_000_000_000),
     goalMinor:z.number().int().min(0).max(1_000_000_000_000).nullable(),
+    targetDate:z.string().max(10).nullable(),
     currency:MoneyCurrency,
     confidence:z.number().min(0).max(1)
   })).max(30),
@@ -99,7 +100,7 @@ function normalize(value:z.infer<typeof ExtractionSchema>):AiFinancialExtraction
     ...value.screen,
     institution:value.screen.institution?.normalize('NFKC').replace(/\s+/g,' ').trim()||null,
     accounts:value.screen.accounts.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim()})),
-    pots:value.screen.pots.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim()})),
+    pots:value.screen.pots.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim(),targetDate:normalizeDate(item.targetDate)})),
     cards:value.screen.cards.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim(),dueOn:normalizeDate(item.dueOn)})),
     commitments:value.screen.commitments.map(item=>({...item,description:item.description.normalize('NFKC').replace(/\s+/g,' ').trim(),dueOn:normalizeDate(item.dueOn)})),
     movements:value.screen.movements.map(item=>({...item,description:item.description.normalize('NFKC').replace(/\s+/g,' ').trim(),dateIso:normalizeDate(item.dateIso),needsReview:item.needsReview||item.direction==='unknown'||item.confidence<0.86}))
@@ -139,7 +140,7 @@ export async function extractFinancialImage(bytes:Buffer,mimeType:string){
           'The screen snapshot may contain account balances, wallets, savings pots/reserves, cards, upcoming obligations/installments, and transaction rows.',
           'Never turn balance, available balance, credit limit, total limit, statement total, savings-pot balance or dashboard totals into a transaction.',
           'Never turn a credit-card payment into a purchase. Never merge several transaction rows into one.',
-          'For savings pots or reserves, create pot entries only when a distinct named bucket/reserve and its balance are visibly supported.',
+          'For savings pots or reserves, create pot entries only when a distinct named bucket/reserve and its balance are visibly supported. Extract a visible goal value and target/deadline date when they are explicitly shown.',
           'For account balances, prefer an explicitly available/spendable balance. If a displayed total clearly includes savings pots or investments and there is no separate available balance, do not duplicate the saved money as spendable cash; omit the account snapshot or lower its confidence.',
           'For store cards or retail financing (for example clothing-store cards), commitments represent visible installments or amounts due, not the full credit limit.',
           'Use BRL minor units. Use unknown direction unless the screen visibly establishes money entering, leaving, or moving between the user own accounts.',
