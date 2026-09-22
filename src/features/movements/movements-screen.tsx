@@ -4,9 +4,10 @@ import { AppNav } from '@/src/features/navigation/app-nav';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
-import { categorizeSpending, categoryLabel, deriveRecurringCandidates, recurringPatternKey } from '@/src/core/insights';
+import { SPENDING_CATEGORIES, categoryLabel, deriveRecurringCandidates, recurringPatternKey, resolvedSpendingCategory, type SpendingCategory } from '@/src/core/insights';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { confirmRecurringSuggestion, dismissRecurringSuggestion } from '@/src/lib/repositories/recurrences';
+import { updateTransactionCategory } from '@/src/lib/repositories/categories';
 
 
 type Filter='all'|'income'|'cash_expense'|'card'|'transfer';
@@ -43,6 +44,11 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   const [view,setView]=useState<FinancialView>('household');
   const [recurrenceWorking,setRecurrenceWorking]=useState('');
   const [recurrenceError,setRecurrenceError]=useState('');
+  const [categoryEditingId,setCategoryEditingId]=useState('');
+  const [categoryDraft,setCategoryDraft]=useState<SpendingCategory>('other');
+  const [categoryRemember,setCategoryRemember]=useState(false);
+  const [categoryWorking,setCategoryWorking]=useState('');
+  const [categoryError,setCategoryError]=useState('');
 
   async function load(silent=false){
     if(!silent) setLoading(true);
@@ -96,6 +102,39 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
       setRecurrenceWorking('');
     }
   }
+  function beginCategoryEdit(row:HomeRow){
+    if(role==='read_only') return;
+    setCategoryEditingId(row.id);
+    setCategoryDraft(resolvedSpendingCategory(row));
+    setCategoryRemember(false);
+    setCategoryError('');
+  }
+
+  async function saveCategory(row:HomeRow){
+    if(role==='read_only'||categoryWorking) return;
+    setCategoryWorking(row.id);
+    setCategoryError('');
+    try{
+      await updateTransactionCategory({
+        householdId,
+        transactionId:row.id,
+        category:categoryDraft,
+        rememberForSimilar:categoryRemember
+      });
+      await load(true);
+      setCategoryEditingId('');
+      setCategoryRemember(false);
+    }catch{
+      setCategoryError(l(
+        'Não conseguimos guardar essa categoria agora. Nada foi alterado.',
+        'We could not save this category right now. Nothing changed.',
+        'No pudimos guardar esta categoría ahora. No se cambió nada.'
+      ));
+    }finally{
+      setCategoryWorking('');
+    }
+  }
+
   const summary=useMemo(()=>({
     income:scopedRows.filter(x=>x.direction==='income'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
     cashExpense:scopedRows.filter(x=>x.direction==='expense'&&x.source!=='credit_card_invoice'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
@@ -183,7 +222,38 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
               <div className="movement-full-copy">
                 <strong>{row.description}</strong>
                 <span>{label(row,locale)}{row.scope==='personal'?` · ${t.scopePersonal}`:''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
-                {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<small>{categoryLabel(categorizeSpending(row.description),locale)}</small>}
+                {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<>
+                  {role==='read_only'
+                    ? <small className="movement-category-label">{categoryLabel(resolvedSpendingCategory(row),locale)}</small>
+                    : <button className="movement-category-pill" type="button" onClick={()=>beginCategoryEdit(row)}>
+                        {categoryLabel(resolvedSpendingCategory(row),locale)}
+                      </button>}
+                  {categoryEditingId===row.id&&<div className="movement-category-editor">
+                    <label>
+                      <span>{l('Categoria','Category','Categoría')}</span>
+                      <select className="premium-input" value={categoryDraft} onChange={event=>setCategoryDraft(event.target.value as SpendingCategory)}>
+                        {SPENDING_CATEGORIES.map(category=><option key={category} value={category}>{categoryLabel(category,locale)}</option>)}
+                      </select>
+                    </label>
+                    <label className="movement-category-remember">
+                      <input type="checkbox" checked={categoryRemember} onChange={event=>setCategoryRemember(event.target.checked)}/>
+                      <span>{l(
+                        'Usar também em lançamentos parecidos deste Lar.',
+                        'Also use this for similar entries in this household.',
+                        'Usar también en movimientos parecidos de este Hogar.'
+                      )}</span>
+                    </label>
+                    <div className="movement-category-actions">
+                      <button type="button" disabled={categoryWorking===row.id} onClick={()=>void saveCategory(row)}>
+                        {categoryWorking===row.id?l('Salvando…','Saving…','Guardando…'):l('Salvar','Save','Guardar')}
+                      </button>
+                      <button type="button" className="secondary" disabled={categoryWorking===row.id} onClick={()=>{setCategoryEditingId('');setCategoryError('');}}>
+                        {l('Cancelar','Cancel','Cancelar')}
+                      </button>
+                    </div>
+                    {categoryError&&<p className="error-copy" role="alert">{categoryError}</p>}
+                  </div>}
+                </>}
                 {row.installment&&<small>{l(`Parcela ${row.installment.current} de ${row.installment.total}`,`Installment ${row.installment.current} of ${row.installment.total}`,`Cuota ${row.installment.current} de ${row.installment.total}`)}</small>}
               </div>
               <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {formatMoney(row.amountMinor)}</b>

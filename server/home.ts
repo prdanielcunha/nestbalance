@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { visibleDocs } from './privacy.js';
+import { categoryFromRecordAndRules, learnedCategoryRuleFromDoc, type LearnedCategoryRule } from './category-rules.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -105,7 +106,7 @@ function invoiceImportDto(doc:any){
   };
 }
 
-function movementDto(doc:any){
+function movementDto(doc:any,categoryRules:LearnedCategoryRule[]=[]){
   const data=doc.data();
   return {
     id:doc.id,
@@ -126,6 +127,7 @@ function movementDto(doc:any){
     cardId:typeof data.cardId==='string'?data.cardId:null,
     invoiceKey:typeof data.invoiceKey==='string'?data.invoiceKey:null,
     invoiceImportId:typeof data.invoiceImportId==='string'?data.invoiceImportId:null,
+    category:categoryFromRecordAndRules(data,categoryRules),
     scope:data.scope==='personal'?'personal':'household'
   };
 }
@@ -139,7 +141,7 @@ export async function getHomeData(req:Request,res:Response){
 
     const household=adminDb.collection('households').doc(householdId);
     const currentMonthKey=new Date().toISOString().slice(0,7);
-    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments,savingsPots,cardSnapshots,recurrenceDismissals]=await Promise.all([
+    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments,savingsPots,cardSnapshots,recurrenceDismissals,categoryRulesSnap]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
@@ -149,8 +151,14 @@ export async function getHomeData(req:Request,res:Response){
       household.collection('commitmentPayments').where('periodKey','==',currentMonthKey).limit(200).get(),
       household.collection('savingsPots').where('status','==','active').limit(100).get(),
       household.collection('cardSnapshots').limit(50).get(),
-      household.collection('recurrenceDismissals').limit(100).get()
+      household.collection('recurrenceDismissals').limit(100).get(),
+      household.collection('categoryRules').limit(200).get()
     ]);
+
+    const categoryRules=categoryRulesSnap.docs
+      .map(learnedCategoryRuleFromDoc)
+      .filter((rule):rule is LearnedCategoryRule=>Boolean(rule))
+      .filter(rule=>rule.scope==='household'||rule.ownerUid===user.uid);
 
     const paidThisMonth=new Set(
       commitmentPayments.docs
@@ -163,11 +171,11 @@ export async function getHomeData(req:Request,res:Response){
       ok:true,
       accounts:visibleDocs(accounts.docs,user.uid).map(accountDto),
       cards:visibleDocs(cards.docs,user.uid).map(cardDto),
-      transactions:visibleDocs(transactions.docs,user.uid).map(movementDto).sort((a,b)=>
+      transactions:visibleDocs(transactions.docs,user.uid).map(doc=>movementDto(doc,categoryRules)).sort((a,b)=>
         String(b.observedOn||'').localeCompare(String(a.observedOn||''))
       ),
       commitments:visibleDocs(commitments.docs,user.uid).map(doc=>({
-        ...movementDto(doc),
+        ...movementDto(doc,categoryRules),
         paidThisMonth:paidThisMonth.has(doc.id)
       })),
       installmentPlans:visibleDocs(installmentPlans.docs,user.uid).map(installmentPlanDto),

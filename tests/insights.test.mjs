@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   categorizeSpending,
+  resolvedSpendingCategory,
   deriveFinancialAnomalies,
   deriveRecurringCandidates,
   deriveSpendingComparison
@@ -28,14 +29,23 @@ test('categoriza descrições com regras locais e previsíveis',()=>{
   assert.equal(categorizeSpending('Algo sem regra'),'other');
 });
 
+test('categoria explícita do usuário vence a heurística automática',()=>{
+  assert.equal(resolvedSpendingCategory({description:'Supermercado',category:'health'}),'health');
+  assert.equal(resolvedSpendingCategory({description:'Supermercado'}),'food');
+});
+
 test('compara gastos do mês sem contar transferência nem pagamento de fatura',()=>{
-  const result=deriveSpendingComparison(rows,now);
-  assert.equal(result.currentMinor,78400);
+  const result=deriveSpendingComparison([
+    ...rows,
+    {id:'sep-manual-category',description:'Compra genérica',category:'education',amountMinor:10000,direction:'expense',observedOn:'2026-09-20'}
+  ],now);
+  assert.equal(result.currentMinor,88400);
   assert.equal(result.previousMinor,40000);
-  assert.equal(result.deltaMinor,38400);
+  assert.equal(result.deltaMinor,48400);
   assert.equal(result.hasComparableData,true);
   assert.equal(result.topIncreases[0].category,'food');
   assert.equal(result.topIncreases[0].deltaMinor,30400);
+  assert.equal(result.topIncreases.some(item=>item.category==='education'&&item.deltaMinor===10000),true);
 });
 
 test('detecta valor fora do histórico e possível duplicidade sem acusar erro',()=>{

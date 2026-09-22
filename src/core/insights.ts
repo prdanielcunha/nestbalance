@@ -6,18 +6,22 @@ export type InsightTransaction={
   source?:string|null;
   status?:string;
   observedOn?:string|null;
+  category?:SpendingCategory|null;
 };
 
-export type SpendingCategory=
-  |'housing'
-  |'utilities'
-  |'food'
-  |'transport'
-  |'health'
-  |'subscriptions'
-  |'shopping'
-  |'education'
-  |'other';
+export const SPENDING_CATEGORIES=[
+  'housing',
+  'utilities',
+  'food',
+  'transport',
+  'health',
+  'subscriptions',
+  'shopping',
+  'education',
+  'other'
+] as const;
+
+export type SpendingCategory=(typeof SPENDING_CATEGORIES)[number];
 
 export type CategoryDelta={
   category:SpendingCategory;
@@ -99,11 +103,19 @@ function median(values:number[]){
   return sorted.length%2?sorted[middle]:Math.round((sorted[middle-1]+sorted[middle])/2);
 }
 
+export function isSpendingCategory(value:unknown):value is SpendingCategory{
+  return typeof value==='string'&&(SPENDING_CATEGORIES as readonly string[]).includes(value);
+}
+
 export function categorizeSpending(description:string):SpendingCategory{
   for(const [category,pattern] of CATEGORY_PATTERNS){
     if(pattern.test(description)) return category;
   }
   return 'other';
+}
+
+export function resolvedSpendingCategory(row:Pick<InsightTransaction,'description'|'category'>):SpendingCategory{
+  return isSpendingCategory(row.category)?row.category:categorizeSpending(row.description);
 }
 
 export function categoryLabel(category:SpendingCategory,locale:'pt-BR'|'en'|'es'='pt-BR'){
@@ -134,7 +146,7 @@ export function deriveSpendingComparison(rows:InsightTransaction[],now:Date):Spe
   const byCategory=(items:InsightTransaction[])=>{
     const map=new Map<SpendingCategory,number>();
     for(const item of items){
-      const category=categorizeSpending(item.description);
+      const category=resolvedSpendingCategory(item);
       map.set(category,(map.get(category)||0)+Number(item.amountMinor||0));
     }
     return map;
