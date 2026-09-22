@@ -958,6 +958,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> {l('conta / parcela','bill / installment','cuenta / cuota')}</span>}
               {interpretations.length>0&&<span><b>{interpretations.length}</b> {l(interpretations.length===1?'movimento':'movimentos',interpretations.length===1?'movement':'movements',interpretations.length===1?'movimiento':'movimientos')}</span>}
             </div>
+            {screenSnapshot.accounts.length>0&&<div className="screen-pot-review">
+              {screenSnapshot.accounts.map((account,index)=><div className="screen-pot-review-row" key={index}>
+                <div>
+                  <strong>{account.name}</strong>
+                  <span>{l('Saldo principal encontrado','Primary balance found','Saldo principal encontrado')}</span>
+                </div>
+                <div>
+                  <b>{formatMoney(account.balanceMinor)}</b>
+                  <small>{screenSnapshot.institution||l('Instituição não confirmada','Institution not confirmed','Institución no confirmada')}</small>
+                </div>
+              </div>)}
+            </div>}
+
             {screenSnapshot.pots.length>0&&<>
               <div className="screen-pot-source-confirm">
                 <label htmlFor="screen-pot-institution">{l('Banco ou origem destes cofrinhos','Bank or source of these savings pots','Banco u origen de estas alcancías')}</label>
@@ -1025,6 +1038,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             </div>}
             <small>{l('Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.','Balance, card limit and saved money do not become expenses. Only movements and bills are counted that way.','El saldo, el límite y el dinero guardado no se convierten en gastos. Solo los movimientos y las cuentas entran en esa categoría.')}</small>
           </div>}
+
+          {localOcrText&&file?.type.startsWith('image/')&&<details className="capture-reclassify capture-reclassify-details">
+            <summary>{l('Entendi o tipo do print errado?','Did I get the screenshot type wrong?','¿Entendí mal el tipo de la captura?')}</summary>
+            <div>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('recurring')}>{l('Contas recorrentes','Recurring bills','Cuentas recurrentes')}</button>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('pots')}>{l('Cofrinhos','Savings pots','Alcancías')}</button>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('balance')}>{l('Saldo da conta','Account balance','Saldo de la cuenta')}</button>
+            </div>
+          </details>}
 
           {matchingPayments&&interpretations.length===1&&<p className="confidence-note" role="status">{l('Conferindo se isso paga alguma conta que já estava na sua lista…','Checking whether this pays a bill already on your list…','Comprobando si esto paga alguna cuenta que ya estaba en tu lista…')}</p>}
 
