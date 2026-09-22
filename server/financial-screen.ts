@@ -8,6 +8,7 @@ import type { AiFinancialScreenSnapshot } from '../src/core/ai-financial.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { assertScopedAccess, requestedScope } from './privacy.js';
+import { ScreenSnapshotSchema } from './ai/financial-image.js';
 
 const ANALYSIS_VERSION='vision-v2';
 
@@ -66,10 +67,19 @@ export async function commitFinancialScreen(req:Request,res:Response){
     const ownerUid=scope==='personal'?user.uid:null;
 
     const extractionSnap=await resolved.ref.collection('extractions').doc(ANALYSIS_VERSION).get();
-    if(!extractionSnap.exists) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
-    const extraction=extractionSnap.data()?.extraction;
-    const screen=extraction?.screen as AiFinancialScreenSnapshot|null|undefined;
-    if(!screen) return error(res,409,'SCREEN_SNAPSHOT_UNAVAILABLE');
+    const extraction=extractionSnap.exists?extractionSnap.data()?.extraction:null;
+    const persistedScreen=extraction?.screen as AiFinancialScreenSnapshot|null|undefined;
+    const reviewed=ScreenSnapshotSchema.safeParse(req.body?.screenSnapshot);
+    const screen=persistedScreen??(reviewed.success?reviewed.data:null);
+    if(!screen){
+      if(!extractionSnap.exists&&req.body?.screenSnapshot===undefined) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
+      return error(res,409,'SCREEN_SNAPSHOT_UNAVAILABLE');
+    }
+    const analysisSource=persistedScreen
+      ? 'server_vision'
+      : ['gemini_text','local_ocr','client_reviewed'].includes(String(req.body?.analysisSource||''))
+        ? String(req.body.analysisSource)
+        : 'client_reviewed';
 
     const household=adminDb.collection('households').doc(householdId);
     const batch=adminDb.batch();
@@ -242,7 +252,9 @@ export async function commitFinancialScreen(req:Request,res:Response){
       evidenceId:resolved.evidenceId,
       screenType:screen.screenType,
       institution:screen.institution,
+      analysisSource,
       counts:{accounts,pots,cards,commitments,movements,skipped},
+      analysisSource,
       createdAt:FieldValue.serverTimestamp()
     });
 
