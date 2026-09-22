@@ -127,6 +127,7 @@ assert.match(geminiFallback,/GEMINI_FREE_DAILY_CAP_REACHED/);
 assert.match(financialRedaction,/CPF_REDACTED/);
 assert.match(cloudrun,/\/api\/ai\/gemini\/analyze-text/);
 assert.match(openFinanceCore,/nestbalance\.millionsnest\.com/);
+assert.ok(!cloudrun.includes('/api/open-finance/'),'Open Finance must stay outside the executable release surface until intentionally enabled.');
 assert.match(openFinanceCore,/mn-nestbalance-555464791734\.web\.app/);
 assert.match(financialScreenSource,/requireHouseholdMember/);
 assert.match(financialScreenSource,/SCREEN_ANALYSIS_REQUIRED/);
