@@ -1,11 +1,22 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from 'firebase/auth';
 import { auth, firebaseConfigured } from '@/src/lib/firebase/client';
 import { bootstrapSession, type HouseholdSessionOption } from '@/src/lib/repositories/session';
 import { messages } from '@/src/i18n/messages';
 import { normalizeLocale, type AppLocale } from '@/src/core/locale';
 import { LocaleProvider } from '@/src/i18n/locale-provider';
+
+function prefersRedirectSignIn(){
+  if(typeof window==='undefined'||typeof navigator==='undefined') return false;
+  const nav=navigator as Navigator & {standalone?:boolean};
+  return nav.standalone===true||window.matchMedia?.('(display-mode: standalone)').matches===true;
+}
+
+function popupShouldFallback(error:unknown){
+  const code=typeof error==='object'&&error&&'code' in error?String((error as {code?:unknown}).code||''):'';
+  return ['auth/popup-blocked','auth/cancelled-popup-request','auth/operation-not-supported-in-this-environment'].includes(code);
+}
 
 export type SessionState = {
   user: User;
@@ -64,10 +75,24 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     if (!auth) return;
     setSigningIn(true);
     setSessionError('');
+    const provider=new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
+      if(prefersRedirectSignIn()){
+        await signInWithRedirect(auth,provider);
+        return;
+      }
+      await signInWithPopup(auth,provider);
     } catch (error) {
-      setSessionError(error instanceof Error ? error.message : 'AUTH_SIGN_IN_FAILED');
+      if(popupShouldFallback(error)){
+        try{
+          await signInWithRedirect(auth,provider);
+          return;
+        }catch(redirectError){
+          setSessionError(redirectError instanceof Error ? redirectError.message : 'AUTH_SIGN_IN_FAILED');
+        }
+      }else{
+        setSessionError(error instanceof Error ? error.message : 'AUTH_SIGN_IN_FAILED');
+      }
     } finally {
       setSigningIn(false);
     }
