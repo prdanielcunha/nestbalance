@@ -74,4 +74,7 @@ jobs:
 
           curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$DOMAIN_URL/" | grep -q 'NestBalance'
 
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$DOMAIN_URL/sw.js" | grep -Fq "url.pathname.startsWith('/api/')"
+          curl --fail --silent --show-error --head "$DOMAIN_URL/sw.js" | tr -d '\r' | grep -Eqi '^cache-control:.*no-store'
+
           echo "NESTBALANCE_OFFICIAL_PRODUCTION_URL=$DOMAIN_URL"
