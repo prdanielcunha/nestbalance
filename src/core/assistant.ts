@@ -1,5 +1,7 @@
 import { projectHouseholdFuture, type ProjectionCommitment, type ProjectionInstallmentPlan } from './future-projection.js';
 import { categoryLabel, deriveFinancialAnomalies, deriveSpendingComparison, type InsightTransaction } from './insights.js';
+import { assistantCopy } from './assistant-copy.js';
+import type { Locale } from '../i18n/messages.js';
 
 export type AssistantAccount={
   id:string;
@@ -58,19 +60,42 @@ function positive(value:unknown){
   return Number.isSafeInteger(n)&&n>0?n:0;
 }
 
-function formatMoneyMinor(value:number){
-  return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value/100);
+function formatMoneyMinor(value:number,locale:Locale){
+  return new Intl.NumberFormat(locale==='en'?'en-US':locale,{style:'currency',currency:'BRL'}).format(value/100);
+}
+
+function parseHumanNumber(raw:string){
+  const clean=raw.replace(/\s/g,'');
+  const lastDot=clean.lastIndexOf('.');
+  const lastComma=clean.lastIndexOf(',');
+  let normalized=clean;
+
+  if(lastDot>=0&&lastComma>=0){
+    const decimalIndex=Math.max(lastDot,lastComma);
+    const integer=clean.slice(0,decimalIndex).replace(/[.,]/g,'');
+    const decimal=clean.slice(decimalIndex+1).replace(/[.,]/g,'');
+    normalized=decimal.length<=2?`${integer}.${decimal}`:clean.replace(/[.,]/g,'');
+  }else if(lastComma>=0){
+    const decimal=clean.length-lastComma-1;
+    normalized=decimal>=1&&decimal<=2?clean.replace(/\./g,'').replace(',','.') : clean.replace(/,/g,'');
+  }else if(lastDot>=0){
+    const decimal=clean.length-lastDot-1;
+    normalized=decimal>=1&&decimal<=2?clean.replace(/,/g,'') : clean.replace(/\./g,'');
+  }
+
+  const number=Number(normalized);
+  return Number.isFinite(number)?number:null;
 }
 
 function parseRequestedMoneyMinor(question:string){
   const normalized=question.normalize('NFKC').replace(/\s+/g,' ').trim();
-  const currencyMatch=normalized.match(/R\$\s*([0-9.]+(?:,[0-9]{1,2})?)/i);
-  const reaisMatch=normalized.match(/([0-9.]+(?:,[0-9]{1,2})?)\s*(?:reais?|conto(?:s)?)/i);
-  const spendMatch=normalized.match(/(?:gastar|gasto|gastasse)\s*(?:de\s*)?([0-9.]+(?:,[0-9]{1,2})?)/i);
+  const currencyMatch=normalized.match(/(?:R\$|BRL)\s*([0-9][0-9.,]*)/i);
+  const reaisMatch=normalized.match(/([0-9][0-9.,]*)\s*(?:reais?|conto(?:s)?)/i);
+  const spendMatch=normalized.match(/(?:gastar|gasto|gastasse|gaste|spend|spending|gastar|gaste)\s*(?:de\s*)?([0-9][0-9.,]*)/i);
   const raw=(currencyMatch?.[1]||reaisMatch?.[1]||spendMatch?.[1]||'').trim();
   if(!raw) return null;
-  const number=Number(raw.replace(/\./g,'').replace(',','.'));
-  if(!Number.isFinite(number)||number<=0||number>100_000_000) return null;
+  const number=parseHumanNumber(raw);
+  if(number===null||number<=0||number>100_000_000) return null;
   return Math.round(number*100);
 }
 
@@ -79,31 +104,43 @@ export function classifyAssistantIntent(question:string):AssistantAnswer['intent
   if(!q) return 'unsupported';
 
   if(
-    /(?:da|dá) para gastar/.test(q)||
-    /posso gastar/.test(q)||
-    /consigo gastar/.test(q)||
-    /se eu gastar/.test(q)
+    /(?:da para gastar|posso gastar|consigo gastar|se eu gastar)/.test(q)||
+    /(?:can i spend|could i spend|if i spend|can we spend)/.test(q)||
+    /(?:puedo gastar|podemos gastar|si gasto|me alcanza para gastar)/.test(q)
   ) return 'spending_simulation';
 
   if(
     /por que.*gastei.*mais/.test(q)||
     /porque.*gastei.*mais/.test(q)||
-    /gastei.*mais.*(?:mes|mês)/.test(q)||
-    /aumentou.*(?:gasto|despesa)/.test(q)
+    /gastei.*mais.*mes/.test(q)||
+    /aumentou.*(?:gasto|despesa)/.test(q)||
+    /why.*(?:spend|spent).*more/.test(q)||
+    /(?:spending|expenses?).*(?:increase|higher|up)/.test(q)||
+    /por que.*gaste.*mas/.test(q)||
+    /gaste.*mas.*mes/.test(q)||
+    /aumentaron?.*(?:gastos?|gasto)/.test(q)
   ) return 'spending_change';
 
   if(
     /o que.*estranh/.test(q)||
     /algo.*estranh/.test(q)||
     /cobranca.*(?:diferente|fora)/.test(q)||
-    /cobrança.*(?:diferente|fora)/.test(q)||
-    /duplicad/.test(q)
+    /duplicad/.test(q)||
+    /what.*(?:unusual|strange|odd)/.test(q)||
+    /anything.*(?:unusual|strange|odd)/.test(q)||
+    /(?:duplicate|duplicated)/.test(q)||
+    /que.*(?:raro|extrano|fuera.*normal)/.test(q)||
+    /algo.*(?:raro|extrano)/.test(q)
   ) return 'anomalies';
 
   if(
     /parcelas?.*(?:terminam|acabam|finalizam)/.test(q)||
     /parcelamentos?.*(?:terminam|acabam|finalizam)/.test(q)||
-    /quais .*parcelas?.*logo/.test(q)
+    /quais .*parcelas?.*logo/.test(q)||
+    /installments?.*(?:end|finish)/.test(q)||
+    /which.*installments?.*(?:soon|first)/.test(q)||
+    /cuotas?.*(?:terminan|acaban|finalizan)/.test(q)||
+    /que.*cuotas?.*(?:pronto|primero)/.test(q)
   ) return 'ending_installments';
 
   if(
@@ -112,21 +149,39 @@ export function classifyAssistantIntent(question:string):AssistantAnswer['intent
     /ainda.*pagar/.test(q)||
     /contas?.*pendentes?/.test(q)||
     /quanto.*pendente/.test(q)||
-    /ainda.*vai.*sair/.test(q)
+    /ainda.*vai.*sair/.test(q)||
+    /how much.*(?:left|still).*(?:pay|due)/.test(q)||
+    /what.*(?:left|still).*(?:pay|due)/.test(q)||
+    /pending (?:bills?|payments?)/.test(q)||
+    /cuanto.*falta.*pagar/.test(q)||
+    /todavia.*pagar/.test(q)||
+    /cuentas?.*pendientes?/.test(q)
   ) return 'remaining_to_pay';
 
   if(
     /quanto.*tenho/.test(q)||
     /saldo.*disponivel/.test(q)||
     /quanto.*disponivel/.test(q)||
-    /dinheiro.*disponivel/.test(q)
+    /dinheiro.*disponivel/.test(q)||
+    /how much.*(?:have|available)/.test(q)||
+    /available balance/.test(q)||
+    /money.*available/.test(q)||
+    /cuanto.*tengo/.test(q)||
+    /saldo.*disponible/.test(q)||
+    /cuanto.*disponible/.test(q)
   ) return 'available_now';
 
   if(
     /proximos? meses?/.test(q)||
     /meses? seguintes?/.test(q)||
     /parcelas? futuras?/.test(q)||
-    /quanto.*mes.*que vem/.test(q)
+    /quanto.*mes.*que vem/.test(q)||
+    /next months?/.test(q)||
+    /coming months?/.test(q)||
+    /future installments?/.test(q)||
+    /proximos? meses?/.test(q)||
+    /meses? siguientes?/.test(q)||
+    /cuotas? futuras?/.test(q)
   ) return 'future_months';
 
   return 'unsupported';
@@ -140,7 +195,10 @@ export function answerAssistantQuestion(input:{
   invoices:AssistantInvoice[];
   installmentPlans:AssistantInstallmentPlan[];
   now:Date;
+  locale?:Locale;
 }):AssistantAnswer{
+  const locale=input.locale||'pt-BR';
+  const c=assistantCopy(locale);
   const intent=classifyAssistantIntent(input.question);
 
   if(intent==='spending_simulation'){
@@ -148,12 +206,12 @@ export function answerAssistantQuestion(input:{
     if(!spendMinor){
       return {
         intent,
-        title:'Qual valor você quer simular?',
-        summary:'Escreva o valor na própria pergunta, por exemplo: “Dá para gastar R$ 500?”.',
+        title:c.simulationNeedTitle,
+        summary:c.simulationNeedSummary,
         answerMinor:null,
         sources:[],
         cards:[],
-        suggestions:['Dá para gastar R$ 500?','Quanto ainda falta pagar?','Quanto tenho disponível?']
+        suggestions:[c.s.spend,c.s.remaining,c.s.available]
       };
     }
 
@@ -164,7 +222,7 @@ export function answerAssistantQuestion(input:{
         id:account.id,
         label:account.name,
         amountMinor:Number(account.balanceMinor)||0,
-        detail:'Saldo atual conhecido'
+        detail:c.accountBalance
       }));
     const commitmentSources=input.commitments
       .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&positive(item.amountMinor)>0)
@@ -173,16 +231,16 @@ export function answerAssistantQuestion(input:{
         id:item.id,
         label:item.description,
         amountMinor:positive(item.amountMinor),
-        detail:'Compromisso aberto conhecido'
+        detail:c.openCommitment
       }));
     const invoiceSources=input.invoices
       .filter(item=>item.paymentStatus!=='paid'&&item.status!=='cancelled')
       .map(item=>({
         kind:'invoice' as const,
         id:item.id,
-        label:`Fatura ${item.invoiceKey}`,
+        label:c.invoice(item.invoiceKey),
         amountMinor:Math.max(0,positive(item.confirmedAmountMinor)-positive(item.paidAmountMinor)),
-        detail:item.status==='partial'?'Fatura ainda em revisão':'Fatura aberta confirmada'
+        detail:item.status==='partial'?c.invoicePartial:c.invoiceConfirmed
       }))
       .filter(item=>item.amountMinor>0);
 
@@ -193,17 +251,17 @@ export function answerAssistantQuestion(input:{
 
     return {
       intent,
-      title:`Simulação de ${formatMoneyMinor(spendMinor)}`,
-      summary:`Com os saldos e obrigações conhecidos agora, depois desse gasto a projeção ficaria em ${formatMoneyMinor(afterSpendMinor)}.${partialInvoices?` Há ${partialInvoices} fatura${partialInvoices===1?'':'s'} ainda em revisão, então esse valor pode mudar.`:''} Isso é uma simulação, não uma recomendação de gasto.`,
+      title:c.simulationTitle(formatMoneyMinor(spendMinor,locale)),
+      summary:c.simulationSummary(formatMoneyMinor(afterSpendMinor,locale),partialInvoices),
       answerMinor:afterSpendMinor,
       sources:[...accountSources,...commitmentSources,...invoiceSources].slice(0,40),
       cards:[
-        {label:'Disponível agora',amountMinor:availableMinor,detail:`${accountSources.length} conta${accountSources.length===1?'':'s'} conhecida${accountSources.length===1?'':'s'}`},
-        {label:'Obrigações conhecidas',amountMinor:obligationsMinor,detail:`${commitmentSources.length+invoiceSources.length} item${commitmentSources.length+invoiceSources.length===1?'':'s'} aberto${commitmentSources.length+invoiceSources.length===1?'':'s'}`},
-        {label:'Gasto simulado',amountMinor:spendMinor,detail:'Valor informado por você'},
-        {label:'Restaria na projeção',amountMinor:afterSpendMinor,detail:afterSpendMinor>=0?'Após obrigações conhecidas e o gasto simulado':'Ficaria abaixo de zero com os dados conhecidos'}
+        {label:c.availableNow,amountMinor:availableMinor,detail:c.knownAccounts(accountSources.length)},
+        {label:c.knownObligations,amountMinor:obligationsMinor,detail:c.openItems(commitmentSources.length+invoiceSources.length)},
+        {label:c.simulatedSpend,amountMinor:spendMinor,detail:c.providedByYou},
+        {label:c.projectedLeft,amountMinor:afterSpendMinor,detail:afterSpendMinor>=0?c.afterKnown:c.belowZero}
       ],
-      suggestions:['Quanto ainda falta pagar?','Quais parcelas terminam logo?','O que já está comprometido nos próximos meses?']
+      suggestions:[c.s.remaining,c.s.ending,c.s.future]
     };
   }
 
@@ -217,12 +275,12 @@ export function answerAssistantQuestion(input:{
     if(!active.length){
       return {
         intent,
-        title:'Nenhuma parcela ativa conhecida.',
-        summary:'Não encontrei planos de parcelamento reconciliados ainda.',
+        title:c.noInstallmentsTitle,
+        summary:c.noInstallmentsSummary,
         answerMinor:0,
         sources:[],
         cards:[],
-        suggestions:['O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?','Dá para gastar R$ 500?']
+        suggestions:[c.s.future,c.s.remaining,c.s.spend]
       };
     }
 
@@ -232,50 +290,44 @@ export function answerAssistantQuestion(input:{
 
     return {
       intent,
-      title:endingSoon.length?'Estas parcelas terminam primeiro.':'Estas são as parcelas mais próximas do fim.',
-      summary:endingSoon.length
-        ? `${endingSoon.length} plano${endingSoon.length===1?' termina':'s terminam'} em até 3 parcelas. Quando acabarem, ${formatMoneyMinor(releasedSoonMinor)} por mês deixam de estar comprometidos, considerando os valores atuais.`
-        : 'Nenhum plano termina nas próximas 3 parcelas, mas estes são os mais próximos do fim.',
+      title:endingSoon.length?c.endingTitle:c.closestTitle,
+      summary:endingSoon.length?c.endingSummary(endingSoon.length,formatMoneyMinor(releasedSoonMinor,locale)):c.noneEndingSoon,
       answerMinor:endingSoon.length?releasedSoonMinor:null,
       sources:visible.map(plan=>({
         kind:'installment_plan' as const,
         id:plan.id,
-        label:plan.description||'Compra parcelada',
+        label:plan.description||c.installmentPurchase,
         amountMinor:positive(plan.amountMinor),
-        detail:`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'} de ${plan.totalInstallments}`
+        detail:c.installmentsLeft(plan.remaining,Number(plan.totalInstallments||0))
       })),
       cards:visible.slice(0,6).map(plan=>({
-        label:plan.description||'Compra parcelada',
+        label:plan.description||c.installmentPurchase,
         amountMinor:positive(plan.amountMinor),
-        detail:`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'}`
+        detail:c.installmentsLeft(plan.remaining)
       })),
-      suggestions:['Dá para gastar R$ 500?','O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?']
+      suggestions:[c.s.spend,c.s.future,c.s.remaining]
     };
   }
 
   if(intent==='spending_change'){
     const comparison=deriveSpendingComparison(input.transactions,input.now);
-    const moneyNow=formatMoneyMinor(comparison.currentMinor);
-    const moneyPrevious=formatMoneyMinor(comparison.previousMinor);
+    const moneyNow=formatMoneyMinor(comparison.currentMinor,locale);
+    const moneyPrevious=formatMoneyMinor(comparison.previousMinor,locale);
     if(!comparison.hasComparableData){
       return {
         intent,
-        title:'Ainda falta um mês anterior para comparar.',
-        summary:'Eu consigo explicar a diferença quando houver gastos registrados no mês atual e no mês anterior. Não vou inventar uma comparação sem base.',
+        title:c.noCompareTitle,
+        summary:c.noCompareSummary,
         answerMinor:null,
         sources:[],
-        cards:[
-          {label:'Este mês',amountMinor:comparison.currentMinor,detail:`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conhecido${comparison.currentCount===1?'':'s'}`}
-        ],
-        suggestions:['O que está estranho?','Quanto ainda falta pagar?','Dá para gastar R$ 500?']
+        cards:[{label:c.thisMonth,amountMinor:comparison.currentMinor,detail:c.knownSpending(comparison.currentCount)}],
+        suggestions:[c.s.anomalies,c.s.remaining,c.s.spend]
       };
     }
 
     const increased=comparison.deltaMinor>0;
     const top=comparison.topIncreases.slice(0,3);
-    const reason=top.length
-      ? ` As maiores altas vieram de ${top.map(item=>categoryLabel(item.category)).join(', ')}.`
-      : '';
+    const reason=c.topReason(top.map(item=>categoryLabel(item.category,locale)));
     const currentSources=input.transactions
       .filter(item=>item.direction==='expense'&&item.status!=='cancelled'&&item.source!=='credit_card_invoice_payment'&&String(item.observedOn||'').startsWith(comparison.currentMonthKey))
       .sort((a,b)=>b.amountMinor-a.amountMinor)
@@ -285,29 +337,29 @@ export function answerAssistantQuestion(input:{
         id:item.id,
         label:item.description,
         amountMinor:item.amountMinor,
-        detail:'Gasto observado neste mês'
+        detail:c.observedThisMonth
       }));
 
     return {
       intent,
       title:increased
-        ? `Você gastou ${formatMoneyMinor(comparison.deltaMinor)} a mais que no mês anterior.`
+        ? c.spentMore(formatMoneyMinor(comparison.deltaMinor,locale))
         : comparison.deltaMinor<0
-          ? `Você gastou ${formatMoneyMinor(Math.abs(comparison.deltaMinor))} a menos que no mês anterior.`
-          : 'Seus gastos conhecidos estão no mesmo nível do mês anterior.',
-      summary:`Este mês tem ${moneyNow} em gastos conhecidos; o mês anterior teve ${moneyPrevious}.${reason} A comparação ignora transferências entre suas contas e pagamento de fatura para não contar a mesma despesa duas vezes.`,
+          ? c.spentLess(formatMoneyMinor(Math.abs(comparison.deltaMinor),locale))
+          : c.sameLevel,
+      summary:c.spendingSummary(moneyNow,moneyPrevious,reason),
       answerMinor:comparison.deltaMinor,
       sources:currentSources,
       cards:[
-        {label:'Este mês',amountMinor:comparison.currentMinor,detail:`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conhecido${comparison.currentCount===1?'':'s'}`},
-        {label:'Mês anterior',amountMinor:comparison.previousMinor,detail:`${comparison.previousCount} gasto${comparison.previousCount===1?'':'s'} conhecido${comparison.previousCount===1?'':'s'}`},
+        {label:c.thisMonth,amountMinor:comparison.currentMinor,detail:c.knownSpending(comparison.currentCount)},
+        {label:c.previousMonth,amountMinor:comparison.previousMinor,detail:c.knownSpending(comparison.previousCount)},
         ...top.map(item=>({
-          label:categoryLabel(item.category),
+          label:categoryLabel(item.category,locale),
           amountMinor:item.deltaMinor,
-          detail:`Alta na categoria: ${formatMoneyMinor(item.previousMinor)} → ${formatMoneyMinor(item.currentMinor)}`
+          detail:c.categoryIncrease(formatMoneyMinor(item.previousMinor,locale),formatMoneyMinor(item.currentMinor,locale))
         }))
       ],
-      suggestions:['O que está estranho?','Quanto ainda falta pagar?','Quais parcelas terminam logo?']
+      suggestions:[c.s.anomalies,c.s.remaining,c.s.ending]
     };
   }
 
@@ -316,35 +368,35 @@ export function answerAssistantQuestion(input:{
     if(!anomalies.length){
       return {
         intent,
-        title:'Nada fora do padrão conhecido chamou atenção.',
-        summary:'Não encontrei duplicidades prováveis nem valores claramente acima do histórico disponível neste mês. Isso não garante que esteja tudo certo; significa apenas que não apareceu um sinal forte nos dados conhecidos.',
+        title:c.noAnomaliesTitle,
+        summary:c.noAnomaliesSummary,
         answerMinor:null,
         sources:[],
         cards:[],
-        suggestions:['Por que gastei mais este mês?','Quanto ainda falta pagar?','O que já está comprometido nos próximos meses?']
+        suggestions:[c.s.change,c.s.remaining,c.s.future]
       };
     }
 
     return {
       intent,
-      title:`Encontrei ${anomalies.length} ${anomalies.length===1?'item':'itens'} que vale conferir.`,
-      summary:'São sinais, não acusações de erro. Eu marco apenas possíveis duplicidades e valores bem acima do histórico da mesma descrição.',
+      title:c.anomalyTitle(anomalies.length),
+      summary:c.anomalySummary,
       answerMinor:null,
       sources:anomalies.map(item=>({
         kind:'transaction' as const,
         id:item.transactionId,
         label:item.description,
         amountMinor:item.amountMinor,
-        detail:item.detail
+        detail:item.type==='possible_duplicate'?c.duplicateSignalDetail:c.spikeSignalDetail
       })),
       cards:anomalies.slice(0,6).map(item=>({
-        label:item.type==='possible_duplicate'?'Possível duplicidade':'Valor diferente do normal',
+        label:item.type==='possible_duplicate'?c.possibleDuplicate:c.differentNormal,
         amountMinor:item.amountMinor,
         detail:item.baselineMinor
-          ? `Histórico típico: ${formatMoneyMinor(item.baselineMinor)} · diferença de ${formatMoneyMinor(item.differenceMinor||0)}`
-          : item.detail
+          ? c.typicalHistory(formatMoneyMinor(item.baselineMinor,locale),formatMoneyMinor(item.differenceMinor||0,locale))
+          : item.type==='possible_duplicate'?c.duplicateSignalDetail:c.spikeSignalDetail
       })),
-      suggestions:['Por que gastei mais este mês?','Quanto ainda falta pagar?','Quais parcelas terminam logo?']
+      suggestions:[c.s.change,c.s.remaining,c.s.ending]
     };
   }
 
@@ -356,7 +408,7 @@ export function answerAssistantQuestion(input:{
         id:item.id,
         label:item.description,
         amountMinor:positive(item.amountMinor),
-        detail:'Compromisso pendente'
+        detail:c.pendingCommitment
       }));
 
     const invoiceSources=input.invoices
@@ -366,42 +418,28 @@ export function answerAssistantQuestion(input:{
         return {
           kind:'invoice' as const,
           id:item.id,
-          label:`Fatura ${item.invoiceKey}`,
+          label:c.invoice(item.invoiceKey),
           amountMinor:open,
-          detail:item.status==='partial'
-            ? 'Valor confirmado até agora; a fatura ainda está em revisão'
-            : 'Fatura confirmada e ainda não paga'
+          detail:item.status==='partial'?c.invoicePartialDetail:c.invoiceOpenDetail
         };
       })
       .filter(item=>item.amountMinor>0);
 
     const sources=[...commitmentSources,...invoiceSources];
     const total=sources.reduce((sum,item)=>sum+item.amountMinor,0);
-    const partialInvoices=invoiceSources.filter(source=>
-      input.invoices.find(invoice=>invoice.id===source.id)?.status==='partial'
-    ).length;
+    const partialInvoices=invoiceSources.filter(source=>input.invoices.find(invoice=>invoice.id===source.id)?.status==='partial').length;
 
     return {
       intent,
-      title:total>0?'Ainda há valores conhecidos para pagar.':'Nada pendente conhecido agora.',
-      summary:total>0
-        ? `O NestBalance encontrou ${sources.length} obrigação${sources.length===1?'':'ões'} aberta${sources.length===1?'':'s'} nesta visão.${partialInvoices?` ${partialInvoices} fatura${partialInvoices===1?' está':'s estão'} em revisão, então o total pode aumentar.`:''}`
-        : 'Não há compromissos nem faturas abertas confirmadas nos dados atuais.',
+      title:total>0?c.remainingTitle:c.nothingPending,
+      summary:total>0?c.remainingSummary(sources.length,partialInvoices):c.nothingPendingSummary,
       answerMinor:total,
       sources:sources.sort((a,b)=>b.amountMinor-a.amountMinor).slice(0,30),
       cards:[
-        {
-          label:'Compromissos',
-          amountMinor:commitmentSources.reduce((sum,item)=>sum+item.amountMinor,0),
-          detail:`${commitmentSources.length} item${commitmentSources.length===1?'':'s'} pendente${commitmentSources.length===1?'':'s'}`
-        },
-        {
-          label:'Faturas abertas',
-          amountMinor:invoiceSources.reduce((sum,item)=>sum+item.amountMinor,0),
-          detail:`${invoiceSources.length} fatura${invoiceSources.length===1?'':'s'} com valor conhecido`
-        }
+        {label:c.commitments,amountMinor:commitmentSources.reduce((sum,item)=>sum+item.amountMinor,0),detail:c.pendingItems(commitmentSources.length)},
+        {label:c.openBills,amountMinor:invoiceSources.reduce((sum,item)=>sum+item.amountMinor,0),detail:c.knownBills(invoiceSources.length)}
       ],
-      suggestions:['Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
+      suggestions:[c.s.available,c.s.future]
     };
   }
 
@@ -413,31 +451,29 @@ export function answerAssistantQuestion(input:{
         id:account.id,
         label:account.name,
         amountMinor:Number(account.balanceMinor)||0,
-        detail:'Saldo atual informado nesta conta'
+        detail:c.accountCurrent
       }));
     const total=sources.reduce((sum,item)=>sum+item.amountMinor,0);
 
     return {
       intent,
-      title:'Saldo disponível conhecido',
-      summary:sources.length
-        ? `Somando ${sources.length} conta${sources.length===1?'':'s'} ativa${sources.length===1?'':'s'} nesta visão.`
-        : 'Ainda não há uma conta com saldo disponível para somar.',
+      title:c.availableTitle,
+      summary:sources.length?c.availableSummary(sources.length):c.noAvailable,
       answerMinor:total,
       sources,
       cards:sources.slice(0,6).map(item=>({label:item.label,amountMinor:item.amountMinor,detail:item.detail})),
-      suggestions:['Quanto ainda falta pagar?','O que já está comprometido nos próximos meses?']
+      suggestions:[c.s.remaining,c.s.future]
     };
   }
 
   if(intent==='future_months'){
     const projection=projectHouseholdFuture(input.commitments,input.installmentPlans,input.now,3);
     const total=projection.reduce((sum,item)=>sum+item.totalMinor,0);
-    const monthFmt=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'});
+    const monthFmt=new Intl.DateTimeFormat(locale==='en'?'en-US':locale,{month:'long',year:'numeric'});
     return {
       intent,
-      title:'Compromissos conhecidos dos próximos meses',
-      summary:'A projeção usa apenas contas recorrentes confirmadas e planos de parcelas já reconciliados.',
+      title:c.futureTitle,
+      summary:c.futureSummary,
       answerMinor:total,
       sources:[
         ...input.commitments
@@ -447,34 +483,34 @@ export function answerAssistantQuestion(input:{
             id:item.id,
             label:item.description,
             amountMinor:positive(item.amountMinor),
-            detail:'Conta recorrente mensal'
+            detail:c.monthlyBill
           })),
         ...input.installmentPlans
           .filter(plan=>plan.status!=='completed'&&plan.status!=='cancelled')
           .map(plan=>({
             kind:'installment_plan' as const,
             id:plan.id,
-            label:plan.description||'Compra parcelada',
+            label:plan.description||c.installmentPurchase,
             amountMinor:positive(plan.amountMinor),
-            detail:`Parcela ${plan.lastObservedInstallment} de ${plan.totalInstallments} observada`
+            detail:c.installmentObserved(Number(plan.lastObservedInstallment||0),Number(plan.totalInstallments||0))
           }))
       ].slice(0,30),
       cards:projection.map(month=>({
         label:monthFmt.format(new Date(month.year,month.monthIndex,1)),
         amountMinor:month.totalMinor,
-        detail:`${month.itemCount} compromisso${month.itemCount===1?'':'s'} conhecido${month.itemCount===1?'':'s'}`
+        detail:c.knownCommitments(month.itemCount)
       })),
-      suggestions:['Quanto ainda falta pagar?','Quanto tenho disponível?']
+      suggestions:[c.s.remaining,c.s.available]
     };
   }
 
   return {
     intent:'unsupported',
-    title:'Posso responder com os dados desta visão.',
-    summary:'Pergunte sobre saldo disponível, quanto falta pagar, próximos meses, simulação de gasto, parcelas que terminam, por que os gastos mudaram ou o que parece fora do padrão.',
+    title:c.unsupportedTitle,
+    summary:c.unsupportedSummary,
     answerMinor:null,
     sources:[],
     cards:[],
-    suggestions:['Por que gastei mais este mês?','O que está estranho?','Dá para gastar R$ 500?','Quais parcelas terminam logo?','Quanto ainda falta pagar?','Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
+    suggestions:[c.s.change,c.s.anomalies,c.s.spend,c.s.ending,c.s.remaining,c.s.available,c.s.future]
   };
 }
