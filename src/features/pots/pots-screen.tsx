@@ -175,7 +175,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
           <strong>{l('Banco → NestBalance','Bank → NestBalance','Banco → NestBalance')}</strong>
           <small>{l('Reconhece vários cofrinhos de uma vez e atualiza os que já existem.','Recognizes several pots at once and updates existing ones.','Reconoce varias alcancías a la vez y actualiza las que ya existen.')}</small>
         </Link>
-        <button type="button" className="account-balance-tile" onClick={openNew}>
+        <button type="button" className="account-balance-tile pots-action-tile" onClick={openNew}>
           <span>{l('Manual','Manual','Manual')}</span>
           <h3>{l('Criar cofrinho','Create savings pot','Crear alcancía')}</h3>
           <strong>{l('Poucos campos','Just a few fields','Pocos campos')}</strong>
