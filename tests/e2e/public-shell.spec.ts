@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const publicRoutes=['/','/accounts','/movements','/vault','/assistant','/household','/privacy','/add'];
+const publicRoutes=['/','/accounts','/movements','/vault','/assistant','/household','/privacy','/add','/invite?token=test-invite'];
 
 for(const route of publicRoutes){
   test(route+' unauthenticated shell is safe and usable',async({page})=>{

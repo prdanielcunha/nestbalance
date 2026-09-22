@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { AuthGate } from '@/src/features/auth/auth-gate';
+import { AuthOnlyGate } from '@/src/features/auth/auth-gate';
 import { acceptHouseholdInvite } from '@/src/lib/repositories/household';
 import { useI18n } from '@/src/i18n/locale-provider';
 
@@ -62,5 +62,5 @@ function InviteAcceptance(){
 }
 
 export default function InvitePage(){
-  return <AuthGate>{()=><InviteAcceptance/>}</AuthGate>;
+  return <AuthOnlyGate>{()=><InviteAcceptance/>}</AuthOnlyGate>;
 }
