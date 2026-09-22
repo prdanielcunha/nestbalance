@@ -144,11 +144,11 @@ export function InvoiceImportSheet({
   }
 
   return <div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!working&&onClose()}>
-    <section className="capture-sheet invoice-sheet" role="dialog" aria-modal="true" aria-label="Importar fatura">
+    <section className="capture-sheet invoice-sheet" role="dialog" aria-modal="true" aria-label={l('Importar fatura','Import statement','Importar resumen')}>
       <div className="sheet-handle"/>
-      <div className="eyebrow">Fatura do cartão</div>
+      <div className="eyebrow">{l('Fatura do cartão','Card statement','Resumen de la tarjeta')}</div>
       <h2>{card.name}</h2>
-      <p>Envie a fatura. O NestBalance separa compras, parcelas e o que pode continuar nos próximos meses antes de criar qualquer lançamento.</p>
+      <p>{l('Envie a fatura. O NestBalance separa compras, parcelas e o que pode continuar nos próximos meses antes de criar qualquer lançamento.','Send the statement. NestBalance separates purchases, installments and what may continue into the next months before creating any entry.','Envía el resumen. NestBalance separa compras, cuotas y lo que puede continuar en los próximos meses antes de crear cualquier movimiento.')}</p>
 
       {!result&&<>
         <label className="file-drop invoice-file-drop">
@@ -158,38 +158,38 @@ export function InvoiceImportSheet({
             disabled={working}
             onChange={e=>{setFile(e.target.files?.[0]??null);setError('');}}
           />
-          {file?file.name:'Screenshot, foto, PDF, TXT ou CSV da fatura'}
+          {file?file.name:l('Screenshot, foto, PDF, TXT ou CSV da fatura','Screenshot, photo, PDF, TXT or CSV of the statement','Captura, foto, PDF, TXT o CSV del resumen')}
         </label>
 
         {progress&&<div className="upload-status" role="status" aria-live="polite">
-          <div><span>{progress.phase==='uploading'?'Guardando original…':'Conferindo arquivo…'}</span><b>{progress.percent}%</b></div>
+          <div><span>{progress.phase==='uploading'?l('Guardando original…','Saving original…','Guardando original…'):l('Conferindo arquivo…','Checking file…','Revisando archivo…')}</span><b>{progress.percent}%</b></div>
           <progress max="100" value={progress.percent}>{progress.percent}%</progress>
         </div>}
 
         {error&&<p className="error-copy" role="alert">{error}</p>}
         <div className="sheet-actions">
-          <button className="ghost-button" disabled={working} onClick={onClose}>Cancelar</button>
-          <button className="primary-button" disabled={!file||working} onClick={understand}>{working?'Entendendo…':'Entender fatura'}</button>
+          <button className="ghost-button" disabled={working} onClick={onClose}>{l('Cancelar','Cancel','Cancelar')}</button>
+          <button className="primary-button" disabled={!file||working} onClick={understand}>{working?l('Entendendo…','Understanding…','Entendiendo…'):l('Entender fatura','Understand statement','Entender resumen')}</button>
         </div>
       </>}
 
       {result&&<>
         <div className="invoice-summary-card">
           <div>
-            <span>ENTENDEMOS</span>
+            <span>{l('ENTENDEMOS','UNDERSTOOD','ENTENDIMOS')}</span>
             <strong>{result.preview.items.length} item{result.preview.items.length===1?'':'s'}</strong>
             <small>Fatura {result.preview.invoiceKey} · vence {dateLabel(result.preview.dueOn)}</small>
           </div>
           <div>
-            <span>CONFIRA</span>
+            <span>{l('CONFIRA','REVIEW','REVISA')}</span>
             <strong>{result.preview.reviewCount}</strong>
-            <small>{result.preview.reviewCount?'Só o que ficou ambíguo.':'Nenhuma exceção detectada.'}</small>
+            <small>{result.preview.reviewCount?l('Só o que ficou ambíguo.','Only what remained ambiguous.','Solo lo que quedó ambiguo.'):l('Nenhuma exceção detectada.','No exception detected.','No se detectó ninguna excepción.')}</small>
           </div>
         </div>
 
         <div className="invoice-money-strip">
-          <div><span>Nesta fatura</span><strong>{formatMoney(result.preview.observedMinor)}</strong></div>
-          <div><span>Parcelas futuras</span><strong>{formatMoney(result.preview.futureInstallmentsMinor)}</strong></div>
+          <div><span>{l('Nesta fatura','This statement','En este resumen')}</span><strong>{formatMoney(result.preview.observedMinor)}</strong></div>
+          <div><span>{l('Parcelas futuras','Future installments','Cuotas futuras')}</span><strong>{formatMoney(result.preview.futureInstallmentsMinor)}</strong></div>
         </div>
 
         {result.preview.statementTotalMinor!==null&&<div className={result.preview.reconciliationDeltaMinor===0?'invoice-reconciliation ok':'invoice-reconciliation review'}>
