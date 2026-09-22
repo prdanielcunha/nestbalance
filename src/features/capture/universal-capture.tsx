@@ -666,6 +666,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const readyInterpretations=indexedInterpretations.filter(({item})=>item.confidence==='high'&&!item.needsReview.includes('direction'));
   const reviewCount = attentionInterpretations.length;
   const unresolvedDirectionCount=interpretations.filter(x=>x.needsReview.includes('direction')).length;
+  const missingPotInstitution=screenSnapshot?.screenType==='savings_pots'&&screenSnapshot.pots.length>0&&!screenSnapshot.institution?.trim();
   const visibleInterpretations=showAllReview
     ? indexedInterpretations
     : attentionInterpretations.length
@@ -859,7 +860,21 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> {l('conta / parcela','bill / installment','cuenta / cuota')}</span>}
               {interpretations.length>0&&<span><b>{interpretations.length}</b> {l(interpretations.length===1?'movimento':'movimentos',interpretations.length===1?'movement':'movements',interpretations.length===1?'movimiento':'movimientos')}</span>}
             </div>
-            {screenSnapshot.pots.length>0&&<div className="screen-pot-review">
+            {screenSnapshot.pots.length>0&&<>
+              {!screenSnapshot.institution?.trim()&&<div className="screen-pot-source-confirm">
+                <label htmlFor="screen-pot-institution">{l('De qual banco são estes cofrinhos?','Which bank are these savings pots from?','¿De qué banco son estas alcancías?')}</label>
+                <input
+                  id="screen-pot-institution"
+                  className="pot-text-input"
+                  value={screenSnapshot.institution||''}
+                  onChange={event=>setScreenSnapshot(current=>current?{...current,institution:event.target.value.slice(0,120)}:current)}
+                  placeholder={l('Ex.: Mercado Pago','E.g. Mercado Pago','Ej.: Mercado Pago')}
+                  maxLength={120}
+                  autoComplete="organization"
+                />
+                <small>{l('Só perguntamos porque o nome do banco não apareceu no print. Isso evita duplicar o mesmo cofrinho quando você enviar outra tela.','We only ask because the bank name did not appear in the screenshot. This prevents duplicates when you send another screen.','Solo preguntamos porque el nombre del banco no apareció en la captura. Esto evita duplicar la misma alcancía cuando envíes otra pantalla.')}</small>
+              </div>}
+              <div className="screen-pot-review">
               {screenSnapshot.pots.map((pot,index)=><div className="screen-pot-review-row" key={`${pot.name}-${index}`}>
                 <div>
                   <strong>{pot.name}</strong>
@@ -870,7 +885,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   <small>{pot.goalMinor&&pot.goalMinor>0?l(`Meta ${formatMoney(pot.goalMinor)}`,`Goal ${formatMoney(pot.goalMinor)}`,`Meta ${formatMoney(pot.goalMinor)}`):l('Sem meta encontrada','No goal found','Sin meta encontrada')}</small>
                 </div>
               </div>)}
-            </div>}
+            </div></>}
             <small>{l('Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.','Balance, card limit and saved money do not become expenses. Only movements and bills are counted that way.','El saldo, el límite y el dinero guardado no se convierten en gastos. Solo los movimientos y las cuentas entran en esa categoría.')}</small>
           </div>}
 
@@ -946,10 +961,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setScreenSnapshot(null); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
-            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
+            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||Boolean(missingPotInstitution)||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
               ? (upload?.phase === 'verifying' ? l('Conferindo…','Checking…','Revisando…') : l('Guardando…','Saving…','Guardando…'))
               : unresolvedDirectionCount
                 ? l(`Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`,`${unresolvedDirectionCount} confirmation${unresolvedDirectionCount===1?'':'s'} remaining`,`Falta${unresolvedDirectionCount===1?'':'n'} ${unresolvedDirectionCount} confirmación${unresolvedDirectionCount===1?'':'es'}`)
+                : missingPotInstitution
+                ? l('Informe o banco acima','Enter the bank above','Indica el banco arriba')
                 : paymentMatches.length>0&&!paymentMatchDismissed
                   ? l('Escolha a conta acima','Choose the bill above','Elige la cuenta de arriba')
                   : l('Guardar','Save','Guardar')}</button>
