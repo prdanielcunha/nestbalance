@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin.js';
-import { requireFirebaseUser } from './auth.js';
+import { invalidateNestBalanceSessionCache, requireFirebaseUser } from './auth.js';
 import { normalizeDeviceContext, type DeviceContext } from '../src/core/security.js';
 
 function error(res:Response,status:number,code:string){
@@ -94,6 +94,7 @@ export async function revokeNestBalanceSessions(req:Request,res:Response){
       createdAt:FieldValue.serverTimestamp()
     });
     await batch.commit();
+    invalidateNestBalanceSessionCache(user.uid);
     return res.json({ok:true,revokedBeforeSeconds});
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION'];
