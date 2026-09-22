@@ -73,6 +73,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [localOcrPercent,setLocalOcrPercent]=useState(0);
   const [geminiStatus,setGeminiStatus]=useState<GeminiFallbackStatus|null>(null);
   const [geminiWorking,setGeminiWorking]=useState(false);
+  const [geminiUsed,setGeminiUsed]=useState(false);
   const imageInputRef=useRef<HTMLInputElement|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const textRef=useRef<HTMLTextAreaElement|null>(null);
@@ -125,6 +126,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setLocalOcrPercent(0);
     setGeminiStatus(null);
     setGeminiWorking(false);
+    setGeminiUsed(false);
     setOpen(false);
     onClose?.();
     setText('');
@@ -165,6 +167,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setLocalOcrPercent(0);
     setGeminiStatus(null);
     setGeminiWorking(false);
+    setGeminiUsed(false);
     setError('');
     setNotice(noticeText);
   }
@@ -352,6 +355,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       });
       const extraction=result.extraction;
       setAiAnalysis(null);
+      setGeminiUsed(true);
 
       if(extraction.screen){
         const screen=extraction.screen;
