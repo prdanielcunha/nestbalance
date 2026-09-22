@@ -18,6 +18,7 @@ import { localeLabel, type AppLocale } from '@/src/core/locale';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 import { PwaInstallCard } from '@/src/features/pwa/pwa-install-card';
+import { ThemeChoice } from '@/src/features/theme/theme-runtime';
 
 
 export function HouseholdSettings({
@@ -306,6 +307,21 @@ export function HouseholdSettings({
           </button>}
         </div>
         <p className="household-helper">{activeLocale==='en'?'Dates, money and the main navigation follow this language. Personal financial privacy does not change.':activeLocale==='es'?'Las fechas, el dinero y la navegación principal siguen este idioma. La privacidad financiera personal no cambia.':'Datas, dinheiro e a navegação principal seguem este idioma. A privacidade financeira pessoal não muda.'}</p>
+      </section>
+
+      <section className="household-panel">
+        <div className="section-title">
+          <div>
+            <h2>{l('Aparência','Appearance','Apariencia')}</h2>
+            <span>{l('uma preferência só sua','a personal preference','una preferencia personal')}</span>
+          </div>
+        </div>
+        <p className="household-helper">{l(
+          'O modo escuro é o visual oficial do NestBalance. Se você preferir, pode usar o modo claro; sua escolha fica salva neste aparelho.',
+          'Dark mode is the official NestBalance look. If you prefer, you can use light mode; your choice stays saved on this device.',
+          'El modo oscuro es el aspecto oficial de NestBalance. Si prefieres, puedes usar el modo claro; tu elección queda guardada en este dispositivo.'
+        )}</p>
+        <ThemeChoice/>
       </section>
 
       <section className="household-panel proactivity-panel">
