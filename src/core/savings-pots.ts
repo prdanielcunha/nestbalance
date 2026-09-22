@@ -35,7 +35,7 @@ export type SavingsPotGroup<T extends SavingsPotLike=SavingsPotLike>={
   sources:T[];
 };
 
-const OCR_ICON_PREFIXES=new Set(['t','v','vv','w','ww','i','ii','l','ll']);
+const OCR_ICON_PREFIXES=new Set(['t','v','vv','vc','vy','vw','w','ww','e','i','ii','l','ll','c','y','iv','vi']);
 
 export function cleanSavingsPotDisplayName(value:string){
   let clean=String(value||'')
