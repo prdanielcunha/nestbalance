@@ -67,7 +67,7 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
   let lastPotIndex=-1;
 
   for(const line of lines){
-    const meta=/\bmeta\s*:?\s*(R\$\s*\d[\d.]*?(?:,\d{1,2})?)/i.exec(line);
+    const meta=/\bmeta\s*:?\s*(R\$\s*\d[\d.]*?(?:,\d{1,2})?(?=\s|$|[^\d.,]))/i.exec(line);
     const metaGoalMinor=meta?parseMoneyMinor(meta[1]):null;
     const valueLine=meta?cleanLine(line.replace(meta[0],'')):line;
     const moneyMatches=[...valueLine.matchAll(MONEY)];
