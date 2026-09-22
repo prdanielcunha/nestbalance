@@ -87,30 +87,23 @@ const ExtractionSchema=z.object({
 
 function normalize(value:z.infer<typeof ExtractionSchema>):AiFinancialExtraction{
   const installment=value.installment&&value.installment.current<=value.installment.total?value.installment:null;
-  const dateIso=value.dateIso&&/^\d{4}-\d{2}-\d{2}$/.test(value.dateIso)?value.dateIso:null;
   const time=value.time&&/^\d{2}:\d{2}(?::\d{2})?$/.test(value.time)?value.time:null;
   const amountMinor=value.amountMinor&&value.amountMinor>0?value.amountMinor:null;
-  const normalizeDate=(raw:string|null)=>{
-    if(!raw||!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
-    const [year,month,day]=raw.split('-').map(Number);
-    const parsed=new Date(year,month-1,day);
-    return parsed.getFullYear()===year&&parsed.getMonth()===month-1&&parsed.getDate()===day?raw:null;
-  };
   const screen=value.screen?{
     ...value.screen,
     institution:value.screen.institution?.normalize('NFKC').replace(/\s+/g,' ').trim()||null,
     accounts:value.screen.accounts.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim()})),
-    pots:value.screen.pots.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim(),targetDate:normalizeDate(item.targetDate)})),
-    cards:value.screen.cards.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim(),dueOn:normalizeDate(item.dueOn)})),
-    commitments:value.screen.commitments.map(item=>({...item,description:item.description.normalize('NFKC').replace(/\s+/g,' ').trim(),dueOn:normalizeDate(item.dueOn)})),
-    movements:value.screen.movements.map(item=>({...item,description:item.description.normalize('NFKC').replace(/\s+/g,' ').trim(),dateIso:normalizeDate(item.dateIso),needsReview:item.needsReview||item.direction==='unknown'||item.confidence<0.86}))
+    pots:value.screen.pots.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim(),targetDate:normalizeIsoDate(item.targetDate)})),
+    cards:value.screen.cards.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim(),dueOn:normalizeIsoDate(item.dueOn)})),
+    commitments:value.screen.commitments.map(item=>({...item,description:item.description.normalize('NFKC').replace(/\s+/g,' ').trim(),dueOn:normalizeIsoDate(item.dueOn)})),
+    movements:value.screen.movements.map(item=>({...item,description:item.description.normalize('NFKC').replace(/\s+/g,' ').trim(),dateIso:normalizeIsoDate(item.dateIso),needsReview:item.needsReview||item.direction==='unknown'||item.confidence<0.86}))
   }:null;
   return {
     ...value,
     amountMinor,
     amountCandidatesMinor:[...new Set(value.amountCandidatesMinor.filter(v=>v>0))].slice(0,5),
     installment,
-    dateIso,
+    dateIso:normalizeIsoDate(value.dateIso),
     time,
     screen,
     needsConfirmation:value.needsConfirmation||
