@@ -34,3 +34,15 @@ test('round-up automation saves the cents needed for the next whole real',()=>{
   assert.equal(automationContributionMinor(automation,1237),63);
   assert.equal(automationContributionMinor(automation,1200),0);
 });
+
+
+test('monthly automation clamps the intended day instead of skipping short months',()=>{
+  const automation=normalizeSavingsPotAutomation({
+    enabled:true,kind:'frequency',mode:'fixed',amountMinor:1000,frequency:'monthly',anchorDate:'2026-01-31'
+  });
+  assert.ok(automation);
+  assert.deepEqual(
+    frequencyOccurrenceDates(automation,'2026-04-30'),
+    ['2026-01-31','2026-02-28','2026-03-31','2026-04-30']
+  );
+});
