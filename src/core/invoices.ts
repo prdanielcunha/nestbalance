@@ -179,6 +179,7 @@ export function parseInvoiceText(input:{
   const invoiceKey=dueOn.slice(0,7);
 
   let ignoredLines=0;
+  let hasCreditOrRefund=false;
   const items:InvoicePreviewItem[]=[];
 
   const lines=text.split(/\r?\n/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
@@ -205,7 +206,10 @@ export function parseInvoiceText(input:{
     const installment=installmentFromLine(line);
     const needsReview:string[]=[];
     if(!purchaseOn) needsReview.push('purchase_date');
-    if(isCreditOrRefundLine(line)) needsReview.push('credit_or_refund');
+    if(isCreditOrRefundLine(line)){
+      needsReview.push('credit_or_refund');
+      hasCreditOrRefund=true;
+    }
     if(installment&&dueDateSource!=='document') needsReview.push('invoice_due_date');
 
     const schedule=installment
@@ -236,6 +240,8 @@ export function parseInvoiceText(input:{
     sum+item.schedule.slice(1).reduce((inner,part)=>inner+part.amountMinor,0)
   ,0);
 
+  const globalNeedsReview=hasCreditOrRefund?['credit_or_refund_present']:[];
+
   return {
     parserVersion:'invoice-v0.1',
     invoiceKey,
@@ -243,8 +249,8 @@ export function parseInvoiceText(input:{
     dueDateSource,
     items,
     ignoredLines,
-    reviewCount:items.filter(item=>item.needsReview.length>0).length,
-    globalNeedsReview:[],
+    reviewCount:items.filter(item=>item.needsReview.length>0).length+globalNeedsReview.length,
+    globalNeedsReview,
     statementTotalMinor:null,
     reconciliationDeltaMinor:null,
     observedMinor,
