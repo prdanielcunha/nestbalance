@@ -115,3 +115,25 @@ test('validação rejeita parcela impossível',()=>{
   });
   assert.deepEqual(result,{ok:false,reason:'INVALID_INSTALLMENT'});
 });
+
+
+test('estorno global permanece bloqueando liquidação mesmo após remover o item ambíguo',()=>{
+  const base=preview({
+    globalNeedsReview:['credit_or_refund_present'],
+    items:[{
+      ...preview().items[0],
+      id:'refund-1',
+      description:'Estorno mercado',
+      purchaseOn:'2026-09-03',
+      needsReview:['credit_or_refund']
+    }],
+    statementTotalMinor:null,
+    reconciliationDeltaMinor:null,
+    observedMinor:3990
+  });
+  const result=removeInvoiceReviewItem({preview:base,itemId:'refund-1'});
+  assert.equal(result.items.length,0);
+  assert.ok(result.globalNeedsReview.includes('credit_or_refund_present'));
+  assert.ok(result.globalNeedsReview.includes('no_invoice_items'));
+  assert.ok(result.reviewCount>=2);
+});
