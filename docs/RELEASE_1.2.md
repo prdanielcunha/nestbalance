@@ -44,6 +44,7 @@ Imported bank pots use a bank-mirror mode: later screenshots refresh their real-
 
 For manually tracked pots, users can enable:
 
+- daily reserve;
 - weekly reserve;
 - reserve every 15 days;
 - monthly reserve;
