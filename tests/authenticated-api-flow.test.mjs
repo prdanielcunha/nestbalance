@@ -184,6 +184,88 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     },403);
     assert.equal(memberCannotManageFinance.json.error,'HOUSEHOLD_ACCESS_DENIED');
 
+    const matchedPayment=await post('/api/commitments/match-payment',owner.token,{
+      householdId,
+      amountMinor:11990,
+      description:'Pix Internet Vivo',
+      observedOn:'2026-09-10'
+    });
+    assert.equal(matchedPayment.json.matches[0]?.commitment?.id,commitment.json.id);
+    assert.ok(matchedPayment.json.matches[0]?.score>=82);
+
+    const paidInternet=await post('/api/commitments/pay',owner.token,{
+      householdId,
+      commitmentId:commitment.json.id,
+      paidOn:'2026-09-10'
+    });
+    assert.equal(paidInternet.status,201);
+    assert.equal(paidInternet.json.status,'paid');
+    assert.equal(paidInternet.json.periodKey,'2026-09');
+
+    const homeAfterPayment=await post('/api/home',owner.token,{householdId});
+    assert.equal(homeAfterPayment.json.commitments.some(item=>item.id===commitment.json.id&&item.paidThisMonth===true),true);
+    assert.equal(homeAfterPayment.json.transactions.some(item=>item.source==='commitment_payment'&&item.commitmentId===commitment.json.id),true);
+
+    const assistantAfterPayment=await post('/api/assistant/answer',owner.token,{
+      householdId,
+      question:'Quanto ainda falta pagar?',
+      view:'household'
+    });
+    assert.equal(assistantAfterPayment.json.grounded,true);
+    assert.equal(assistantAfterPayment.json.answer.intent,'remaining_to_pay');
+    assert.equal(assistantAfterPayment.json.answer.sources.some(item=>item.id===commitment.json.id),false);
+
+    const undoneInternet=await post('/api/commitments/undo-payment',owner.token,{
+      householdId,
+      commitmentId:commitment.json.id,
+      periodKey:'2026-09'
+    });
+    assert.equal(undoneInternet.json.status,'reversed');
+
+    const homeAfterUndo=await post('/api/home',owner.token,{householdId});
+    assert.equal(homeAfterUndo.json.commitments.some(item=>item.id===commitment.json.id&&item.paidThisMonth===false),true);
+    assert.equal(homeAfterUndo.json.transactions.some(item=>item.source==='commitment_payment'&&item.commitmentId===commitment.json.id),false);
+
+    const assistantAfterUndo=await post('/api/assistant/answer',owner.token,{
+      householdId,
+      question:'Quanto ainda falta pagar?',
+      view:'household'
+    });
+    assert.equal(assistantAfterUndo.json.answer.intent,'remaining_to_pay');
+    assert.equal(assistantAfterUndo.json.answer.sources.some(item=>item.id===commitment.json.id&&item.amountMinor===11990),true);
+
+    await post('/api/commitments/pay',owner.token,{
+      householdId,
+      commitmentId:commitment.json.id,
+      paidOn:'2026-09-10'
+    });
+    await post('/api/commitments/pay',owner.token,{
+      householdId,
+      commitmentId:commitment.json.id,
+      paidOn:'2026-10-10'
+    });
+
+    const blockedOldUndo=await post('/api/commitments/undo-payment',owner.token,{
+      householdId,
+      commitmentId:commitment.json.id,
+      periodKey:'2026-09'
+    },409);
+    assert.equal(blockedOldUndo.json.error,'PAYMENT_UNDO_BLOCKED_BY_LATER_PAYMENT');
+
+    const undoOctober=await post('/api/commitments/undo-payment',owner.token,{
+      householdId,
+      commitmentId:commitment.json.id,
+      periodKey:'2026-10'
+    });
+    assert.equal(undoOctober.json.status,'reversed');
+
+    const undoSeptemberAfterOctober=await post('/api/commitments/undo-payment',owner.token,{
+      householdId,
+      commitmentId:commitment.json.id,
+      periodKey:'2026-09'
+    });
+    assert.equal(undoSeptemberAfterOctober.json.status,'reversed');
+
     const ownerFinal=await post('/api/session/bootstrap',owner.token,{householdId,device:ownerDevice});
     assert.equal(ownerFinal.json.householdId,householdId);
     assert.equal(ownerFinal.json.created,false);
