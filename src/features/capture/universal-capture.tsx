@@ -807,16 +807,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               <span>{l('O NESTBALANCE ENTENDEU','NESTBALANCE UNDERSTOOD','NESTBALANCE ENTENDIÓ')}</span>
               <strong>{interpretations.length === 1&&screenResourceCount===0
                 ? `${interpretations[0].description} · ${formatMoney(interpretations[0].money.amountMinor)}`
-                : `${totalOrganizedCount} itens separados por tipo`}</strong>
+                : l(`${totalOrganizedCount} itens separados por tipo`,`${totalOrganizedCount} items separated by type`,`${totalOrganizedCount} elementos separados por tipo`)}</strong>
               <small>{geminiUsed
-                ? 'Gemini sobre OCR sanitizado; imagem não enviada. Confirme antes de guardar.'
+                ? l('Gemini sobre OCR sanitizado; imagem não enviada. Confirme antes de guardar.','Gemini used sanitized OCR; the image was not sent. Confirm before saving.','Gemini usó OCR sanitizado; la imagen no se envió. Confirma antes de guardar.')
                 : aiAnalysis
-                  ? 'Interpretação por IA; confirme antes de guardar.'
+                  ? l('Interpretação por IA; confirme antes de guardar.','AI interpretation; confirm before saving.','Interpretación por IA; confirma antes de guardar.')
                   : analysis?.state === 'extracted'
-                    ? 'Leitura local/determinística; sem IA remota.'
+                    ? l('Leitura local/determinística; sem IA remota.','Local/deterministic reading; no remote AI.','Lectura local/determinista; sin IA remota.')
                     : reviewCount
-                      ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.`
-                      : 'Os dados principais estão claros.'}</small>
+                      ? l(`${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.`,`${reviewCount} item${reviewCount===1?' needs':'s need'} review.`,`${reviewCount} elemento${reviewCount===1?' necesita':'s necesitan'} revisión.`)
+                      : l('Os dados principais estão claros.','The main data is clear.','Los datos principales están claros.')}</small>
             </div>
             <div>
               <span>{l('VAI FICAR ASSIM','IT WILL BE SAVED AS','SE GUARDARÁ ASÍ')}</span>
@@ -827,25 +827,25 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           {screenSnapshot&&<div className="financial-screen-summary">
             <div className="financial-screen-summary-head">
-              <span>{screenSnapshot.institution||'Tela financeira'}</span>
-              <strong>Entendi o que cada número significa.</strong>
+              <span>{screenSnapshot.institution||l('Tela financeira','Financial screen','Pantalla financiera')}</span>
+              <strong>{l('Entendi o que cada número significa.','I understood what each number means.','Entendí qué significa cada número.')}</strong>
             </div>
             <div className="financial-screen-chips">
-              {screenSnapshot.accounts.length>0&&<span><b>{screenSnapshot.accounts.length}</b> saldo{screenSnapshot.accounts.length===1?'':'s'}</span>}
-              {screenSnapshot.pots.length>0&&<span><b>{screenSnapshot.pots.length}</b> dinheiro guardado</span>}
-              {screenSnapshot.cards.length>0&&<span><b>{screenSnapshot.cards.length}</b> cartão{screenSnapshot.cards.length===1?'':'ões'}</span>}
-              {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> conta{screenSnapshot.commitments.length===1?'':'s'} / parcela{screenSnapshot.commitments.length===1?'':'s'}</span>}
-              {interpretations.length>0&&<span><b>{interpretations.length}</b> movimento{interpretations.length===1?'':'s'}</span>}
+              {screenSnapshot.accounts.length>0&&<span><b>{screenSnapshot.accounts.length}</b> {l(screenSnapshot.accounts.length===1?'saldo':'saldos',screenSnapshot.accounts.length===1?'balance':'balances',screenSnapshot.accounts.length===1?'saldo':'saldos')}</span>}
+              {screenSnapshot.pots.length>0&&<span><b>{screenSnapshot.pots.length}</b> {l('dinheiro guardado','saved money','dinero guardado')}</span>}
+              {screenSnapshot.cards.length>0&&<span><b>{screenSnapshot.cards.length}</b> {l(screenSnapshot.cards.length===1?'cartão':'cartões',screenSnapshot.cards.length===1?'card':'cards',screenSnapshot.cards.length===1?'tarjeta':'tarjetas')}</span>}
+              {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> {l('conta / parcela','bill / installment','cuenta / cuota')}</span>}
+              {interpretations.length>0&&<span><b>{interpretations.length}</b> {l(interpretations.length===1?'movimento':'movimentos',interpretations.length===1?'movement':'movements',interpretations.length===1?'movimiento':'movimientos')}</span>}
             </div>
-            <small>Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.</small>
+            <small>{l('Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.','Balance, card limit and saved money do not become expenses. Only movements and bills are counted that way.','El saldo, el límite y el dinero guardado no se convierten en gastos. Solo los movimientos y las cuentas entran en esa categoría.')}</small>
           </div>}
 
-          {matchingPayments&&interpretations.length===1&&<p className="confidence-note" role="status">Conferindo se isso paga alguma conta que já estava na sua lista…</p>}
+          {matchingPayments&&interpretations.length===1&&<p className="confidence-note" role="status">{l('Conferindo se isso paga alguma conta que já estava na sua lista…','Checking whether this pays a bill already on your list…','Comprobando si esto paga alguna cuenta que ya estaba en tu lista…')}</p>}
 
           {paymentMatches.length>0&&!paymentMatchDismissed&&<div className="payment-match-panel">
             <div>
-              <span>{paymentMatches.length===1?'Parece que encontramos a conta':'Qual conta você pagou?'}</span>
-              <strong>{paymentMatches.length===1?'Isso pode quitar algo que já estava pendente.':'Há mais de uma conta parecida. Escolha só se tiver certeza.'}</strong>
+              <span>{paymentMatches.length===1?l('Parece que encontramos a conta','Looks like we found the bill','Parece que encontramos la cuenta'):l('Qual conta você pagou?','Which bill did you pay?','¿Qué cuenta pagaste?')}</span>
+              <strong>{paymentMatches.length===1?l('Isso pode quitar algo que já estava pendente.','This may settle something that was already pending.','Esto puede liquidar algo que ya estaba pendiente.'):l('Há mais de uma conta parecida. Escolha só se tiver certeza.','There is more than one similar bill. Choose only if you are sure.','Hay más de una cuenta parecida. Elige solo si estás seguro.')}</strong>
             </div>
             <div className="payment-match-options">
               {paymentMatches.map(candidate=><button
@@ -854,20 +854,20 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                 disabled={Boolean(payingMatchId)}
                 onClick={()=>void confirmMatchedPayment(candidate)}
               >
-                <span>{candidate.commitment.dueDay?'Dia '+candidate.commitment.dueDay:'Na sua lista'}</span>
+                <span>{candidate.commitment.dueDay?l('Dia '+candidate.commitment.dueDay,'Day '+candidate.commitment.dueDay,'Día '+candidate.commitment.dueDay):l('Na sua lista','On your list','En tu lista')}</span>
                 <strong>{candidate.commitment.description}</strong>
                 <b>{formatMoney(candidate.commitment.amountMinor)}</b>
-                <em>{payingMatchId===candidate.commitment.id?'Marcando…':'Marcar como pago'}</em>
+                <em>{payingMatchId===candidate.commitment.id?l('Marcando…','Marking…','Marcando…'):l('Marcar como pago','Mark as paid','Marcar como pagado')}</em>
               </button>)}
             </div>
             <button type="button" className="payment-match-none" disabled={Boolean(payingMatchId)} onClick={()=>setPaymentMatchDismissed(true)}>
-              Nenhuma dessas
+              {l('Nenhuma dessas','None of these','Ninguna de estas')}
             </button>
           </div>}
 
           {interpretations.length>1&&<div className="capture-review-summary">
-            <div><strong>{readyInterpretations.length}</strong><span>já organizado{readyInterpretations.length===1?'':'s'}</span></div>
-            <div className={attentionInterpretations.length?'attention':''}><strong>{attentionInterpretations.length}</strong><span>para conferir</span></div>
+            <div><strong>{readyInterpretations.length}</strong><span>{l(readyInterpretations.length===1?'já organizado':'já organizados','already organized',readyInterpretations.length===1?'ya organizado':'ya organizados')}</span></div>
+            <div className={attentionInterpretations.length?'attention':''}><strong>{attentionInterpretations.length}</strong><span>{l('para conferir','to review','para revisar')}</span></div>
           </div>}
 
           <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
@@ -888,16 +888,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               ? <div className="inline-direction-choice">
                   <button type="button" onClick={()=>chooseImportedDirection(index,'expense')}>{l('Eu paguei','I paid','Yo pagué')}</button>
                   <button type="button" onClick={()=>chooseImportedDirection(index,'income')}>{l('Eu recebi','I received','Yo recibí')}</button>
-                  <button type="button" onClick={()=>chooseImportedDirection(index,'transfer')}>Mudou de conta</button>
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'transfer')}>{l('Mudou de conta','Moved accounts','Cambió de cuenta')}</button>
                 </div>
-              : interpretation.confidence !== 'high' && <em>Confira este item</em>}
+              : interpretation.confidence !== 'high' && <em>{l('Confira este item','Review this item','Revisa este elemento')}</em>}
           </div>)}</div>
 
           {hiddenReadyCount>0&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(true)}>
             Ver {hiddenReadyCount} item{hiddenReadyCount===1?'':'s'} já organizado{hiddenReadyCount===1?'':'s'}
           </button>}
           {showAllReview&&interpretations.length>3&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(false)}>
-            Mostrar só o que importa
+            {l('Mostrar só o que importa','Show only what matters','Mostrar solo lo que importa')}
           </button>}
 
           {reviewCount > 0 && <p className="confidence-note">{unresolvedDirectionCount
