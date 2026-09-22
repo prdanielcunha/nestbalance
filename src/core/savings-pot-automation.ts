@@ -12,6 +12,14 @@ export type SavingsPotAutomation={
   anchorDate:string|null;
 };
 
+function validIsoDate(value:unknown){
+  const text=String(value||'');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  const [year,month,day]=text.split('-').map(Number);
+  const date=new Date(Date.UTC(year,month-1,day));
+  return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day?text:null;
+}
+
 export function normalizeSavingsPotAutomation(value:unknown):SavingsPotAutomation|null{
   if(!value||typeof value!=='object') return null;
   const raw=value as Record<string,unknown>;
@@ -25,7 +33,7 @@ export function normalizeSavingsPotAutomation(value:unknown):SavingsPotAutomatio
   const percent=Number(raw.percentBps);
   const percentBps=Number.isInteger(percent)&&percent>=1&&percent<=10_000?percent:null;
   const frequency=['weekly','biweekly','monthly'].includes(String(raw.frequency))?String(raw.frequency) as SavingsPotFrequency:null;
-  const anchorDate=/^\d{4}-\d{2}-\d{2}$/.test(String(raw.anchorDate||''))?String(raw.anchorDate):null;
+  const anchorDate=validIsoDate(raw.anchorDate);
 
   if(kind==='frequency'&&(!frequency||!amountMinor)) return null;
   if(kind==='roundup') return {enabled,kind,mode:'fixed',amountMinor:null,percentBps:null,frequency:null,anchorDate};
