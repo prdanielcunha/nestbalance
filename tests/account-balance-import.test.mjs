@@ -29,3 +29,10 @@ test('preserves ordinary Brazilian decimal formatting for balances',()=>{
   assert.ok(screen);
   assert.equal(screen.accounts[0].balanceMinor,123456);
 });
+
+
+test('reads thousands plus superscript cents when OCR concatenates them',()=>{
+  const screen=parseAccountBalanceFromOcr('Saldo\nR$ 2.72400\nCartão de crédito\nR$ 26293');
+  assert.ok(screen);
+  assert.equal(screen.accounts[0].balanceMinor,272400);
+});
