@@ -146,7 +146,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
           : l('Seus cofrinhos, em todos os bancos.','Your savings pots, across every bank.','Tus alcancías, en todos tus bancos.')}</h1>
       <p>{groups.length
         ? l(
-            `${groups.length} objetivo${groups.length===1?'':'s'} · ${institutionCount} origem${institutionCount===1?'':'ens'}. O total é dinheiro guardado, não dinheiro gasto.`,
+            `${groups.length} objetivo${groups.length===1?'':'s'} · ${institutionCount} ${institutionCount===1?'origem':'origens'}. O total é dinheiro guardado, não dinheiro gasto.`,
             `${groups.length} goal${groups.length===1?'':'s'} · ${institutionCount} source${institutionCount===1?'':'s'}. This is saved money, not spending.`,
             `${groups.length} objetivo${groups.length===1?'':'s'} · ${institutionCount} origen${institutionCount===1?'':'es'}. Es dinero guardado, no un gasto.`
           )
