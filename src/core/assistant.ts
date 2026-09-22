@@ -399,35 +399,74 @@ export function answerAssistantQuestion(input:{
     if(!anomalies.length){
       return {
         intent,
-        title:'Nada fora do padrão conhecido chamou atenção.',
-        summary:'Não encontrei duplicidades prováveis nem valores claramente acima do histórico disponível neste mês. Isso não garante que esteja tudo certo; significa apenas que não apareceu um sinal forte nos dados conhecidos.',
+        title:tr(locale,'Nada fora do padrão conhecido chamou atenção.','Nothing outside the known pattern stood out.','Nada fuera del patrón conocido llamó la atención.'),
+        summary:tr(
+          locale,
+          'Não encontrei duplicidades prováveis nem valores claramente acima do histórico disponível neste mês. Isso não garante que esteja tudo certo; significa apenas que não apareceu um sinal forte nos dados conhecidos.',
+          'I did not find likely duplicates or values clearly above the available history this month. That does not guarantee everything is correct; it only means there was no strong signal in the known data.',
+          'No encontré duplicados probables ni valores claramente por encima del historial disponible este mes. Eso no garantiza que todo esté correcto; solo significa que no apareció una señal fuerte en los datos conocidos.'
+        ),
         answerMinor:null,
         sources:[],
         cards:[],
-        suggestions:['Por que gastei mais este mês?','Quanto ainda falta pagar?','O que já está comprometido nos próximos meses?']
+        suggestions:[prompts.change,prompts.remaining,prompts.future]
       };
     }
 
+    const anomalyDetail=(item:(typeof anomalies)[number])=>{
+      if(item.type==='possible_duplicate'){
+        return tr(
+          locale,
+          'Mais de um lançamento igual apareceu no mesmo dia. Pode estar certo, mas vale conferir.',
+          'More than one identical entry appeared on the same day. It may be correct, but it is worth checking.',
+          'Apareció más de un movimiento igual el mismo día. Puede estar bien, pero conviene revisarlo.'
+        );
+      }
+      return tr(
+        locale,
+        `Este valor ficou acima do histórico conhecido${item.baselineMinor?` de ${formatMoneyMinor(item.baselineMinor,locale)}`:''}.`,
+        `This amount is above the known history${item.baselineMinor?` of ${formatMoneyMinor(item.baselineMinor,locale)}`:''}.`,
+        `Este valor está por encima del historial conocido${item.baselineMinor?` de ${formatMoneyMinor(item.baselineMinor,locale)}`:''}.`
+      );
+    };
+
     return {
       intent,
-      title:`Encontrei ${anomalies.length} ${anomalies.length===1?'item':'itens'} que vale conferir.`,
-      summary:'São sinais, não acusações de erro. Eu marco apenas possíveis duplicidades e valores bem acima do histórico da mesma descrição.',
+      title:tr(
+        locale,
+        `Encontrei ${anomalies.length} ${anomalies.length===1?'item':'itens'} que vale conferir.`,
+        `I found ${anomalies.length} item${anomalies.length===1?'':'s'} worth checking.`,
+        `Encontré ${anomalies.length} elemento${anomalies.length===1?'':'s'} que conviene revisar.`
+      ),
+      summary:tr(
+        locale,
+        'São sinais, não acusações de erro. Eu marco apenas possíveis duplicidades e valores bem acima do histórico da mesma descrição.',
+        'These are signals, not claims that something is wrong. I only flag possible duplicates and values well above the history for the same description.',
+        'Son señales, no afirmaciones de error. Solo marco posibles duplicados y valores muy por encima del historial de la misma descripción.'
+      ),
       answerMinor:null,
       sources:anomalies.map(item=>({
         kind:'transaction' as const,
         id:item.transactionId,
         label:item.description,
         amountMinor:item.amountMinor,
-        detail:item.detail
+        detail:anomalyDetail(item)
       })),
       cards:anomalies.slice(0,6).map(item=>({
-        label:item.type==='possible_duplicate'?'Possível duplicidade':'Valor diferente do normal',
+        label:item.type==='possible_duplicate'
+          ? tr(locale,'Possível duplicidade','Possible duplicate','Posible duplicado')
+          : tr(locale,'Valor diferente do normal','Amount outside the usual pattern','Valor fuera de lo habitual'),
         amountMinor:item.amountMinor,
         detail:item.baselineMinor
-          ? `Histórico típico: ${formatMoneyMinor(item.baselineMinor)} · diferença de ${formatMoneyMinor(item.differenceMinor||0)}`
-          : item.detail
+          ? tr(
+              locale,
+              `Histórico típico: ${formatMoneyMinor(item.baselineMinor,locale)} · diferença de ${formatMoneyMinor(item.differenceMinor||0,locale)}`,
+              `Typical history: ${formatMoneyMinor(item.baselineMinor,locale)} · difference of ${formatMoneyMinor(item.differenceMinor||0,locale)}`,
+              `Historial típico: ${formatMoneyMinor(item.baselineMinor,locale)} · diferencia de ${formatMoneyMinor(item.differenceMinor||0,locale)}`
+            )
+          : anomalyDetail(item)
       })),
-      suggestions:['Por que gastei mais este mês?','Quanto ainda falta pagar?','Quais parcelas terminam logo?']
+      suggestions:[prompts.change,prompts.remaining,prompts.ending]
     };
   }
 
@@ -439,7 +478,7 @@ export function answerAssistantQuestion(input:{
         id:item.id,
         label:item.description,
         amountMinor:positive(item.amountMinor),
-        detail:'Compromisso pendente'
+        detail:tr(locale,'Compromisso pendente','Pending commitment','Compromiso pendiente')
       }));
 
     const invoiceSources=input.invoices
@@ -449,11 +488,11 @@ export function answerAssistantQuestion(input:{
         return {
           kind:'invoice' as const,
           id:item.id,
-          label:`Fatura ${item.invoiceKey}`,
+          label:tr(locale,`Fatura ${item.invoiceKey}`,`Statement ${item.invoiceKey}`,`Resumen ${item.invoiceKey}`),
           amountMinor:open,
           detail:item.status==='partial'
-            ? 'Valor confirmado até agora; a fatura ainda está em revisão'
-            : 'Fatura confirmada e ainda não paga'
+            ? tr(locale,'Valor confirmado até agora; a fatura ainda está em revisão','Confirmed amount so far; the statement is still under review','Valor confirmado hasta ahora; el resumen todavía está en revisión')
+            : tr(locale,'Fatura confirmada e ainda não paga','Confirmed statement not paid yet','Resumen confirmado y todavía no pagado')
         };
       })
       .filter(item=>item.amountMinor>0);
@@ -466,25 +505,42 @@ export function answerAssistantQuestion(input:{
 
     return {
       intent,
-      title:total>0?'Ainda há valores conhecidos para pagar.':'Nada pendente conhecido agora.',
+      title:total>0
+        ? tr(locale,'Ainda há valores conhecidos para pagar.','There are still known amounts to pay.','Todavía hay valores conocidos por pagar.')
+        : tr(locale,'Nada pendente conhecido agora.','No known pending amount right now.','No hay valores pendientes conocidos ahora.'),
       summary:total>0
-        ? `O NestBalance encontrou ${sources.length} obrigação${sources.length===1?'':'ões'} aberta${sources.length===1?'':'s'} nesta visão.${partialInvoices?` ${partialInvoices} fatura${partialInvoices===1?' está':'s estão'} em revisão, então o total pode aumentar.`:''}`
-        : 'Não há compromissos nem faturas abertas confirmadas nos dados atuais.',
+        ? tr(
+            locale,
+            `O NestBalance encontrou ${sources.length} obrigação${sources.length===1?'':'ões'} aberta${sources.length===1?'':'s'} nesta visão.${partialInvoices?` ${partialInvoices} fatura${partialInvoices===1?' está':'s estão'} em revisão, então o total pode aumentar.`:''}`,
+            `NestBalance found ${sources.length} open obligation${sources.length===1?'':'s'} in this view.${partialInvoices?` ${partialInvoices} statement${partialInvoices===1?' is':'s are'} under review, so the total may increase.`:''}`,
+            `NestBalance encontró ${sources.length} obligación${sources.length===1?'':'es'} abierta${sources.length===1?'':'s'} en esta vista.${partialInvoices?` Hay ${partialInvoices} resumen${partialInvoices===1?'':'es'} en revisión, así que el total puede aumentar.`:''}`
+          )
+        : tr(locale,'Não há compromissos nem faturas abertas confirmadas nos dados atuais.','There are no confirmed open commitments or statements in the current data.','No hay compromisos ni resúmenes abiertos confirmados en los datos actuales.'),
       answerMinor:total,
       sources:sources.sort((a,b)=>b.amountMinor-a.amountMinor).slice(0,30),
       cards:[
         {
-          label:'Compromissos',
+          label:tr(locale,'Compromissos','Commitments','Compromisos'),
           amountMinor:commitmentSources.reduce((sum,item)=>sum+item.amountMinor,0),
-          detail:`${commitmentSources.length} item${commitmentSources.length===1?'':'s'} pendente${commitmentSources.length===1?'':'s'}`
+          detail:tr(
+            locale,
+            `${commitmentSources.length} item${commitmentSources.length===1?'':'s'} pendente${commitmentSources.length===1?'':'s'}`,
+            `${commitmentSources.length} pending item${commitmentSources.length===1?'':'s'}`,
+            `${commitmentSources.length} elemento${commitmentSources.length===1?'':'s'} pendiente${commitmentSources.length===1?'':'s'}`
+          )
         },
         {
-          label:'Faturas abertas',
+          label:tr(locale,'Faturas abertas','Open statements','Resúmenes abiertos'),
           amountMinor:invoiceSources.reduce((sum,item)=>sum+item.amountMinor,0),
-          detail:`${invoiceSources.length} fatura${invoiceSources.length===1?'':'s'} com valor conhecido`
+          detail:tr(
+            locale,
+            `${invoiceSources.length} fatura${invoiceSources.length===1?'':'s'} com valor conhecido`,
+            `${invoiceSources.length} statement${invoiceSources.length===1?'':'s'} with a known amount`,
+            `${invoiceSources.length} resumen${invoiceSources.length===1?'':'es'} con valor conocido`
+          )
         }
       ],
-      suggestions:['Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
+      suggestions:[prompts.available,prompts.future]
     };
   }
 
@@ -496,31 +552,36 @@ export function answerAssistantQuestion(input:{
         id:account.id,
         label:account.name,
         amountMinor:Number(account.balanceMinor)||0,
-        detail:'Saldo atual informado nesta conta'
+        detail:tr(locale,'Saldo atual informado nesta conta','Current balance known for this account','Saldo actual conocido en esta cuenta')
       }));
     const total=sources.reduce((sum,item)=>sum+item.amountMinor,0);
 
     return {
       intent,
-      title:'Saldo disponível conhecido',
+      title:tr(locale,'Saldo disponível conhecido','Known available balance','Saldo disponible conocido'),
       summary:sources.length
-        ? `Somando ${sources.length} conta${sources.length===1?'':'s'} ativa${sources.length===1?'':'s'} nesta visão.`
-        : 'Ainda não há uma conta com saldo disponível para somar.',
+        ? tr(
+            locale,
+            `Somando ${sources.length} conta${sources.length===1?'':'s'} ativa${sources.length===1?'':'s'} nesta visão.`,
+            `Adding ${sources.length} active account${sources.length===1?'':'s'} in this view.`,
+            `Sumando ${sources.length} cuenta${sources.length===1?'':'s'} activa${sources.length===1?'':'s'} en esta vista.`
+          )
+        : tr(locale,'Ainda não há uma conta com saldo disponível para somar.','There is no account with an available balance to add yet.','Todavía no hay una cuenta con saldo disponible para sumar.'),
       answerMinor:total,
       sources,
       cards:sources.slice(0,6).map(item=>({label:item.label,amountMinor:item.amountMinor,detail:item.detail})),
-      suggestions:['Quanto ainda falta pagar?','O que já está comprometido nos próximos meses?']
+      suggestions:[prompts.remaining,prompts.future]
     };
   }
 
   if(intent==='future_months'){
     const projection=projectHouseholdFuture(input.commitments,input.installmentPlans,input.now,3);
     const total=projection.reduce((sum,item)=>sum+item.totalMinor,0);
-    const monthFmt=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'});
+    const monthFmt=new Intl.DateTimeFormat(localeForIntl(locale),{month:'long',year:'numeric'});
     return {
       intent,
-      title:'Compromissos conhecidos dos próximos meses',
-      summary:'A projeção usa apenas contas recorrentes confirmadas e planos de parcelas já reconciliados.',
+      title:tr(locale,'Compromissos conhecidos dos próximos meses','Known commitments for the next months','Compromisos conocidos de los próximos meses'),
+      summary:tr(locale,'A projeção usa apenas contas recorrentes confirmadas e planos de parcelas já reconciliados.','The forecast uses only confirmed recurring bills and already reconciled installment plans.','La previsión usa solo cuentas recurrentes confirmadas y planes de cuotas ya conciliados.'),
       answerMinor:total,
       sources:[
         ...input.commitments
@@ -530,34 +591,49 @@ export function answerAssistantQuestion(input:{
             id:item.id,
             label:item.description,
             amountMinor:positive(item.amountMinor),
-            detail:'Conta recorrente mensal'
+            detail:tr(locale,'Conta recorrente mensal','Monthly recurring bill','Cuenta recurrente mensual')
           })),
         ...input.installmentPlans
           .filter(plan=>plan.status!=='completed'&&plan.status!=='cancelled')
           .map(plan=>({
             kind:'installment_plan' as const,
             id:plan.id,
-            label:plan.description||'Compra parcelada',
+            label:plan.description||tr(locale,'Compra parcelada','Installment purchase','Compra en cuotas'),
             amountMinor:positive(plan.amountMinor),
-            detail:`Parcela ${plan.lastObservedInstallment} de ${plan.totalInstallments} observada`
+            detail:tr(
+              locale,
+              `Parcela ${plan.lastObservedInstallment} de ${plan.totalInstallments} observada`,
+              `Installment ${plan.lastObservedInstallment} of ${plan.totalInstallments} observed`,
+              `Cuota ${plan.lastObservedInstallment} de ${plan.totalInstallments} observada`
+            )
           }))
       ].slice(0,30),
       cards:projection.map(month=>({
         label:monthFmt.format(new Date(month.year,month.monthIndex,1)),
         amountMinor:month.totalMinor,
-        detail:`${month.itemCount} compromisso${month.itemCount===1?'':'s'} conhecido${month.itemCount===1?'':'s'}`
+        detail:tr(
+          locale,
+          `${month.itemCount} compromisso${month.itemCount===1?'':'s'} conhecido${month.itemCount===1?'':'s'}`,
+          `${month.itemCount} known commitment${month.itemCount===1?'':'s'}`,
+          `${month.itemCount} compromiso${month.itemCount===1?'':'s'} conocido${month.itemCount===1?'':'s'}`
+        )
       })),
-      suggestions:['Quanto ainda falta pagar?','Quanto tenho disponível?']
+      suggestions:[prompts.remaining,prompts.available]
     };
   }
 
   return {
     intent:'unsupported',
-    title:'Posso responder com os dados desta visão.',
-    summary:'Pergunte sobre saldo disponível, quanto falta pagar, próximos meses, simulação de gasto, parcelas que terminam, por que os gastos mudaram ou o que parece fora do padrão.',
+    title:tr(locale,'Posso responder com os dados desta visão.','I can answer using the data in this view.','Puedo responder con los datos de esta vista.'),
+    summary:tr(
+      locale,
+      'Pergunte sobre saldo disponível, quanto falta pagar, próximos meses, simulação de gasto, parcelas que terminam, por que os gastos mudaram ou o que parece fora do padrão.',
+      'Ask about available balance, what is still left to pay, the next months, a spending simulation, installments that end soon, why spending changed, or what looks unusual.',
+      'Pregunta por el saldo disponible, cuánto falta pagar, los próximos meses, una simulación de gasto, cuotas que terminan pronto, por qué cambiaron los gastos o qué parece fuera de lo normal.'
+    ),
     answerMinor:null,
     sources:[],
     cards:[],
-    suggestions:['Por que gastei mais este mês?','O que está estranho?','Dá para gastar R$ 500?','Quais parcelas terminam logo?','Quanto ainda falta pagar?','Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
+    suggestions:[prompts.change,prompts.anomalies,prompts.spend,prompts.ending,prompts.remaining,prompts.available,prompts.future]
   };
 }
