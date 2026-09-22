@@ -1,6 +1,7 @@
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import type { AiFinancialExtraction } from '../../src/core/ai-financial.js';
+import { normalizeIsoDate } from '../../src/core/date.js';
 import { getOpenAi, visionModel } from './openai-client.js';
 
 export const AI_IMAGE_MAX_BYTES=8*1024*1024;
