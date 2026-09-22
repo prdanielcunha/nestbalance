@@ -21,6 +21,7 @@ export type HomeRow={
   observedOn?:string|null;
   paidThisMonth?:boolean;
   category?:SpendingCategory|null;
+  categorySource?:'user'|'learned'|null;
   scope?:'household'|'personal';
 };
 
@@ -126,6 +127,7 @@ export async function loadHomeData(householdId:string){
     savingsPots:HomeSavingsPot[];
     cardSnapshots:HomeCardSnapshot[];
     dismissedRecurrenceKeys:string[];
+    dismissedAttentionKeys:string[];
     refreshedAt:string;
   };
 }
