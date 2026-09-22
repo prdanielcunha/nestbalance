@@ -8,6 +8,7 @@ export type FinancialScreenCommitResult={
   evidenceId:string;
   screenType:string;
   institution:string|null;
+  analysisSource:string;
   counts:{
     accounts:number;
     pots:number;
