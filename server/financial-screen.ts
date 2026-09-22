@@ -4,7 +4,6 @@ import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { buildImportedMovements } from '../src/core/movement-import.js';
 import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
-import type { AiFinancialScreenSnapshot } from '../src/core/ai-financial.js';
 import { normalizeSavingsPotName } from '../src/core/savings-pots.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
@@ -69,10 +68,11 @@ export async function commitFinancialScreen(req:Request,res:Response){
 
     const extractionSnap=await resolved.ref.collection('extractions').doc(ANALYSIS_VERSION).get();
     const extraction=extractionSnap.exists?extractionSnap.data()?.extraction:null;
-    const persistedScreen=extraction?.screen as AiFinancialScreenSnapshot|null|undefined;
+    const persistedScreen=ScreenSnapshotSchema.safeParse(extraction?.screen);
+    const normalizedPersistedScreen=persistedScreen.success?normalizeFinancialScreenSnapshot(persistedScreen.data):null;
     const reviewed=ScreenSnapshotSchema.safeParse(req.body?.screenSnapshot);
     const reviewedScreen=reviewed.success?normalizeFinancialScreenSnapshot(reviewed.data):null;
-    const screen=persistedScreen??reviewedScreen;
+    const screen=normalizedPersistedScreen??reviewedScreen;
     if(!screen){
       if(!extractionSnap.exists&&req.body?.screenSnapshot===undefined) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
       return error(res,409,'SCREEN_SNAPSHOT_UNAVAILABLE');
