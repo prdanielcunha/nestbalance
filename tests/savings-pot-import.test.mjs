@@ -70,3 +70,24 @@ test('recognizes an explicit Cofrinho deadline without guessing a year',()=>{
   assert.ok(screen);
   assert.equal(screen.pots[0].targetDate,'2026-12-15');
 });
+
+
+test('OCR com espaços no milhar preserva saldo e meta do cofrinho',()=>{
+  const screen=parseSavingsPotsFromOcr('Cofrinhos\nNubank\nViagem\nR$ 1 015,68\nMeta: R$ 2 550,00');
+  assert.ok(screen);
+  assert.equal(screen.institution,'Nubank');
+  assert.equal(screen.pots.length,1);
+  assert.equal(screen.pots[0].balanceMinor,101568);
+  assert.equal(screen.pots[0].goalMinor,255000);
+});
+
+test('metas conflitantes entre bancos ficam explícitas sem somar metas',()=>{
+  const groups=groupSavingsPots([
+    {id:'a',name:'Viagem',balanceMinor:100000,goalMinor:300000,currency:'BRL',institutionName:'Nubank',source:'screen_import',status:'active',scope:'household'},
+    {id:'b',name:'Viagem',balanceMinor:50000,goalMinor:350000,currency:'BRL',institutionName:'Inter',source:'screen_import',status:'active',scope:'household'}
+  ]);
+  assert.equal(groups.length,1);
+  assert.equal(groups[0].balanceMinor,150000);
+  assert.equal(groups[0].goalMinor,350000);
+  assert.equal(groups[0].goalConflict,true);
+});

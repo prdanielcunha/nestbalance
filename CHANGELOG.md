@@ -2,6 +2,19 @@
 
 All notable NestBalance product releases are documented here.
 
+## 1.2.2 — 2026-09-22
+
+Real-life input hardening without expanding product scope.
+
+### Financial truth
+- Rejects impossible ISO dates instead of persisting normalized calendar mistakes.
+- Prevents dates and times pasted before an amount from being interpreted as money.
+- Correctly preserves Brazilian thousand separators and OCR-spaced amounts.
+- Forces explicit review for card-statement refunds, credits, reversals and cancellations so they cannot become silent expenses.
+- Extends Cofrinho OCR for spaced thousands and verifies conflicting cross-bank goals stay explicit.
+- Adds month-end and leap-year regression coverage for card cycles and installment schedules.
+
+
 ## 1.2.1 — 2026-09-22
 
 Production-hardening patch focused on preserving the financial truth of a Household across payment, recovery and release operations.

@@ -1,13 +1,24 @@
-# NestBalance 1.2.1 Production Hardening
+# NestBalance 1.2.2 Real-Life Hardening
 
 Source of truth: NestBalance product blueprint plus the 2026-09-22 Cofrinhos product decision.
 
 ## Release identity
 
-- Version: **1.2.1**
+- Version: **1.2.2**
 - Release date: **2026-09-22**
 - Official domain: **https://nestbalance.millionsnest.com**
 - Product rule: expose only capabilities that are usable now. Future bank integrations remain outside the executable user surface.
+
+## 1.2.2 real-life hardening
+
+This patch keeps the same product scope and raises the fail-safe bar for messy real-world financial inputs:
+
+- invalid calendar dates such as `2026-02-31` are rejected instead of being silently normalized;
+- pasted dates/times are no longer mistaken for monetary amounts in text capture;
+- Brazilian thousands such as `R$ 1.250` and OCR-spaced values such as `R$ 1 250,50` are preserved correctly;
+- card-statement refunds, credits and reversals require human review instead of becoming a new expense;
+- savings-pot OCR accepts thousands separated by spaces while keeping cross-bank goal conflicts explicit;
+- card cycles and installment schedules are regression-tested across month-end and leap-year boundaries.
 
 ## 1.2.1 hardening
 

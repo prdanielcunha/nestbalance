@@ -87,3 +87,24 @@ test('plano de parcelas permanece o mesmo na fatura seguinte',()=>{
   });
   assert.equal(first,next);
 });
+
+
+test('estorno ou crédito nunca vira nova despesa confirmada sem revisão',()=>{
+  const preview=parseInvoiceText({
+    text:[
+      'Vencimento 14/09/2026',
+      '05/09 MERCADO CENTRAL 129,90',
+      '06/09 ESTORNO MERCADO CENTRAL 29,90',
+      '07/09 CRÉDITO DE COMPRA LOJA XPTO 50,00'
+    ].join('\n'),
+    closingDay:7,
+    dueDay:14,
+    referenceDate:'2026-09-10'
+  });
+  assert.equal(preview.items.length,3);
+  assert.deepEqual(preview.items[0].needsReview,[]);
+  assert.ok(preview.items[1].needsReview.includes('credit_or_refund'));
+  assert.ok(preview.items[2].needsReview.includes('credit_or_refund'));
+  assert.ok(preview.globalNeedsReview.includes('credit_or_refund_present'));
+  assert.equal(preview.reviewCount,3);
+});

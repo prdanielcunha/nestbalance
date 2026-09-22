@@ -1,12 +1,39 @@
 import type { FinancialInterpretation } from "./types.js";
 
-const currencyNumber = /(?:R\$\s*)?(-?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})|-?\d+(?:[.,]\d{1,2})?)/i;
+const currencyNumber = /(?:R\$\s*)?(-?(?:\d{1,3}(?:[.\u00a0 ]\d{3})+(?:,\d{1,2})?|\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?))/i;
 const dueDayPattern = /\b(?:dia|día|day|vence(?:\s+(?:dia|día|el))?|due(?:\s+on)?(?:\s+day)?)\s*(\d{1,2})\b/i;
 const installmentPattern = /\b(?:(?:parc(?:ela)?|installment|cuota)\s*)?(\d{1,2})\s*(?:\/|de|of)\s*(\d{1,2})\b/i;
+const explicitInstallmentPattern = /\b(?:parc(?:ela)?|installment|cuota)\s*(\d{1,2})\s*(?:\/|de|of)\s*(\d{1,2})\b/i;
+const genericInstallmentPattern = /\b(\d{1,2})\s*(?:\/|de|of)\s*(\d{1,2})\b/gi;
 const recurringPattern = /\b(todo mês|mensal|mensalmente|recorrente|every month|monthly|recurring|cada mes|mensual|mensualmente|recurrente)\b/i;
+const calendarDatePattern = /\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g;
+const timePattern = /\b\d{1,2}:\d{2}(?::\d{2})?\b/g;
 
 function folded(value:string){
   return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+
+function maskMatch(value:string,pattern:RegExp){
+  return value.replace(pattern,match=>' '.repeat(match.length));
+}
+
+function installmentMatchFromText(text:string,amountIndex:number|null){
+  const explicit=text.match(explicitInstallmentPattern);
+  if(explicit) return explicit;
+
+  for(const match of text.matchAll(genericInstallmentPattern)){
+    const index=match.index??0;
+    const before=text.slice(Math.max(0,index-16),index);
+    const after=text.slice(index+match[0].length,index+match[0].length+24);
+    const looksLikeDate=
+      /\b(?:em|data|dia)\s*$/i.test(before)||
+      /^\s*(?:às|as)\s+\d{1,2}:\d{2}/i.test(after)||
+      /^\s*[\/.\-]\s*\d{2,4}\b/.test(after);
+    if(looksLikeDate) continue;
+    if(amountIndex!==null&&index<amountIndex) continue;
+    return match;
+  }
+  return null;
 }
 
 function parseAmountMinor(raw: string): number {
@@ -47,10 +74,12 @@ function parseAmountMinor(raw: string): number {
 
 function cleanDescription(text: string): string {
   return text
-    .replace(currencyNumber, " ")
     .replace(dueDayPattern, " ")
     .replace(installmentPattern, " ")
+    .replace(calendarDatePattern, " ")
+    .replace(timePattern, " ")
     .replace(recurringPattern, " ")
+    .replace(currencyNumber, " ")
     .replace(/\b(entre minhas contas|between my accounts|entre mis cuentas)\b/gi, " ")
     .replace(/\b(paguei|pago|gastei|comprei|pagar|receber|recebi|transferi|transferência|transferencia|paid|spent|bought|pay|received|receive|income|transferred|transfer|pague|gaste|compre|pagar|recibi|recibir|ingreso|transferi|transferencia)\b/gi, " ")
     .replace(/[·|]/g, " ")
@@ -63,9 +92,19 @@ export function parseFinancialText(input: string): FinancialInterpretation {
   if (!text) throw new Error("EMPTY_INPUT");
 
   const normalized=folded(text);
-  const amountMatch = text.match(currencyNumber);
   const dueMatch = text.match(dueDayPattern);
-  const installmentMatch = text.match(installmentPattern);
+  const amountSearchText=maskMatch(
+    maskMatch(
+      maskMatch(
+        maskMatch(text,dueDayPattern),
+        installmentPattern
+      ),
+      calendarDatePattern
+    ),
+    timePattern
+  );
+  const amountMatch = amountSearchText.match(currencyNumber);
+  const installmentMatch = installmentMatchFromText(text,amountMatch?.index??null);
   const isTransfer = /\b(transferi|transferencia|transferred|transfer|entre minhas contas|between my accounts|entre mis cuentas)\b/i.test(normalized);
   const isIncome = !isTransfer && /\b(recebi|receber|entrada|salario|caiu|received|receive|income|salary|got paid|recibi|recibir|ingreso|sueldo)\b/i.test(normalized);
   const isPaid = !isTransfer && /\b(paguei|pago|gastei|comprei|paid|spent|bought|pague|gaste|compre)\b/i.test(normalized);
