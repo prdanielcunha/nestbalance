@@ -186,8 +186,8 @@ assert.match(officialProductionWorkflow,/sw\.js/);
 assert.match(officialProductionWorkflow,/cache-control:\.\*no-store/i);
 assert.match(packageSource,/"version": "1\.1\.0"/);
 assert.match(githubReleaseWorkflow,/workflow_run:/);
-assert.match(githubReleaseWorkflow,/Publish NestBalance Official Production Site/);
-assert.match(githubReleaseWorkflow,/deploy-production\.yml/);
+assert.match(githubReleaseWorkflow,/Deploy NestBalance Production/);
+assert.match(githubReleaseWorkflow,/publish-official-production\.yml/);
 assert.match(githubReleaseWorkflow,/gh release create/);
 assert.match(githubReleaseWorkflow,/test "\$TAG_SHA" = "\$RELEASE_SHA"/);
 
