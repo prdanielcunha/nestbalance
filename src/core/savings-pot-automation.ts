@@ -48,8 +48,9 @@ export function frequencyOccurrenceDates(automation:SavingsPotAutomation,through
   let current=utcDate(automation.anchorDate);
   const out:string[]=[];
   let guard=0;
-  while(current<=through&&out.length<limit&&guard<800){
+  while(current<=through&&guard<5000){
     out.push(key(current));
+    if(out.length>limit) out.shift();
     if(automation.frequency==='weekly') current.setUTCDate(current.getUTCDate()+7);
     else if(automation.frequency==='biweekly') current.setUTCDate(current.getUTCDate()+15);
     else current.setUTCMonth(current.getUTCMonth()+1);
