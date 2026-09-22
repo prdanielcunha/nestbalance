@@ -72,7 +72,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$RELEASE_SHA" \
             --title "NestBalance $VERSION" \
-            --notes-file docs/RELEASE_1.0.md \
+            --notes-file docs/RELEASE_1.1.md \
             --latest
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,url
 
