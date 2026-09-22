@@ -1,0 +1,104 @@
+import type { Request, Response } from 'express';
+import { FieldValue } from 'firebase-admin/firestore';
+import { adminDb } from './firebase-admin.js';
+import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
+import { assertScopedAccess, requestedScope } from './privacy.js';
+
+function error(res:Response,status:number,code:string){
+  return res.status(status).json({ok:false,error:code});
+}
+
+function cleanName(value:unknown,max=80){
+  return String(value||'').normalize('NFKC').replace(/\s+/g,' ').trim().slice(0,max);
+}
+
+function validMinor(value:unknown,{allowZero=true}:{allowZero?:boolean}={}){
+  const amount=Number(value);
+  if(!Number.isSafeInteger(amount)||amount<0||amount>1_000_000_000_000) return null;
+  if(!allowZero&&amount===0) return null;
+  return amount;
+}
+
+function validPotId(value:string){
+  return /^[A-Za-z0-9_-]{6,128}$/.test(value);
+}
+
+export async function upsertSavingsPot(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    await requireHouseholdMember(householdId,user.uid,'contribute');
+
+    const name=cleanName(req.body?.name);
+    if(name.length<2) return error(res,400,'INVALID_SAVINGS_POT_NAME');
+
+    const balanceMinor=validMinor(req.body?.balanceMinor);
+    if(balanceMinor===null) return error(res,400,'INVALID_SAVINGS_POT_BALANCE');
+
+    const rawGoal=req.body?.goalMinor;
+    const goalMinor=rawGoal===null||rawGoal===undefined||rawGoal===''?null:validMinor(rawGoal,{allowZero:false});
+    if(rawGoal!==null&&rawGoal!==undefined&&rawGoal!==''&&goalMinor===null){
+      return error(res,400,'INVALID_SAVINGS_POT_GOAL');
+    }
+
+    const institutionName=cleanName(req.body?.institutionName,80)||null;
+    const household=adminDb.collection('households').doc(householdId);
+    const requestedPotId=String(req.body?.potId||'');
+
+    let ref;
+    let created=false;
+    let scope:'household'|'personal';
+    let ownerUid:string|null;
+
+    if(requestedPotId){
+      if(!validPotId(requestedPotId)) return error(res,400,'INVALID_SAVINGS_POT_ID');
+      ref=household.collection('savingsPots').doc(requestedPotId);
+      const snap=await ref.get();
+      if(!snap.exists) return error(res,404,'SAVINGS_POT_NOT_FOUND');
+      const existing=snap.data()!;
+      assertScopedAccess(existing,user.uid);
+      scope=existing.scope==='personal'?'personal':'household';
+      ownerUid=scope==='personal'?user.uid:null;
+    }else{
+      ref=household.collection('savingsPots').doc();
+      scope=requestedScope(req.body?.scope);
+      ownerUid=scope==='personal'?user.uid:null;
+      created=true;
+    }
+
+    const payload={
+      name,
+      balanceMinor,
+      amountMinor:balanceMinor,
+      goalMinor,
+      currency:'BRL',
+      institutionName,
+      scope,
+      ownerUid,
+      status:'active',
+      source:created?'manual':'manual_override',
+      updatedAt:FieldValue.serverTimestamp(),
+      importedBy:user.uid,
+      schemaVersion:2,
+      ...(created?{createdAt:FieldValue.serverTimestamp()}: {})
+    };
+
+    await ref.set(payload,{merge:true});
+    await household.collection('auditEvents').add({
+      type:created?'savings_pot.created':'savings_pot.updated',
+      actorUid:user.uid,
+      savingsPotId:ref.id,
+      scope,
+      balanceMinor,
+      goalMinor,
+      institutionName,
+      createdAt:FieldValue.serverTimestamp()
+    });
+
+    return res.status(created?201:200).json({ok:true,potId:ref.id,created});
+  }catch(err:any){
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'SAVINGS_POT_UPSERT_FAILED');
+  }
+}
