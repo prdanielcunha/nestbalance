@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { PwaRuntime } from '@/src/features/pwa/pwa-runtime';
+import { ThemeRuntime } from '@/src/features/theme/theme-runtime';
 
 export const metadata: Metadata = {
   title: 'NestBalance',
@@ -17,8 +18,13 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent'
   }
 };
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', colorScheme: 'light dark', themeColor:[{media:'(prefers-color-scheme: light)',color:'#F3F5F9'},{media:'(prefers-color-scheme: dark)',color:'#080B14'}] };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', colorScheme: 'dark light', themeColor:'#080B14' };
+
+const themeBootScript=`(()=>{try{const saved=localStorage.getItem('nestbalance-theme');const theme=saved==='light'?'light':'dark';const root=document.documentElement;root.dataset.theme=theme;root.style.colorScheme=theme;}catch{document.documentElement.dataset.theme='dark';document.documentElement.style.colorScheme='dark';}})();`;
 
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
-  return <html lang="pt-BR"><body><PwaRuntime/>{children}</body></html>;
+  return <html lang="pt-BR" data-theme="dark" suppressHydrationWarning>
+    <head><script dangerouslySetInnerHTML={{__html:themeBootScript}}/></head>
+    <body><PwaRuntime/><ThemeRuntime/>{children}</body>
+  </html>;
 }

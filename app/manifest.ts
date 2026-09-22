@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     scope: '/',
     display: 'standalone',
-    background_color: '#F3F5F9',
-    theme_color: '#0B1020',
+    background_color: '#080B14',
+    theme_color: '#080B14',
     icons: [
       {
         src: '/nestbalance-icon.svg',
