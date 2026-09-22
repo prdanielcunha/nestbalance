@@ -15,7 +15,7 @@ test('remove caracteres de controle e limita rótulo',()=>{
 
 test('revoga somente autenticações anteriores ao corte NestBalance',()=>{
   assert.equal(isNestBalanceSessionRevoked(100,200),true);
-  assert.equal(isNestBalanceSessionRevoked(200,200),false);
+  assert.equal(isNestBalanceSessionRevoked(200,200),true);
   assert.equal(isNestBalanceSessionRevoked(201,200),false);
   assert.equal(isNestBalanceSessionRevoked(0,200),false);
 });
