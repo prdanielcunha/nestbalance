@@ -1266,6 +1266,16 @@
   font-weight:800;
 }
 .capture-reclassify button:hover{border-color:rgba(94,106,210,.35);color:var(--iris)}
+.capture-reclassify-details>summary{
+  cursor:pointer;
+  color:var(--ink);
+  font-size:10px;
+  font-weight:850;
+  list-style:none;
+}
+.capture-reclassify-details>summary::-webkit-details-marker{display:none}
+.capture-reclassify-details>summary::after{content:" +";color:var(--iris)}
+.capture-reclassify-details[open]>summary::after{content:" −"}
 
 
 /* =========================================================
