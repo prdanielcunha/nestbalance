@@ -52,7 +52,8 @@ function dayKey(value=new Date()){
 function nextFrequencyAnchor(frequency:string|null){
   let date=new Date();
   date.setUTCHours(12,0,0,0);
-  if(frequency==='weekly') date.setUTCDate(date.getUTCDate()+7);
+  if(frequency==='daily') date.setUTCDate(date.getUTCDate()+1);
+  else if(frequency==='weekly') date.setUTCDate(date.getUTCDate()+7);
   else if(frequency==='biweekly') date.setUTCDate(date.getUTCDate()+15);
   else {
     const desiredDay=date.getUTCDate();
