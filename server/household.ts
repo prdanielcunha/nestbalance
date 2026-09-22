@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { isAssignableHouseholdRole, normalizeHouseholdRole } from '../src/core/household.js';
+import { normalizeLocale, supportedLocales } from '../src/i18n/messages.js';
 
 const INVITE_TTL_MS=7*24*60*60*1000;
 
@@ -25,6 +26,39 @@ function cleanName(value:unknown){
 function hashToken(value:string){
   return createHash('sha256').update(value).digest('hex');
 }
+const PUBLIC_ACTIVITY_TYPES=new Set([
+  'household.renamed',
+  'household.locale_changed',
+  'household.invite_created',
+  'household.invite_accepted',
+  'household.invite_revoked',
+  'household.member_role_changed',
+  'household.member_removed',
+  'account.created',
+  'commitment.paid',
+  'commitment.payment_reversed',
+  'recurrence.confirmed',
+  'recurrence.dismissed'
+]);
+
+function publicActivity(doc:any,memberNames:Map<string,string>,viewerUid:string){
+  const data=doc.data()||{};
+  const type=String(data.type||'');
+  if(!PUBLIC_ACTIVITY_TYPES.has(type)) return null;
+  if(data.scope==='personal'&&String(data.actorUid||'')!==viewerUid) return null;
+  const actorUid=String(data.actorUid||'');
+  const targetUid=String(data.targetUid||'');
+  return {
+    id:doc.id,
+    type,
+    actorUid,
+    actorName:memberNames.get(actorUid)||null,
+    targetName:targetUid?memberNames.get(targetUid)||null:null,
+    role:typeof data.role==='string'?normalizeHouseholdRole(data.role):null,
+    createdAtMs:data.createdAt?.toMillis?.()??null
+  };
+}
+
 function publicMember(doc:any){
   const data=doc.data()||{};
   return {
@@ -44,9 +78,10 @@ export async function getHouseholdSettings(req:Request,res:Response){
     const householdId=String(req.body?.householdId||'');
     const current=await requireHouseholdMember(householdId,user.uid,'read');
     const householdRef=adminDb.doc(`households/${householdId}`);
-    const [household,members]=await Promise.all([
+    const [household,members,activitySnap]=await Promise.all([
       householdRef.get(),
-      householdRef.collection('members').limit(50).get()
+      householdRef.collection('members').limit(50).get(),
+      householdRef.collection('auditEvents').orderBy('createdAt','desc').limit(30).get()
     ]);
     if(!household.exists) return error(res,404,'HOUSEHOLD_NOT_FOUND');
 
@@ -67,6 +102,12 @@ export async function getHouseholdSettings(req:Request,res:Response){
     }
 
     const data=household.data()||{};
+    const publicMembers=members.docs.map(publicMember);
+    const memberNames=new Map(publicMembers.map(member=>[member.uid,member.displayName||member.email||'Membro do Lar']));
+    const activity=activitySnap.docs
+      .map(doc=>publicActivity(doc,memberNames,user.uid))
+      .filter(Boolean)
+      .slice(0,20);
     return res.json({
       ok:true,
       household:{
@@ -77,8 +118,9 @@ export async function getHouseholdSettings(req:Request,res:Response){
         ownerUid:String(data.ownerUid||'')
       },
       currentRole:current.role,
-      members:members.docs.map(publicMember),
-      invites
+      members:publicMembers,
+      invites,
+      activity
     });
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD','HOUSEHOLD_ACCESS_DENIED'];
@@ -107,6 +149,31 @@ export async function renameHousehold(req:Request,res:Response){
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD','HOUSEHOLD_ACCESS_DENIED','HOUSEHOLD_NOT_FOUND'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'HOUSEHOLD_RENAME_FAILED');
+  }
+}
+
+export async function updateHouseholdLocale(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    await requireHouseholdMember(householdId,user.uid,'manage_household');
+    const raw=String(req.body?.locale||'');
+    if(!supportedLocales.includes(raw as any)) return error(res,400,'INVALID_LOCALE');
+    const locale=normalizeLocale(raw);
+    const householdRef=adminDb.doc(`households/${householdId}`);
+    await adminDb.runTransaction(async tx=>{
+      const household=await tx.get(householdRef);
+      if(!household.exists) fail('HOUSEHOLD_NOT_FOUND',404);
+      tx.update(householdRef,{locale,updatedBy:user.uid,updatedAt:FieldValue.serverTimestamp()});
+      tx.create(householdRef.collection('auditEvents').doc(),{
+        type:'household.locale_changed',actorUid:user.uid,locale,createdAt:FieldValue.serverTimestamp()
+      });
+    });
+    return res.json({ok:true,locale});
+  }catch(err:any){
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD','HOUSEHOLD_ACCESS_DENIED','HOUSEHOLD_NOT_FOUND'];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'HOUSEHOLD_LOCALE_FAILED');
   }
 }
 
