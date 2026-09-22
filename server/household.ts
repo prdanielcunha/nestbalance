@@ -5,6 +5,7 @@ import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { isAssignableHouseholdRole, normalizeHouseholdRole } from '../src/core/household.js';
 import { normalizeLocale, parseLocale } from '../src/core/locale.js';
+import { canSeeHouseholdActivity } from '../src/core/activity.js';
 
 const INVITE_TTL_MS=7*24*60*60*1000;
 
@@ -70,7 +71,7 @@ export async function getHouseholdSettings(req:Request,res:Response){
 
     const activity=activitySnap.docs
       .map(doc=>({id:doc.id,data:doc.data()||{}}))
-      .filter(item=>item.data.scope!=='personal'||item.data.actorUid===user.uid)
+      .filter(item=>canSeeHouseholdActivity(item.data,user.uid))
       .slice(0,20)
       .map(item=>({
         id:item.id,
