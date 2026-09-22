@@ -237,6 +237,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       const cadence=value.frequency==='weekly'?l('toda semana','every week','cada semana'):value.frequency==='biweekly'?l('a cada 15 dias','every 15 days','cada 15 días'):l('todo mês','every month','cada mes');
       return l(`Reserva automática ${cadence}`,`Automatic saving ${cadence}`,`Ahorro automático ${cadence}`);
     }
+    if(value.kind==='roundup') return l('Arredonda seus gastos','Rounds up your spending','Redondea tus gastos');
     return value.kind==='spend'
       ? l('Reserva quando você gasta','Saves when you spend','Ahorra cuando gastas')
       : l('Reserva quando você recebe','Saves when money comes in','Ahorra cuando recibes');
@@ -325,7 +326,17 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
 
     let automation:SavingsPotAutomation|null=null;
     if(automationEnabled){
-      if(automationKind==='frequency'||automationMode==='fixed'){
+      if(automationKind==='roundup'){
+        automation={
+          enabled:true,
+          kind:'roundup',
+          mode:'fixed',
+          amountMinor:null,
+          percentBps:null,
+          frequency:null,
+          anchorDate:selected.automation?.anchorDate||todayKey()
+        };
+      }else if(automationKind==='frequency'||automationMode==='fixed'){
         const amountMinor=parseMoneyInputToMinor(automationValue,locale);
         if(amountMinor===null||amountMinor<=0){
           setDetailError(l('Informe quanto deseja reservar automaticamente.','Enter how much you want to save automatically.','Indica cuánto quieres ahorrar automáticamente.'));
@@ -662,9 +673,9 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
               ? <><strong>{l('O prazo passou','The deadline passed','El plazo pasó')}</strong><span>{l(`Ainda faltam ${formatMoney(selectedPace.remainingMinor)}. Você pode ajustar a data sem perder o histórico.`,`${formatMoney(selectedPace.remainingMinor)} is still needed. You can adjust the date without losing history.`,`Aún faltan ${formatMoney(selectedPace.remainingMinor)}. Puedes ajustar la fecha sin perder el historial.`)}</span></>
               : <><strong>{l(`Faltam ${formatMoney(selectedPace.remainingMinor)}`,`${formatMoney(selectedPace.remainingMinor)} left`,`Faltan ${formatMoney(selectedPace.remainingMinor)}`)}</strong><span>{selected.targetDate&&selectedPace.suggestedMonthlyMinor
                   ? l(
-                      `Para chegar até ${formatDate(new Date(selected.targetDate+'T12:00:00'),{day:'2-digit',month:'long',year:'numeric'})}, a referência é cerca de ${formatMoney(selectedPace.suggestedMonthlyMinor)} por mês.`,
-                      `To get there by ${formatDate(new Date(selected.targetDate+'T12:00:00'),{day:'2-digit',month:'long',year:'numeric'})}, a useful reference is about ${formatMoney(selectedPace.suggestedMonthlyMinor)} per month.`,
-                      `Para llegar hasta ${formatDate(new Date(selected.targetDate+'T12:00:00'),{day:'2-digit',month:'long',year:'numeric'})}, una referencia útil es cerca de ${formatMoney(selectedPace.suggestedMonthlyMinor)} por mes.`
+                      `Para chegar até ${formatDate(new Date(selected.targetDate+'T12:00:00'),{day:'2-digit',month:'long',year:'numeric'})}, a referência é cerca de ${formatMoney(selectedPace.suggestedMonthlyMinor)} por mês ou ${formatMoney(selectedPace.suggestedWeeklyMinor||0)} por semana.`,
+                      `To get there by ${formatDate(new Date(selected.targetDate+'T12:00:00'),{day:'2-digit',month:'long',year:'numeric'})}, a useful reference is about ${formatMoney(selectedPace.suggestedMonthlyMinor)} per month or ${formatMoney(selectedPace.suggestedWeeklyMinor||0)} per week.`,
+                      `Para llegar hasta ${formatDate(new Date(selected.targetDate+'T12:00:00'),{day:'2-digit',month:'long',year:'numeric'})}, una referencia útil es cerca de ${formatMoney(selectedPace.suggestedMonthlyMinor)} por mes o ${formatMoney(selectedPace.suggestedWeeklyMinor||0)} por semana.`
                     )
                   : l('Defina um prazo se quiser que o NestBalance calcule um ritmo sugerido.','Set a deadline if you want NestBalance to calculate a suggested pace.','Define un plazo si quieres que NestBalance calcule un ritmo sugerido.')}</span></>}
         </div>}
@@ -723,7 +734,8 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                       {([
                         ['frequency',l('Por frequência','By schedule','Por frecuencia'),l('Toda semana, 15 dias ou mês','Weekly, every 15 days, or monthly','Cada semana, 15 días o mes')],
                         ['spend',l('Quando eu gastar','When I spend','Cuando gaste'),l('A cada gasto conhecido','For each known expense','Por cada gasto conocido')],
-                        ['income',l('Quando eu receber','When I receive','Cuando reciba'),l('A cada entrada conhecida','For each known income','Por cada ingreso conocido')]
+                        ['income',l('Quando eu receber','When I receive','Cuando reciba'),l('A cada entrada conhecida','For each known income','Por cada ingreso conocido')],
+                        ['roundup',l('Arredondar gastos','Round up spending','Redondear gastos'),l('Guarda os centavos até o próximo real','Saves the cents up to the next whole real','Guarda los centavos hasta el próximo real')]
                       ] as const).map(([kind,title,hint])=><button type="button" key={kind} className={automationKind===kind?'active':''} onClick={()=>setAutomationKind(kind)}>
                         <strong>{title}</strong><span>{hint}</span>
                       </button>)}
@@ -744,18 +756,23 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                             <div className="money-input-wrap"><span>R$</span><input inputMode="decimal" value={automationValue} onChange={e=>setAutomationValue(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
                           </label>
                         </>
-                      : <>
-                          <div className="pot-mode-tabs">
-                            <button type="button" className={automationMode==='fixed'?'active':''} onClick={()=>setAutomationMode('fixed')}>{l('Valor fixo','Fixed amount','Valor fijo')}</button>
-                            <button type="button" className={automationMode==='percent'?'active':''} onClick={()=>setAutomationMode('percent')}>{l('Percentual','Percentage','Porcentaje')}</button>
+                      : automationKind==='roundup'
+                        ? <div className="pot-automation-explainer">
+                            <strong>{l('Os centavos viram progresso.','Your cents become progress.','Tus centavos se convierten en progreso.')}</strong>
+                            <span>{l('Exemplo: ao registrar um gasto de R$ 12,37, o NestBalance acrescenta R$ 0,63 ao acompanhamento deste cofrinho. Nada é debitado do banco.','Example: when you record a R$ 12.37 expense, NestBalance adds R$ 0.63 to this savings pot tracking. Nothing is debited from your bank.','Ejemplo: al registrar un gasto de R$ 12,37, NestBalance agrega R$ 0,63 al seguimiento de esta alcancía. No se debita nada del banco.')}</span>
                           </div>
-                          <label>
-                            <span className="field-label">{automationMode==='fixed'?l('Quanto reservar','Amount to save','Cuánto reservar'):l('Percentual','Percentage','Porcentaje')}</span>
-                            {automationMode==='fixed'
-                              ? <div className="money-input-wrap"><span>R$</span><input inputMode="decimal" value={automationValue} onChange={e=>setAutomationValue(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
-                              : <div className="pot-percent-input"><input inputMode="decimal" value={automationValue} onChange={e=>setAutomationValue(e.target.value)} placeholder="5"/><span>%</span></div>}
-                          </label>
-                        </>}
+                        : <>
+                            <div className="pot-mode-tabs">
+                              <button type="button" className={automationMode==='fixed'?'active':''} onClick={()=>setAutomationMode('fixed')}>{l('Valor fixo','Fixed amount','Valor fijo')}</button>
+                              <button type="button" className={automationMode==='percent'?'active':''} onClick={()=>setAutomationMode('percent')}>{l('Percentual','Percentage','Porcentaje')}</button>
+                            </div>
+                            <label>
+                              <span className="field-label">{automationMode==='fixed'?l('Quanto reservar','Amount to save','Cuánto reservar'):l('Percentual','Percentage','Porcentaje')}</span>
+                              {automationMode==='fixed'
+                                ? <div className="money-input-wrap"><span>R$</span><input inputMode="decimal" value={automationValue} onChange={e=>setAutomationValue(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
+                                : <div className="pot-percent-input"><input inputMode="decimal" value={automationValue} onChange={e=>setAutomationValue(e.target.value)} placeholder="5"/><span>%</span></div>}
+                            </label>
+                          </>}
                   </>}
 
                   <div className="sheet-actions">
