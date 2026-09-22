@@ -13,6 +13,7 @@ import { useI18n } from '@/src/i18n/locale-provider';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
+import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 
 
 export function HomeScreen({ householdId, role }: { householdId: string; role: HouseholdRole }) {
@@ -33,6 +34,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const [accountCreated,setAccountCreated]=useState(0);
   const [cardCreated,setCardCreated]=useState(0);
   const [view,setView]=useState<FinancialView>('household');
+  const [proactivity,setProactivity]=useState<ProactivityPreferences>(DEFAULT_PROACTIVITY_PREFERENCES);
 
   async function refreshHome(silent=false){
     if(!silent) setLoadingHome(true);
@@ -44,6 +46,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       setCommitments(data.commitments);
       setInstallmentPlans(data.installmentPlans||[]);
       setInvoiceImports(data.invoiceImports||[]);
+      setProactivity(data.proactivityPreferences||DEFAULT_PROACTIVITY_PREFERENCES);
       setHomeError('');
     }catch{
       setHomeError(l('Não conseguimos atualizar sua visão financeira agora.','We could not refresh your financial view right now.','No pudimos actualizar tu visión financiera ahora.'));
@@ -120,7 +123,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       .filter(item=>!item.paidThisMonth&&item.status!=='paid'&&item.status!=='cancelled'&&Number.isInteger(item.dueDay)&&Number(item.dueDay)>=today&&Number(item.dueDay)<=today+3)
       .sort((a,b)=>Number(a.dueDay)-Number(b.dueDay))[0];
 
-    if(overdue){
+    if(proactivity.dueBills&&overdue){
       items.push({
         key:'overdue-'+overdue.id,
         kind:l('VENCEU','OVERDUE','VENCIDA'),
@@ -129,7 +132,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         href:'#monthly-payments',
         action:l('Ver conta','View bill','Ver cuenta')
       });
-    }else if(dueSoon){
+    }else if(proactivity.dueBills&&dueSoon){
       items.push({
         key:'due-'+dueSoon.id,
         kind:Number(dueSoon.dueDay)===today?l('VENCE HOJE','DUE TODAY','VENCE HOY'):l('PRÓXIMO PAGAMENTO','UPCOMING PAYMENT','PRÓXIMO PAGO'),
@@ -141,7 +144,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     }
 
     const anomaly=anomalies[0];
-    if(anomaly){
+    if(proactivity.anomalies&&anomaly){
       items.push({
         key:'anomaly-'+anomaly.transactionId,
         kind:anomaly.type==='possible_duplicate'?l('VALE CONFERIR','WORTH CHECKING','CONVIENE REVISAR'):l('FORA DO PADRÃO','OUT OF PATTERN','FUERA DEL PATRÓN'),
@@ -156,7 +159,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       });
     }
 
-    if(spendingComparison.hasComparableData&&spendingComparison.deltaMinor>0){
+    if(proactivity.spendingChanges&&spendingComparison.hasComparableData&&spendingComparison.deltaMinor>0){
       const top=spendingComparison.topIncreases[0];
       items.push({
         key:'spending-change',
@@ -174,7 +177,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       .map(plan=>({...plan,remaining:Math.max(0,plan.totalInstallments-plan.lastObservedInstallment)}))
       .filter(plan=>plan.remaining===1&&plan.amountMinor>0)
       .sort((a,b)=>b.amountMinor-a.amountMinor)[0];
-    if(ending){
+    if(proactivity.installmentEnds&&ending){
       items.push({
         key:'ending-'+ending.id,
         kind:l('TERMINA LOGO','ENDING SOON','TERMINA PRONTO'),
@@ -186,7 +189,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     }
 
     return items.slice(0,3);
-  },[viewCommitments,viewInstallmentPlans,anomalies,spendingComparison,locale,formatMoney]);
+  },[viewCommitments,viewInstallmentPlans,anomalies,spendingComparison,proactivity,locale,formatMoney]);
 
 
   return <main className="app-shell">
