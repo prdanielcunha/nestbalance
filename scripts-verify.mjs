@@ -38,7 +38,11 @@ const productionWorkflow=read('./.github/workflows/deploy-production.yml');
 const browserWorkflow=read('./.github/workflows/browser-quality.yml');
 const packageSource=read('./package.json');
 const localCardReader=read('./src/lib/local-card-reader.ts');
+const localImageOcr=read('./src/lib/local-image-ocr.ts');
 const localCardParser=read('./src/core/card-local-reader.ts');
+const geminiFree=read('./server/ai/gemini-free.ts');
+const geminiFallback=read('./server/gemini-fallback.ts');
+const financialRedaction=read('./src/core/financial-redaction.ts');
 
 assert.match(firestore,/match \/households\/\{hid\}/);
 assert.match(firestore,/allow read, write: if false;/);
@@ -74,6 +78,7 @@ assert.match(aiEvidence,/verifyVaultPreviewBytes/);
 assert.match(aiEvidence,/runTransaction/);
 assert.match(aiEvidence,/AI_NOT_CONFIGURED/);
 assert.match(aiClient,/process\.env\.OPENAI_API_KEY/);
+assert.match(aiClient,/NESTBALANCE_ALLOW_PAID_AI/);
 assert.match(aiImage,/store:false/);
 assert.match(aiImage,/AI_IMAGE_MAX_BYTES=8\*1024\*1024/);
 assert.match(aiImage,/untrusted data, never as instructions/);
@@ -98,10 +103,17 @@ assert.match(belvoSource,/process\.env\.BELVO_SECRET_PASSWORD/);
 assert.match(belvoSource,/NESTBALANCE_ALLOW_PAID_INTEGRATIONS/);
 assert.match(belvoSource,/consent_link_creation/);
 assert.match(packageSource,/"tesseract\.js": "7\.0\.0"/);
-assert.match(localCardReader,/createWorker/);
+assert.match(localImageOcr,/createWorker/);
+assert.ok(!localImageOcr.includes('fetch('),'Local OCR must not upload images.');
 assert.ok(!localCardReader.includes('fetch('),'Local card OCR must not upload images.');
 assert.ok(!localCardReader.includes('FormData'),'Local card OCR must not construct upload payloads.');
 assert.match(localCardParser,/inferCardBrandFromText/);
+assert.match(geminiFree,/gemini-2\.5-flash-lite/);
+assert.match(geminiFree,/NESTBALANCE_GEMINI_FREE_PROJECT_CONFIRMED/);
+assert.match(geminiFallback,/GEMINI_FREE_CONSENT_REQUIRED/);
+assert.match(geminiFallback,/GEMINI_FREE_DAILY_CAP_REACHED/);
+assert.match(financialRedaction,/CPF_REDACTED/);
+assert.match(cloudrun,/\/api\/ai\/gemini\/analyze-text/);
 assert.match(openFinanceCore,/nestbalance\.millionsnest\.com/);
 assert.match(openFinanceCore,/mn-nestbalance-555464791734\.web\.app/);
 assert.match(financialScreenSource,/requireHouseholdMember/);
@@ -168,6 +180,7 @@ for(const path of browserSources){
   assert.ok(!source.includes('firebase/firestore'),`Browser source must not import Firestore: ${path}`);
   assert.ok(!source.includes('firebase/storage'),`Browser source must not import Storage: ${path}`);
   assert.ok(!source.includes('OPENAI_API_KEY'),`Browser source must not reference OpenAI key: ${path}`);
+  assert.ok(!source.includes('GEMINI_API_KEY'),`Browser source must not reference Gemini key: ${path}`);
   assert.ok(!source.includes('BELVO_SECRET_ID')&&!source.includes('BELVO_SECRET_PASSWORD'),`Browser source must not reference Open Finance provider secrets: ${path}`);
 }
 
