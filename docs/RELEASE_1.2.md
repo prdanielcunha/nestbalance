@@ -1,13 +1,23 @@
-# NestBalance 1.2 Stable Release
+# NestBalance 1.2.1 Production Hardening
 
 Source of truth: NestBalance product blueprint plus the 2026-09-22 Cofrinhos product decision.
 
 ## Release identity
 
-- Version: **1.2.0**
+- Version: **1.2.1**
 - Release date: **2026-09-22**
 - Official domain: **https://nestbalance.millionsnest.com**
 - Product rule: expose only capabilities that are usable now. Future bank integrations remain outside the executable user surface.
+
+## 1.2.1 hardening
+
+This patch does not add product scope. It raises the release bar around the financial state users already depend on:
+
+- authenticated payment matching is exercised against the Firebase Auth + Firestore emulator flow;
+- marking a recurring commitment as paid must persist into Home and disappear from the Assistant's remaining-to-pay sources;
+- undo must restore the commitment and remove the generated payment transaction;
+- month rollover is protected so an older payment cannot be reversed while a later payment still exists;
+- both production Hosting paths must publish the exact same Git tree as certified `main`, preventing production-only code from reaching users.
 
 ## Cofrinhos 2.0
 
