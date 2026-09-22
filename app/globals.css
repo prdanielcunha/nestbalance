@@ -918,3 +918,79 @@
 @media(max-width:560px){
   .movement-category-actions{display:grid;grid-template-columns:1fr 1fr}
 }
+
+
+/* Explainable, quiet attention */
+.attention-reason{
+  margin:0 0 12px;
+  padding-top:10px;
+  border-top:1px solid color-mix(in srgb,var(--line,#e7eaf0) 74%,transparent);
+}
+.attention-reason summary{
+  cursor:pointer;
+  list-style:none;
+  min-height:36px;
+  display:flex;
+  align-items:center;
+  width:max-content;
+  max-width:100%;
+  font-size:11px;
+  font-weight:800;
+  color:var(--muted);
+}
+.attention-reason summary::-webkit-details-marker{display:none}
+.attention-reason summary::after{
+  content:'+';
+  margin-left:7px;
+  font-size:14px;
+  font-weight:650;
+}
+.attention-reason[open] summary::after{content:'−'}
+.attention-reason p{
+  margin:2px 0 0;
+  font-size:11px;
+  line-height:1.5;
+  color:var(--muted);
+}
+.attention-actions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.attention-actions a,
+.attention-actions button{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:var(--ink);
+  font-size:13px;
+  font-weight:800;
+  text-decoration:none;
+}
+.attention-actions button{
+  padding:0 10px;
+  color:var(--muted);
+  font-weight:750;
+}
+.attention-actions button:hover{color:var(--ink)}
+.attention-actions button:disabled{opacity:.5;cursor:not-allowed}
+.attention-error{margin:12px 0 0}
+
+.movement-category-stack{
+  display:grid;
+  gap:3px;
+  width:max-content;
+  max-width:100%;
+}
+.movement-category-source{
+  max-width:270px;
+  font-size:9px;
+  line-height:1.35;
+  color:var(--muted);
+  opacity:.78;
+}
