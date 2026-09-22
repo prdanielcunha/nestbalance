@@ -83,6 +83,30 @@ export async function commitFinancialScreen(req:Request,res:Response){
         : 'client_reviewed';
 
     const household=adminDb.collection('households').doc(householdId);
+    const existingPotDocs=screen.pots.length
+      ? (await household.collection('savingsPots').where('status','==','active').limit(200).get()).docs
+      : [];
+    const potIdentity=(institution:unknown,name:unknown)=>[
+      scope,
+      ownerUid||'',
+      normalizeSavingsPotName(String(institution||'')),
+      normalizeSavingsPotName(String(name||''))
+    ].join('|');
+    const existingPotsByIdentity=new Map<string,FirebaseFirestore.QueryDocumentSnapshot>();
+    for(const doc of existingPotDocs){
+      const data=doc.data();
+      const existingScope=data.scope==='personal'?'personal':'household';
+      const existingOwner=existingScope==='personal'?String(data.ownerUid||''):'';
+      if(existingScope!==scope||(scope==='personal'&&existingOwner!==user.uid)) continue;
+      const identity=[
+        existingScope,
+        existingOwner,
+        normalizeSavingsPotName(String(data.institutionName||'')),
+        normalizeSavingsPotName(String(data.name||''))
+      ].join('|');
+      if(!existingPotsByIdentity.has(identity)) existingPotsByIdentity.set(identity,doc);
+    }
+
     const batch=adminDb.batch();
     let accounts=0;
     let pots=0;
@@ -120,19 +144,29 @@ export async function commitFinancialScreen(req:Request,res:Response){
       accounts++;
     }
 
+    const seenPotIdentities=new Set<string>();
     for(const item of screen.pots.slice(0,30)){
       if(item.confidence<0.86||!Number.isSafeInteger(item.balanceMinor)||item.balanceMinor<0){
         skipped++;
         continue;
       }
+      const identity=potIdentity(screen.institution,item.name);
+      if(seenPotIdentities.has(identity)){
+        skipped++;
+        continue;
+      }
+      seenPotIdentities.add(identity);
+      const existing=existingPotsByIdentity.get(identity);
       const key=hash([scope,ownerUid||'','screen_pot',normalizeSavingsPotName(screen.institution||''),normalizeSavingsPotName(item.name)].join('|'));
-      const ref=household.collection('savingsPots').doc(key.slice(0,40));
+      const ref=existing?.ref??household.collection('savingsPots').doc(key.slice(0,40));
       batch.set(ref,{
         name:safeName(item.name,'Dinheiro guardado'),
         balanceMinor:item.balanceMinor,
         goalMinor:Number.isSafeInteger(item.goalMinor)?item.goalMinor:null,
         currency:item.currency,
         institutionName:screen.institution||null,
+        normalizedName:normalizeSavingsPotName(item.name),
+        normalizedInstitution:normalizeSavingsPotName(screen.institution||''),
         source:'screen_import',
         scope,
         ownerUid,
