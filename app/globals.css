@@ -613,7 +613,21 @@ html[data-theme="dark"] .login-card,html[data-theme="dark"] .setup-card{border-c
 .invite-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px}
 .invite-grid label{display:flex;flex-direction:column;gap:7px}
 .invite-grid label>span{font-size:12px;color:var(--muted)}
+.access-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.access-role-card{min-height:112px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;text-align:left;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:18px;padding:15px;transition:border-color .18s ease,background .18s ease,transform .18s ease}
+.access-role-card:hover{transform:translateY(-1px);border-color:rgba(94,106,210,.38)}
+.access-role-card.active{border-color:rgba(94,106,210,.62);background:linear-gradient(145deg,rgba(94,106,210,.1),var(--paper));box-shadow:0 0 0 3px rgba(94,106,210,.08)}
+.access-role-card strong,.access-role-card small{display:block}
+.access-role-card strong{font-size:13px;line-height:1.35}
+.access-role-card small{margin-top:6px;color:var(--muted);font-size:11px;line-height:1.45}
+.access-role-card b{color:var(--iris);font-size:9px;white-space:nowrap;text-transform:uppercase;letter-spacing:.06em}
+.invite-identity-grid{margin-top:2px;grid-template-columns:minmax(0,1.4fr) minmax(220px,.8fr)}
+.invite-security-copy{min-height:48px;border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.invite-security-copy strong{font-size:11px}
+.invite-security-copy span{color:var(--muted);font-size:10px;line-height:1.4}
 .invite-link-card{margin-top:14px;padding:16px;border-radius:18px;background:rgba(94,106,210,.08);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.invite-link-copy{display:flex;flex:1 1 260px;flex-direction:column;gap:3px}
+.invite-link-copy span{color:var(--muted);font-size:11px}
 .invite-link-card span{color:var(--muted);font-size:13px;flex:1 1 260px}
 .pending-invites{margin-top:20px;border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:9px}
 .pending-invites>span{font-size:12px;color:var(--muted)}
@@ -622,7 +636,7 @@ html[data-theme="dark"] .login-card,html[data-theme="dark"] .setup-card{border-c
 .household-safety-note{margin:22px 0;padding:18px;border-radius:20px;background:rgba(15,159,143,.08)}
 .household-safety-note p{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
 @media(max-width:640px){
-  .household-inline-form,.invite-grid{grid-template-columns:1fr}
+  .household-inline-form,.invite-grid,.invite-identity-grid,.access-role-grid{grid-template-columns:1fr}
   .member-row{grid-template-columns:42px minmax(0,1fr)}
   .member-access{grid-column:2;justify-content:flex-start;flex-wrap:wrap}
   .pending-invites>div{align-items:flex-start;flex-direction:column;gap:3px}
