@@ -235,7 +235,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   function automationLabel(value:SavingsPotAutomation|null|undefined){
     if(!value?.enabled) return null;
     if(value.kind==='frequency'){
-      const cadence=value.frequency==='weekly'?l('toda semana','every week','cada semana'):value.frequency==='biweekly'?l('a cada 15 dias','every 15 days','cada 15 días'):l('todo mês','every month','cada mes');
+      const cadence=value.frequency==='daily'?l('todo dia','every day','cada día'):value.frequency==='weekly'?l('toda semana','every week','cada semana'):value.frequency==='biweekly'?l('a cada 15 dias','every 15 days','cada 15 días'):l('todo mês','every month','cada mes');
       return l(`Reserva automática ${cadence}`,`Automatic saving ${cadence}`,`Ahorro automático ${cadence}`);
     }
     if(value.kind==='roundup') return l('Arredonda seus gastos','Rounds up your spending','Redondea tus gastos');
@@ -740,7 +740,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                   {automationEnabled&&<>
                     <div className="pot-automation-kind-grid">
                       {([
-                        ['frequency',l('Por frequência','By schedule','Por frecuencia'),l('Toda semana, 15 dias ou mês','Weekly, every 15 days, or monthly','Cada semana, 15 días o mes')],
+                        ['frequency',l('Por frequência','By schedule','Por frecuencia'),l('Todo dia, semana, 15 dias ou mês','Daily, weekly, every 15 days, or monthly','Cada día, semana, 15 días o mes')],
                         ['spend',l('Quando eu gastar','When I spend','Cuando gaste'),l('A cada gasto conhecido','For each known expense','Por cada gasto conocido')],
                         ['income',l('Quando eu receber','When I receive','Cuando reciba'),l('A cada entrada conhecida','For each known income','Por cada ingreso conocido')],
                         ['roundup',l('Arredondar gastos','Round up spending','Redondear gastos'),l('Guarda os centavos até o próximo real','Saves the cents up to the next whole real','Guarda los centavos hasta el próximo real')]
@@ -754,6 +754,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                           <label>
                             <span className="field-label">{l('Frequência','Frequency','Frecuencia')}</span>
                             <select className="pot-text-input" value={automationFrequency} onChange={e=>setAutomationFrequency(e.target.value as SavingsPotFrequency)}>
+                              <option value="daily">{l('Todo dia','Every day','Cada día')}</option>
                               <option value="weekly">{l('Toda semana','Every week','Cada semana')}</option>
                               <option value="biweekly">{l('A cada 15 dias','Every 15 days','Cada 15 días')}</option>
                               <option value="monthly">{l('Todo mês','Every month','Cada mes')}</option>
