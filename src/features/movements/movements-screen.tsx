@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
@@ -17,9 +18,9 @@ function label(row:HomeRow,locale:'pt-BR'|'en'|'es'){
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   if(row.source==='credit_card_invoice') return l('Compra no cartão','Card purchase','Compra con tarjeta');
   if(row.source==='credit_card_invoice_payment') return l('Fatura paga','Statement paid','Tarjeta pagada');
-  if(row.direction==='income') return row.source==='open_finance'?l('Recebido pelo banco','Received via bank','Recibido por el banco'):l('Dinheiro que entrou','Money in','Dinero que entró');
+  if(row.direction==='income') return l('Dinheiro que entrou','Money in','Dinero que entró');
   if(row.direction==='transfer') return l('Só mudou de conta','Moved between your accounts','Solo cambió de cuenta');
-  return row.source==='open_finance'?l('Pago pelo banco','Paid via bank','Pagado por el banco'):l('Dinheiro que saiu','Money out','Dinero que salió');
+  return l('Dinheiro que saiu','Money out','Dinero que salió');
 }
 
 function matchesFilter(row:HomeRow,filter:Filter){
@@ -65,7 +66,14 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     }
   }
 
-  useEffect(()=>{void load();},[householdId]);
+  useEffect(()=>{
+    void load();
+    const onFocus=()=>void load(true);
+    const onVisibility=()=>{if(document.visibilityState==='visible') void load(true);};
+    window.addEventListener('focus',onFocus);
+    document.addEventListener('visibilitychange',onVisibility);
+    return ()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisibility);};
+  },[householdId]);
 
   const scopedRows=useMemo(()=>rows.filter(row=>inFinancialView(row.scope,view)),[rows,view]);
 
@@ -158,6 +166,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   return <main className="app-shell movements-shell">
     <header className="topbar">
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navMovements}</span></div>
+      <HouseholdLink/>
     </header>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
