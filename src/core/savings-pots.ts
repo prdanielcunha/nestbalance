@@ -18,7 +18,7 @@ export type SavingsPotLike={
   scope?:'household'|'personal';
 };
 
-export type SavingsPotGroup={
+export type SavingsPotGroup<T extends SavingsPotLike=SavingsPotLike>={
   key:string;
   name:string;
   balanceMinor:number;
@@ -32,7 +32,7 @@ export type SavingsPotGroup={
   coverSourceId:string|null;
   automation:SavingsPotAutomation|null;
   trackingMode:'manual'|'bank_mirror'|'mixed';
-  sources:SavingsPotLike[];
+  sources:T[];
 };
 
 export function normalizeSavingsPotName(value:string){
@@ -45,8 +45,8 @@ export function normalizeSavingsPotName(value:string){
     .replace(/\s+/g,' ');
 }
 
-export function groupSavingsPots(items:SavingsPotLike[]):SavingsPotGroup[]{
-  const grouped=new Map<string,SavingsPotLike[]>();
+export function groupSavingsPots<T extends SavingsPotLike>(items:T[]):SavingsPotGroup<T>[]{
+  const grouped=new Map<string,T[]>();
 
   for(const item of items){
     if(item.status!=='active') continue;
@@ -73,6 +73,7 @@ export function groupSavingsPots(items:SavingsPotLike[]):SavingsPotGroup[]{
     })[0];
     const groupScope:'household'|'personal'=preferred?.scope==='personal'?'personal':'household';
     const modes=new Set(sources.map(item=>item.trackingMode||(item.source==='screen_import'?'bank_mirror':'manual')));
+    const trackingMode:'manual'|'bank_mirror'|'mixed'=modes.size>1?'mixed':modes.has('bank_mirror')?'bank_mirror':'manual';
 
     return {
       key,
@@ -87,7 +88,7 @@ export function groupSavingsPots(items:SavingsPotLike[]):SavingsPotGroup[]{
       goalConflict:uniqueGoals.length>1,
       coverSourceId:sources.find(item=>item.hasCover)?.id||null,
       automation:sources.find(item=>item.automation?.enabled)?.automation||null,
-      trackingMode:modes.size>1?'mixed':modes.has('bank_mirror')?'bank_mirror':'manual',
+      trackingMode,
       sources:[...sources].sort((a,b)=>
         String(a.institutionName||'').localeCompare(String(b.institutionName||''),'pt-BR')
       )
