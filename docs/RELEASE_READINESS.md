@@ -19,10 +19,12 @@ A release is accepted only after:
 4. TypeScript typecheck;
 5. exported Next.js build;
 6. Cloud Run API build;
-7. Chromium mobile and desktop smoke;
-8. serious/critical accessibility scan;
-9. local container health smoke;
-10. public Hosting plus API smoke after deploy.
+7. authenticated two-person household API flow against Firebase Auth + Firestore emulators;
+8. Chromium mobile and desktop smoke;
+9. serious/critical accessibility scan;
+10. PWA service-worker cache privacy check (no `/api/**` entries);
+11. local container health smoke;
+12. public Hosting plus API smoke after deploy.
 
 ## Runtime observability
 
@@ -33,6 +35,8 @@ Health responses expose environment and Cloud Run revision/release identity. HTT
 Hosting has explicit anti-sniffing, referrer, framing, permissions, opener and HSTS headers. The API applies security headers plus bounded rate limits, with stricter limits on sensitive household and privacy actions.
 
 The application rate limiter is defense in depth. Global abuse controls belong at the platform edge if traffic grows materially.
+
+NestBalance session revocation is app-scoped so the product can invalidate its own sessions without revoking the shared MillionsNest Firebase session. Device visibility stores a protected random-device hash and coarse label, not precise location data.
 
 ## Production publication
 

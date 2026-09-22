@@ -1,0 +1,28 @@
+# NestBalance Product & Quality Metrics
+
+The blueprint says to measure reduction of effort, not number of screens. NestBalance therefore avoids adding third-party behavioral analytics to the RC just to manufacture dashboards. The initial measurements use existing operational/audit data and aggregate reporting when needed.
+
+| Blueprint metric | Privacy-safe measurement source |
+| --- | --- |
+| Time to First Value | Household creation timestamp -> first useful Home entity (account, transaction, commitment, confirmed invoice or recognized balance). Can be derived server-side without storing screen behavior. |
+| Auto-resolution rate | Capture/import result confidence and review-required fields vs committed items. |
+| Correction rate | Explicit review/update actions on imported/captured entities; corrections are already auditable rather than silent overwrites. |
+| Duplicate prevented | Dedup/fingerprint/idempotency outcomes for captures, evidence, invoice items and payments. |
+| Evidence retrieval success | Vault search queries can be measured as aggregate success/failure without logging the financial query text. Do not store raw search phrases in telemetry. |
+| Weekly Household active | Existing member `lastSeenAt` values, aggregated by Household/week. |
+| Bill completion before due | Commitment payment timestamp vs due date/day. |
+| Import latency p50/p95 | Existing structured HTTP duration telemetry for evidence/import/AI endpoints; request bodies and financial values are excluded. |
+| Crash/error-free sessions | HTTP 5xx/error telemetry plus browser release smoke. A future client crash collector must redact financial content before adoption. |
+| Accessibility QA pass | Browser Quality + axe serious/critical gate on every release. |
+
+## Data minimization rules
+
+1. Do not send transaction descriptions, evidence text, account balances, card numbers, uploaded files or Assistant questions to generic analytics.
+2. Prefer counts, durations, booleans and coarse operation names.
+3. Personal-scope financial content remains personal; aggregate product metrics must not make it visible to other Household members.
+4. Metrics are for product quality, not advertising or credit profiling.
+5. If a future analytics vendor is introduced, it requires an explicit privacy review before any SDK is added.
+
+## RC instrumentation posture
+
+The RC already has structured HTTP telemetry, audit events, dedup outcomes, member last-seen timestamps and release quality gates. That is sufficient to start measuring the blueprint metrics without introducing an invasive client analytics dependency.

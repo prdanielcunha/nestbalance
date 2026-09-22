@@ -1,5 +1,9 @@
 # NestBalance
 
+## Release candidate
+
+Current candidate: **1.0.0-rc.1**. Blueprint closure is documented in `docs/RELEASE_CANDIDATE_1.0.md`; privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
+
 NestBalance is the personal and family finance product of the MillionsNest ecosystem.
 
 ## Current executable slice
@@ -18,7 +22,11 @@ The application now includes:
 - immutable evidence, SHA-256 deduplication and race-safe capture deduplication
 - premium Vault with server-mediated detail and original preview
 - virtual future projections for recurring commitments and installments
-- PT-BR / EN / ES message architecture
+- PT-BR / EN / ES runtime localization across the primary financial, family, assistant and privacy flows
+- editable and learned spending categories, explainable anomalies and quiet per-member attention preferences
+- household invitations, roles, authorship/activity and Personal vs Household privacy scopes
+- app-scoped session revocation and privacy-safe recent-device visibility
+- installable PWA shell with strict API network-only caching boundary
 - responsive light/dark design foundation
 
 ## Browser security boundary
@@ -36,12 +44,14 @@ The repository's `firestore.rules` and `storage.rules` intentionally deny direct
 ```bash
 npm run check
 npm run test:rules
+npm run test:authenticated-api
 npm run typecheck
 npm run build
 npm run build:cloudrun
+npm run test:e2e
 ```
 
-CI runs the same gates before a slice is merged.
+CI runs the core/security suite, Firestore Rules emulator, an authenticated two-person household API flow, typecheck and both web/API builds before a slice is merged. Browser Quality separately exercises mobile/desktop rendering, accessibility and the PWA cache privacy boundary.
 
 ## Homologation deployment
 

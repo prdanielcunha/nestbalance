@@ -13,8 +13,9 @@ import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/feat
 import { useI18n } from '@/src/i18n/locale-provider';
 
 export function AccountsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
-  const {t,locale,intlLocale,formatMoney,formatDate}=useI18n();
+  const {t,locale,intlLocale,currency,formatMoney,formatDate}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  const currencySymbol=useMemo(()=>new Intl.NumberFormat(intlLocale,{style:'currency',currency,currencyDisplay:'narrowSymbol',minimumFractionDigits:0,maximumFractionDigits:0}).formatToParts(0).find(part=>part.type==='currency')?.value||currency,[intlLocale,currency]);
   const canManage=role==='owner'||role==='admin';
   const [accounts,setAccounts]=useState<HomeAccount[]>([]);
   const [cards,setCards]=useState<HomeCreditCard[]>([]);
@@ -245,7 +246,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
           'Indica cuánto hay en esta cuenta ahora. Esto no crea una entrada ni un gasto; solo actualiza el punto de referencia del saldo.'
         )}</p>
         <label className="field-label" htmlFor="balance-update-value">{l('Saldo','Balance','Saldo')}</label>
-        <div className="money-input-wrap"><span>R$</span><input id="balance-update-value" autoFocus inputMode="decimal" value={balanceInput} onChange={e=>setBalanceInput(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
+        <div className="money-input-wrap"><span>{currencySymbol}</span><input id="balance-update-value" autoFocus inputMode="decimal" value={balanceInput} onChange={e=>setBalanceInput(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
         <small className="field-help">{l('Pode ser negativo se a conta estiver no vermelho.','It can be negative if the account is overdrawn.','Puede ser negativo si la cuenta está en descubierto.')}</small>
         {balanceError&&<p className="error-copy" role="alert">{balanceError}</p>}
         <div className="sheet-actions">

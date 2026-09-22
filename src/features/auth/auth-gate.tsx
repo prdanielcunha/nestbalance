@@ -1,11 +1,22 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from 'firebase/auth';
 import { auth, firebaseConfigured } from '@/src/lib/firebase/client';
 import { bootstrapSession, type HouseholdSessionOption } from '@/src/lib/repositories/session';
 import { messages } from '@/src/i18n/messages';
 import { normalizeLocale, type AppLocale } from '@/src/core/locale';
 import { LocaleProvider } from '@/src/i18n/locale-provider';
+
+function prefersRedirectSignIn(){
+  if(typeof window==='undefined'||typeof navigator==='undefined') return false;
+  const nav=navigator as Navigator & {standalone?:boolean};
+  return nav.standalone===true||window.matchMedia?.('(display-mode: standalone)').matches===true;
+}
+
+function popupShouldFallback(error:unknown){
+  const code=typeof error==='object'&&error&&'code' in error?String((error as {code?:unknown}).code||''):'';
+  return ['auth/popup-blocked','auth/cancelled-popup-request','auth/operation-not-supported-in-this-environment'].includes(code);
+}
 
 export type SessionState = {
   user: User;
@@ -64,10 +75,24 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     if (!auth) return;
     setSigningIn(true);
     setSessionError('');
+    const provider=new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
+      if(prefersRedirectSignIn()){
+        await signInWithRedirect(auth,provider);
+        return;
+      }
+      await signInWithPopup(auth,provider);
     } catch (error) {
-      setSessionError(error instanceof Error ? error.message : 'AUTH_SIGN_IN_FAILED');
+      if(popupShouldFallback(error)){
+        try{
+          await signInWithRedirect(auth,provider);
+          return;
+        }catch(redirectError){
+          setSessionError(redirectError instanceof Error ? redirectError.message : 'AUTH_SIGN_IN_FAILED');
+        }
+      }else{
+        setSessionError(error instanceof Error ? error.message : 'AUTH_SIGN_IN_FAILED');
+      }
     } finally {
       setSigningIn(false);
     }
@@ -101,3 +126,69 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   if (!state) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="login-card"><div><div className="eyebrow">MillionsNest</div><h1>NestBalance</h1><p>{t.brandTagline}</p>{sessionError && <p className="error-copy" role="alert">{t.authSignInProblem}</p>}</div><button className="primary-button" disabled={signingIn} onClick={() => void startGoogleSignIn()}>{signingIn ? t.signingIn : t.signIn}</button></section></main></LocaleProvider>;
   return <LocaleProvider locale={state.locale} currency={state.currency}>{children(state)}</LocaleProvider>;
 }
+
+export function AuthOnlyGate({ children }: { children: (user: User) => React.ReactNode }) {
+  const [user,setUser]=useState<User|null>(null);
+  const [loading,setLoading]=useState(true);
+  const [signingIn,setSigningIn]=useState(false);
+  const [authError,setAuthError]=useState('');
+  const [browserLocale,setBrowserLocale]=useState<AppLocale>('pt-BR');
+  const t=messages[browserLocale];
+
+  useEffect(()=>{
+    setBrowserLocale(normalizeLocale(navigator.language));
+  },[]);
+
+  useEffect(()=>{
+    if(!auth){
+      setLoading(false);
+      return;
+    }
+    return onAuthStateChanged(auth,nextUser=>{
+      setUser(nextUser);
+      setAuthError('');
+      setLoading(false);
+    });
+  },[]);
+
+  async function startGoogleSignIn(){
+    if(!auth) return;
+    setSigningIn(true);
+    setAuthError('');
+    const provider=new GoogleAuthProvider();
+    try{
+      if(prefersRedirectSignIn()){
+        await signInWithRedirect(auth,provider);
+        return;
+      }
+      await signInWithPopup(auth,provider);
+    }catch(error){
+      if(popupShouldFallback(error)){
+        try{
+          await signInWithRedirect(auth,provider);
+          return;
+        }catch(redirectError){
+          setAuthError(redirectError instanceof Error?redirectError.message:'AUTH_SIGN_IN_FAILED');
+        }
+      }else{
+        setAuthError(error instanceof Error?error.message:'AUTH_SIGN_IN_FAILED');
+      }
+    }finally{
+      setSigningIn(false);
+    }
+  }
+
+  if(!firebaseConfigured) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><section className="setup-card"><div className="brand-mark">N</div><h1>NestBalance</h1><p>{t.setupMissing}</p></section></main></LocaleProvider>;
+  if(loading) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><div className="skeleton-card" role="status"><span className="sr-only">{t.loading}</span></div></main></LocaleProvider>;
+  if(!user) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><section className="login-card">
+    <div>
+      <div className="eyebrow">MillionsNest</div>
+      <h1>NestBalance</h1>
+      <p>{t.brandTagline}</p>
+      {authError&&<p className="error-copy" role="alert">{t.authSignInProblem}</p>}
+    </div>
+    <button className="primary-button" disabled={signingIn} onClick={()=>void startGoogleSignIn()}>{signingIn?t.signingIn:t.signIn}</button>
+  </section></main></LocaleProvider>;
+  return <LocaleProvider locale={browserLocale} currency="BRL">{children(user)}</LocaleProvider>;
+}
+

@@ -13,12 +13,12 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
   const starters=useMemo(()=>[
     l('Por que gastei mais este mês?','Why did I spend more this month?','¿Por qué gasté más este mes?'),
     l('O que está estranho?','What looks unusual?','¿Qué se ve extraño?'),
-    l('Dá para gastar R$ 500?','Can I spend R$ 500?','¿Puedo gastar R$ 500?'),
+    l(`Dá para gastar ${formatMoney(50000)}?`,`Can I spend ${formatMoney(50000)}?`,`¿Puedo gastar ${formatMoney(50000)}?`),
     l('Quais parcelas terminam logo?','Which installments end soon?','¿Qué cuotas terminan pronto?'),
     l('Quanto ainda falta pagar?','How much is still left to pay?','¿Cuánto falta pagar?'),
     l('Quanto tenho disponível?','How much do I have available?','¿Cuánto tengo disponible?'),
     l('O que já está comprometido nos próximos meses?','What is already committed in the next months?','¿Qué ya está comprometido en los próximos meses?')
-  ],[locale]);
+  ],[locale,formatMoney]);
 
   const [question,setQuestion]=useState('');
   const [loading,setLoading]=useState(false);

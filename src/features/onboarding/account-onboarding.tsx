@@ -7,8 +7,9 @@ import type { FinancialScope } from '@/src/core/privacy';
 import { useI18n } from '@/src/i18n/locale-provider';
 
 export function AccountOnboarding({householdId,onCreated,variant='onboarding',defaultScope='household'}:{householdId:string;onCreated?:()=>void;variant?:'onboarding'|'compact';defaultScope?:FinancialScope}){
-  const {locale}=useI18n();
+  const {locale,intlLocale,currency}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  const currencySymbol=useMemo(()=>new Intl.NumberFormat(intlLocale,{style:'currency',currency,currencyDisplay:'narrowSymbol',minimumFractionDigits:0,maximumFractionDigits:0}).formatToParts(0).find(part=>part.type==='currency')?.value||currency,[intlLocale,currency]);
   const accountTypes=useMemo<Array<{value:AccountType;label:string;hint:string}>>(()=>[
     {value:'bank',label:l('Conta bancária','Bank account','Cuenta bancaria'),hint:l('Nubank, Itaú, Caixa…','Nubank, Itaú, Caixa…','Nubank, Itaú, Caixa…')},
     {value:'wallet',label:l('Carteira digital','Digital wallet','Billetera digital'),hint:l('Mercado Pago, PicPay…','Mercado Pago, PicPay…','Mercado Pago, PicPay…')},
@@ -84,7 +85,7 @@ export function AccountOnboarding({householdId,onCreated,variant='onboarding',de
         <input id="account-name" className="premium-input" value={name} onChange={e=>setName(e.target.value)} placeholder={type==='cash'?l('Dinheiro','Cash','Efectivo'):l('Ex.: Nubank','E.g. Nubank','Ej.: Nubank')} maxLength={60}/>
 
         <label className="field-label" htmlFor="account-balance">{l('Quanto tem nela agora?','How much is in it now?','¿Cuánto hay en ella ahora?')}</label>
-        <div className="money-input-wrap"><span>R$</span><input id="account-balance" inputMode="decimal" value={balance} onChange={e=>setBalance(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
+        <div className="money-input-wrap"><span>{currencySymbol}</span><input id="account-balance" inputMode="decimal" value={balance} onChange={e=>setBalance(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
         <small className="field-help">{l('Pode ser negativo se essa conta estiver no vermelho.','It can be negative if this account is overdrawn.','Puede ser negativo si esta cuenta está en descubierto.')}</small>
 
         {error&&<p className="error-copy" role="alert">{error}</p>}

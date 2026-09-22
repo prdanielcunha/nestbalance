@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const publicRoutes=['/','/accounts','/movements','/vault','/assistant','/household','/privacy','/add'];
+const publicRoutes=['/','/accounts','/movements','/vault','/assistant','/household','/privacy','/add','/invite?token=test-invite'];
 
 for(const route of publicRoutes){
   test(route+' unauthenticated shell is safe and usable',async({page})=>{
@@ -84,4 +84,32 @@ test('PWA manifest is installable and references the NestBalance icon',async({re
   expect(manifest.scope).toBe('/');
   expect(Array.isArray(manifest.icons)).toBeTruthy();
   expect(manifest.icons.some((icon:any)=>icon.src==='/nestbalance-icon.svg'&&icon.type==='image/svg+xml')).toBeTruthy();
+});
+
+
+test('PWA service worker controls the shell without caching API responses',async({page},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','Service worker cache boundary is exercised once on desktop Chromium.');
+  await page.goto('/');
+  await page.evaluate(async()=>{
+    if(!('serviceWorker' in navigator)) throw new Error('SERVICE_WORKER_UNAVAILABLE');
+    await navigator.serviceWorker.ready;
+  });
+  await page.reload();
+  await page.waitForFunction(()=>Boolean(navigator.serviceWorker.controller));
+  await page.evaluate(async()=>{
+    try{ await fetch('/api/healthz',{method:'GET'}); }catch{}
+  });
+  const cachedUrls=await page.evaluate(async()=>{
+    const keys=await caches.keys();
+    const urls:string[]=[];
+    for(const key of keys){
+      const cache=await caches.open(key);
+      const requests=await cache.keys();
+      urls.push(...requests.map(request=>request.url));
+    }
+    return urls;
+  });
+  expect(cachedUrls.length).toBeGreaterThan(0);
+  expect(cachedUrls.some(value=>new URL(value).pathname.startsWith('/api/'))).toBeFalsy();
+  expect(cachedUrls.some(value=>new URL(value).pathname==='/')).toBeTruthy();
 });

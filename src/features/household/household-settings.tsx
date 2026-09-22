@@ -17,6 +17,7 @@ import { selectHousehold, type HouseholdSessionOption } from '@/src/lib/reposito
 import { localeLabel, type AppLocale } from '@/src/core/locale';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
+import { PwaInstallCard } from '@/src/features/pwa/pwa-install-card';
 
 
 export function HouseholdSettings({
@@ -36,6 +37,7 @@ export function HouseholdSettings({
   const [inviteEmail,setInviteEmail]=useState('');
   const [inviteRole,setInviteRole]=useState<'admin'|'member'|'read_only'>('member');
   const [inviteLink,setInviteLink]=useState('');
+  const [inviteCopied,setInviteCopied]=useState(false);
   const [creatingInvite,setCreatingInvite]=useState(false);
   const [workingMember,setWorkingMember]=useState('');
   const [workingInvite,setWorkingInvite]=useState('');
@@ -62,7 +64,7 @@ export function HouseholdSettings({
       setLocale(next.household.locale);
       setProactivity(next.proactivityPreferences||DEFAULT_PROACTIVITY_PREFERENCES);
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos abrir as configurações do Lar.','We could not open Household settings.','No pudimos abrir la configuración del Hogar.')));
+      setError(l('Não conseguimos abrir as configurações do Lar agora.','We could not open Household settings right now.','No pudimos abrir la configuración del Hogar ahora.'));
     }finally{
       setLoading(false);
     }
@@ -80,7 +82,7 @@ export function HouseholdSettings({
       await selectHousehold(nextId);
       window.location.assign('/household');
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos trocar de Lar.','We could not switch Household.','No pudimos cambiar de Hogar.')));
+      setError(l('Não conseguimos trocar de Lar agora.','We could not switch Household right now.','No pudimos cambiar de Hogar ahora.'));
     }
   }
 
@@ -91,7 +93,7 @@ export function HouseholdSettings({
       await renameHousehold(householdId,name.trim());
       await refresh();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos atualizar o nome.','We could not update the name.','No pudimos actualizar el nombre.')));
+      setError(l('Não conseguimos atualizar o nome agora.','We could not update the name right now.','No pudimos actualizar el nombre ahora.'));
     }finally{setSavingName(false);}
   }
 
@@ -102,7 +104,7 @@ export function HouseholdSettings({
       await updateHouseholdLocale(householdId,locale);
       window.location.reload();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos atualizar o idioma.','We could not update the language.','No pudimos actualizar el idioma.')));
+      setError(l('Não conseguimos atualizar o idioma agora.','We could not update the language right now.','No pudimos actualizar el idioma ahora.'));
       setLocale(data.household.locale);
     }finally{setSavingLocale(false);}
   }
@@ -183,9 +185,20 @@ export function HouseholdSettings({
     }
   }
 
+  async function copyInvite(link=inviteLink){
+    if(!link) return;
+    try{
+      if(!navigator.clipboard?.writeText) throw new Error('CLIPBOARD_UNAVAILABLE');
+      await navigator.clipboard.writeText(link);
+      setInviteCopied(true);
+    }catch{
+      setInviteCopied(false);
+    }
+  }
+
   async function makeInvite(){
     if(!canManage||creatingInvite) return;
-    setCreatingInvite(true); setError(''); setInviteLink('');
+    setCreatingInvite(true); setError(''); setInviteLink(''); setInviteCopied(false);
     try{
       const result=await createHouseholdInvite({
         householdId,
@@ -194,7 +207,7 @@ export function HouseholdSettings({
       });
       const link=`${window.location.origin}/invite?token=${encodeURIComponent(result.token)}`;
       setInviteLink(link);
-      await navigator.clipboard?.writeText(link).catch(()=>undefined);
+      await copyInvite(link);
       await refresh();
     }catch(err:any){
       const code=String(err?.message||'');
@@ -211,7 +224,7 @@ export function HouseholdSettings({
       await updateHouseholdMemberRole({householdId,uid,role});
       await refresh();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos atualizar esse acesso.','We could not update this access.','No pudimos actualizar este acceso.')));
+      setError(l('Não conseguimos atualizar esse acesso agora.','We could not update this access right now.','No pudimos actualizar este acceso ahora.'));
     }finally{setWorkingMember('');}
   }
 
@@ -222,7 +235,7 @@ export function HouseholdSettings({
       await revokeHouseholdInvite({householdId,inviteId});
       await refresh();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos cancelar esse convite.','We could not cancel this invite.','No pudimos cancelar esta invitación.')));
+      setError(l('Não conseguimos cancelar esse convite agora.','We could not cancel this invite right now.','No pudimos cancelar esta invitación ahora.'));
     }finally{setWorkingInvite('');}
   }
 
@@ -233,7 +246,7 @@ export function HouseholdSettings({
       await removeHouseholdMember({householdId,uid});
       await refresh();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos remover esse membro.','We could not remove this member.','No pudimos eliminar este miembro.')));
+      setError(l('Não conseguimos remover esse membro agora.','We could not remove this member right now.','No pudimos eliminar este miembro ahora.'));
     }finally{setWorkingMember('');}
   }
 
@@ -375,12 +388,16 @@ export function HouseholdSettings({
           </select></label>
         </div>
         <button className="primary-button" disabled={creatingInvite} onClick={()=>void makeInvite()}>
-          {creatingInvite?l('Criando convite…','Creating invite…','Creando invitación…'):l('Criar e copiar convite','Create and copy invite','Crear y copiar invitación')}
+          {creatingInvite?l('Criando convite…','Creating invite…','Creando invitación…'):l('Criar convite','Create invite','Crear invitación')}
         </button>
         {inviteLink&&<div className="invite-link-card">
-          <strong>{l('Convite copiado','Invite copied','Invitación copiada')}</strong>
+          <strong>{inviteCopied
+            ? l('Convite copiado','Invite copied','Invitación copiada')
+            : l('Convite pronto para compartilhar','Invite ready to share','Invitación lista para compartir')}</strong>
           <span>{l('Compartilhe este link somente com a pessoa certa.','Share this link only with the intended person.','Comparte este enlace solo con la persona indicada.')}</span>
-          <button className="ghost-button" onClick={()=>void navigator.clipboard?.writeText(inviteLink)}>{l('Copiar novamente','Copy again','Copiar de nuevo')}</button>
+          <button className="ghost-button" onClick={()=>void copyInvite()}>{inviteCopied
+            ? l('Copiar novamente','Copy again','Copiar de nuevo')
+            : l('Copiar convite','Copy invite','Copiar invitación')}</button>
         </div>}
         {data.invites.length>0&&<div className="pending-invites">
           <span>{l('Convites pendentes','Pending invites','Invitaciones pendientes')}</span>
@@ -409,7 +426,7 @@ export function HouseholdSettings({
             </div>}
       </section>
 
-      <section className="household-panel privacy-entry-card"><div><div className="eyebrow">{l('Privacidade','Privacy','Privacidad')}</div><h2>{l('Lar, Pessoal e seus dados','Household, Personal and your data','Hogar, Personal y tus datos')}</h2><p>{l('Veja o que é compartilhado, exporte seus dados ou controle exclusões.','See what is shared, export your data, or control deletions.','Consulta qué se comparte, exporta tus datos o controla eliminaciones.')}</p></div><Link href="/privacy" className="primary-button privacy-entry-link">{l('Abrir privacidade','Open privacy','Abrir privacidad')}</Link></section>
+      <PwaInstallCard/>\n\n      <section className="household-panel privacy-entry-card"><div><div className="eyebrow">{l('Privacidade','Privacy','Privacidad')}</div><h2>{l('Lar, Pessoal e seus dados','Household, Personal and your data','Hogar, Personal y tus datos')}</h2><p>{l('Veja o que é compartilhado, exporte seus dados ou controle exclusões.','See what is shared, export your data, or control deletions.','Consulta qué se comparte, exporta tus datos o controla eliminaciones.')}</p></div><Link href="/privacy" className="primary-button privacy-entry-link">{l('Abrir privacidade','Open privacy','Abrir privacidad')}</Link></section>
 
       <section className="household-safety-note">
         <strong>{l('Seu papel','Your role','Tu rol')}: {roleName(data.currentRole)}</strong>
