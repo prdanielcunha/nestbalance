@@ -3,6 +3,7 @@ import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { visibleDocs } from './privacy.js';
 import { categoryFromRecordAndRules, learnedCategoryRuleFromDoc, type LearnedCategoryRule } from './category-rules.js';
+import { normalizeProactivityPreferences } from '../src/core/proactivity.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -137,7 +138,7 @@ export async function getHomeData(req:Request,res:Response){
   try{
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    const currentMember=await requireHouseholdMember(householdId,user.uid);
 
     const household=adminDb.collection('households').doc(householdId);
     const currentMonthKey=new Date().toISOString().slice(0,7);
@@ -182,6 +183,7 @@ export async function getHomeData(req:Request,res:Response){
       invoiceImports:visibleDocs(invoiceImports.docs,user.uid).map(invoiceImportDto),
       savingsPots:visibleDocs(savingsPots.docs,user.uid).map(savingsPotDto),
       cardSnapshots:visibleDocs(cardSnapshots.docs,user.uid).map(cardSnapshotDto),
+      proactivityPreferences:normalizeProactivityPreferences(currentMember.proactivityPreferences),
       dismissedRecurrenceKeys:visibleDocs(recurrenceDismissals.docs,user.uid)
         .map(doc=>{
           const data=doc.data();
