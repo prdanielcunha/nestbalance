@@ -410,6 +410,20 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       return;
     }
 
+    if(activeFile.type.startsWith('image/')){
+      setAnalyzing(true);
+      setUpload(null);
+      try{
+        if(!localOcrText) await tryLocalImage(activeFile);
+        else setNotice(geminiStatus?.configured
+          ? 'A leitura local já terminou. Use o fallback protegido abaixo se quiser uma segunda interpretação.'
+          : 'A leitura local já terminou. Você pode ajustar manualmente sem enviar a imagem para uma IA.');
+      }finally{
+        setAnalyzing(false);
+      }
+      return;
+    }
+
     setAnalyzing(true);
     setUpload(null);
     try {
