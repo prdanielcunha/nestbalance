@@ -328,6 +328,28 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     </section>}
 
     {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
+
+    {viewAccounts.length>0&&!hasData&&canContribute&&<section className="first-use-guide">
+      <div>
+        <span className="section-kicker">{l('PRÓXIMO PASSO','NEXT STEP','SIGUIENTE PASO')}</span>
+        <h2>{l('Agora deixe o NestBalance trabalhar por você.','Now let NestBalance start working for you.','Ahora deja que NestBalance empiece a trabajar por ti.')}</h2>
+        <p>{l(
+          'Seu saldo já está aqui. Traga uma conta, compra ou parcela do jeito mais fácil: escrevendo, colando um print ou falando.',
+          'Your balance is already here. Bring in a bill, purchase or installment in the easiest way: type it, paste a screenshot or speak.',
+          'Tu saldo ya está aquí. Agrega una cuenta, compra o cuota de la forma más fácil: escribiendo, pegando una captura o hablando.'
+        )}</p>
+      </div>
+      <div className="first-use-actions">
+        <Link className="primary-button" href="/add">{l('Adicionar meu primeiro gasto','Add my first expense','Agregar mi primer gasto')}</Link>
+        <Link className="ghost-button" href="/accounts">{l('Configurar cartão (opcional)','Set up a card (optional)','Configurar tarjeta (opcional)')}</Link>
+      </div>
+      <small>{l(
+        'Não precisa configurar tudo hoje. O NestBalance melhora conforme você usa.',
+        'You do not need to set everything up today. NestBalance gets better as you use it.',
+        'No necesitas configurar todo hoy. NestBalance mejora a medida que lo usas.'
+      )}</small>
+    </section>}
+
     <MonthlyPayments householdId={householdId} commitments={viewCommitments} canContribute={canContribute} onChanged={()=>void refreshHome(true)} />
 
     <section className="month-section">
