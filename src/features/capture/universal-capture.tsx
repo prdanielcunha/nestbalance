@@ -752,7 +752,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const readyInterpretations=indexedInterpretations.filter(({item})=>item.confidence==='high'&&!item.needsReview.includes('direction'));
   const reviewCount = attentionInterpretations.length;
   const unresolvedDirectionCount=interpretations.filter(x=>x.needsReview.includes('direction')).length;
-  const missingPotInstitution=screenSnapshot?.screenType==='savings_pots'&&screenSnapshot.pots.length>0&&!screenSnapshot.institution?.trim();
+  const missingScreenInstitution=Boolean(screenSnapshot&&(screenSnapshot.pots.length>0||screenSnapshot.accounts.length>0)&&!screenSnapshot.institution?.trim());
   const visibleInterpretations=showAllReview
     ? indexedInterpretations
     : attentionInterpretations.length
@@ -958,6 +958,20 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> {l('conta / parcela','bill / installment','cuenta / cuota')}</span>}
               {interpretations.length>0&&<span><b>{interpretations.length}</b> {l(interpretations.length===1?'movimento':'movimentos',interpretations.length===1?'movement':'movements',interpretations.length===1?'movimiento':'movimientos')}</span>}
             </div>
+            {screenSnapshot.accounts.length>0&&screenSnapshot.pots.length===0&&<div className="screen-pot-source-confirm">
+              <label htmlFor="screen-account-institution">{l('De qual banco é este saldo?','Which bank is this balance from?','¿De qué banco es este saldo?')}</label>
+              <input
+                id="screen-account-institution"
+                className="pot-text-input"
+                value={screenSnapshot.institution||''}
+                onChange={event=>setScreenSnapshot(current=>current?{...current,institution:event.target.value.slice(0,120)}:current)}
+                placeholder={l('Ex.: Mercado Pago, Bradesco, Nubank…','E.g. Mercado Pago, Bradesco, Nubank…','Ej.: Mercado Pago, Bradesco, Nubank…')}
+                maxLength={120}
+                autoComplete="organization"
+              />
+              <small>{l('Uso isso para não misturar o saldo de bancos diferentes. Se eu reconhecer a instituição pela imagem, você ainda pode corrigir aqui.','I use this to avoid mixing balances from different banks. If I recognize the institution from the image, you can still correct it here.','Lo uso para no mezclar saldos de bancos distintos. Si reconozco la institución en la imagen, todavía puedes corregirla aquí.')}</small>
+            </div>}
+
             {screenSnapshot.accounts.length>0&&<div className="screen-pot-review">
               {screenSnapshot.accounts.map((account,index)=><div className="screen-pot-review-row" key={index}>
                 <div>
@@ -1120,12 +1134,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setScreenSnapshot(null); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
-            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||Boolean(missingPotInstitution)||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
+            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||Boolean(missingScreenInstitution)||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
               ? (upload?.phase === 'verifying' ? l('Conferindo…','Checking…','Revisando…') : l('Guardando…','Saving…','Guardando…'))
               : unresolvedDirectionCount
                 ? l(`Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`,`${unresolvedDirectionCount} confirmation${unresolvedDirectionCount===1?'':'s'} remaining`,`Falta${unresolvedDirectionCount===1?'':'n'} ${unresolvedDirectionCount} confirmación${unresolvedDirectionCount===1?'':'es'}`)
-                : missingPotInstitution
-                ? l('Informe o banco acima','Enter the bank above','Indica el banco arriba')
+                : missingScreenInstitution
+                ? l('Informe o banco ou origem acima','Enter the bank or source above','Indica el banco u origen arriba')
                 : paymentMatches.length>0&&!paymentMatchDismissed
                   ? l('Escolha a conta acima','Choose the bill above','Elige la cuenta de arriba')
                   : l('Guardar','Save','Guardar')}</button>
