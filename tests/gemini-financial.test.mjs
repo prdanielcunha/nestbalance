@@ -44,6 +44,59 @@ test('rejects hallucinated monetary value and forces confirmation',()=>{
   assert.equal(extraction.needsConfirmation,true);
 });
 
+test('rejects card last4 that is not visible in OCR text',()=>{
+  const text='Nubank cartão final 4321 limite R$ 1.000,00';
+  const extraction=sanitizeGeminiFinancialExtraction({
+    documentType:'bank_screenshot',
+    amountMinor:100000,
+    amountConfidence:0.9,
+    direction:'unknown',
+    directionConfidence:0.4,
+    overallConfidence:0.8,
+    screen:{
+      screenType:'card_home',
+      institution:'Nubank',
+      accounts:[],
+      pots:[],
+      cards:[
+        {name:'Nubank',last4:'9999',statementAmountMinor:null,dueOn:null,availableLimitMinor:null,totalLimitMinor:100000,confidence:0.9},
+        {name:'Nubank',last4:'4321',statementAmountMinor:null,dueOn:null,availableLimitMinor:null,totalLimitMinor:100000,confidence:0.9}
+      ],
+      commitments:[],
+      movements:[],
+      summary:'Cartão'
+    }
+  },text);
+  assert.equal(extraction.screen?.cards[0]?.last4,null);
+  assert.equal(extraction.screen?.cards[1]?.last4,'4321');
+  assert.equal(extraction.screen?.institution,'Nubank');
+});
+
+test('preserves installment only when visible in OCR',()=>{
+  const text='Geladeira R$ 189,00 parcela 3/10';
+  const extraction=sanitizeGeminiFinancialExtraction({
+    documentType:'bank_screenshot',
+    amountMinor:18900,
+    amountConfidence:0.95,
+    direction:'expense',
+    directionConfidence:0.95,
+    overallConfidence:0.9,
+    screen:{
+      screenType:'mixed',
+      institution:null,
+      accounts:[],
+      pots:[],
+      cards:[],
+      commitments:[
+        {description:'Geladeira',amountMinor:18900,dueOn:null,installment:{current:3,total:10},confidence:0.9,needsReview:false}
+      ],
+      movements:[],
+      summary:'Parcelamento'
+    }
+  },text);
+  assert.deepEqual(extraction.screen?.commitments[0]?.installment,{current:3,total:10});
+});
+
 test('screen snapshot keeps only grounded balances and movements',()=>{
   const text='Saldo disponível R$ 1.250,00\nPadaria R$ 32,50\n21/09/2026';
   const extraction=sanitizeGeminiFinancialExtraction({
