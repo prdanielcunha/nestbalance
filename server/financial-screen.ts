@@ -139,7 +139,8 @@ export async function commitFinancialScreen(req:Request,res:Response){
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         updatedAt:FieldValue.serverTimestamp(),
         importedBy:user.uid,
-        schemaVersion:1
+        analysisSource,
+        schemaVersion:2
       },{merge:true});
       pots++;
     }
