@@ -21,6 +21,7 @@ import { deleteHousehold, deletePersonalData, exportPrivacyData, getPrivacyStatu
 import { analyzeRedactedTextWithGemini, getGeminiFallbackStatus } from './server/gemini-fallback.js';
 import { confirmRecurringSuggestion, dismissRecurringSuggestion } from './server/recurrences.js';
 import { updateTransactionCategory } from './server/categories.js';
+import { dismissAttention } from './server/attention.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -65,6 +66,7 @@ app.post('/api/commitments/undo-payment', undoCommitmentPayment);
 app.post('/api/recurrences/confirm', confirmRecurringSuggestion);
 app.post('/api/recurrences/dismiss', dismissRecurringSuggestion);
 app.post('/api/categories/transaction', updateTransactionCategory);
+app.post('/api/attention/dismiss', dismissAttention);
 app.post('/api/open-finance/list', listOpenFinanceConnections);
 app.post('/api/open-finance/start', startOpenFinanceConnection);
 app.post('/api/open-finance/complete', completeOpenFinanceConnection);
