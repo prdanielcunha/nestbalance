@@ -13,7 +13,7 @@ Cofrinhos become a complete savings-goal experience while preserving NestBalance
 - Reserve and withdraw amounts with an auditable history, without classifying movement between the user's own funds as income or spending.
 - Consolidate the same goal across institutions while keeping each source visible.
 - Re-import bank screenshots idempotently so balances update instead of duplicating pots.
-- Automate NestBalance tracking weekly, every 15 days, monthly, when spending, when receiving income, or by rounding expenses up to the next whole real.
+- Automate NestBalance tracking daily, weekly, every 15 days, monthly, when spending, when receiving income, or by rounding expenses up to the next whole real.
 - Fixed-amount and percentage rules are supported where applicable, with idempotent event processing and Personal/Household scope isolation.
 - Imported bank pots remain bank mirrors: NestBalance does not invent automatic movements for them; a later screenshot refreshes their real-world balance.
 - Finish/archive a pot after its tracked balance reaches zero.
