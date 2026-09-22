@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseSavingsPotsFromOcr} from '../.core-dist/savings-pot-import.js';
-import {groupSavingsPots} from '../.core-dist/savings-pots.js';
+import {parseSavingsPotsFromOcr} from '../.core-dist/core/savings-pot-import.js';
+import {groupSavingsPots} from '../.core-dist/core/savings-pots.js';
 
 test('recognizes Mercado Pago cofrinhos from OCR',()=>{
   const text=`
