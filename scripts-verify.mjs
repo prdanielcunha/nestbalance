@@ -200,7 +200,7 @@ assert.match(productionWorkflow,/Require production tree to match main/);
 assert.match(productionWorkflow,/git rev-parse 'origin\/main\^\{tree\}'/);
 assert.match(officialProductionWorkflow,/Require production tree to match main/);
 assert.match(officialProductionWorkflow,/git rev-parse 'origin\/main\^\{tree\}'/);
-assert.match(packageSource,/"version": "1\.2\.0"/);
+assert.match(packageSource,/"version": "1\.2\.1"/);
 assert.match(githubReleaseWorkflow,/workflow_run:/);
 assert.match(githubReleaseWorkflow,/Deploy NestBalance Production/);
 assert.match(githubReleaseWorkflow,/publish-official-production\.yml/);
