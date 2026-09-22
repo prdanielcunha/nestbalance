@@ -6,7 +6,7 @@ import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { SavingsPotCover } from '@/src/features/pots/pot-cover';
 import type { HouseholdRole } from '@/src/core/household';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
-import { groupSavingsPots } from '@/src/core/savings-pots';
+import { cleanSavingsPotDisplayName, groupSavingsPots } from '@/src/core/savings-pots';
 import { savingsPotGoalPace } from '@/src/core/savings-pot-goal';
 import type { SavingsPotAutomation, SavingsPotAutomationKind, SavingsPotAutomationMode, SavingsPotFrequency } from '@/src/core/savings-pot-automation';
 import type { FinancialScope } from '@/src/core/privacy';
@@ -149,7 +149,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   function openEdit(item:HomeSavingsPot){
     resetEditorState();
     setEditing(item);
-    setName(item.name);
+    setName(cleanSavingsPotDisplayName(item.name));
     setBalanceInput(formatInput(item.balanceMinor));
     setGoalInput(item.goalMinor&&item.goalMinor>0?formatInput(item.goalMinor):'');
     setTargetDate(item.targetDate||'');
@@ -586,10 +586,10 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
             ? <img src={coverPreview} alt={l('Prévia da foto do cofrinho','Savings pot photo preview','Vista previa de la foto de la alcancía')}/>
             : editing?.hasCover&&!removeCover
               ? <SavingsPotCover householdId={householdId} potId={editing.id} name={editing.name} hasCover coverVersion={editing.coverVersion}/>
-              : <div className="pot-cover-placeholder"><strong>{name.trim().slice(0,2).toLocaleUpperCase(locale)||'NB'}</strong><span>{l('Foto opcional','Optional photo','Foto opcional')}</span></div>}
+              : <div className="pot-cover-placeholder"><span>{l('Sem foto','No photo','Sin foto')}</span></div>}
           <div>
             <label className="ghost-button pot-photo-button">
-              {l('Escolher foto','Choose photo','Elegir foto')}
+              {editing?.hasCover&&!removeCover?l('Trocar foto','Change photo','Cambiar foto'):l('Escolher foto','Choose photo','Elegir foto')}
               <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>chooseCover(e.target.files?.[0]||null)} disabled={saving}/>
             </label>
             {(coverFile||(editing?.hasCover&&!removeCover))&&<button type="button" className="text-button" disabled={saving} onClick={()=>{
