@@ -66,7 +66,7 @@ app.post('/api/commitments/undo-payment', undoCommitmentPayment);
 app.post('/api/recurrences/confirm', confirmRecurringSuggestion);
 app.post('/api/recurrences/dismiss', dismissRecurringSuggestion);
 app.post('/api/categories/transaction', updateTransactionCategory);
-app.post('/api/attention/dismiss', dismissAttention);
+app.post('/api/attention/dismiss', sensitiveLimit, dismissAttention);
 app.post('/api/open-finance/list', listOpenFinanceConnections);
 app.post('/api/open-finance/start', startOpenFinanceConnection);
 app.post('/api/open-finance/complete', completeOpenFinanceConnection);
