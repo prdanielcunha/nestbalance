@@ -45,3 +45,39 @@ test('transferência não entra como despesa nem renda', () => {
   assert.equal(result.direction, 'transfer');
   assert.equal(result.needsReview.includes('direction'), false);
 });
+
+test('interpreta compromisso em inglês com formato numérico internacional',()=>{
+  const result=parseFinancialText('paid 1,250.50 for internet every month due day 10');
+  assert.equal(result.kind,'commitment');
+  assert.equal(result.money.amountMinor,125050);
+  assert.equal(result.direction,'expense');
+  assert.equal(result.dueDay,10);
+  assert.equal(result.recurring,true);
+  assert.equal(result.needsReview.includes('direction'),false);
+});
+
+test('interpreta renda em espanhol com acento e formato 1.234,56',()=>{
+  const result=parseFinancialText('recibí 2.500,00 de salario');
+  assert.equal(result.kind,'transaction');
+  assert.equal(result.money.amountMinor,250000);
+  assert.equal(result.direction,'income');
+  assert.equal(result.needsReview.includes('direction'),false);
+});
+
+test('interpreta recorrência e vencimento em espanhol',()=>{
+  const result=parseFinancialText('Internet 119,90 cada mes vence el 10');
+  assert.equal(result.kind,'commitment');
+  assert.equal(result.money.amountMinor,11990);
+  assert.equal(result.dueDay,10);
+  assert.equal(result.recurring,true);
+});
+
+test('interpreta transferência em inglês e espanhol sem virar despesa',()=>{
+  const english=parseFinancialText('transferred 850 between my accounts');
+  const spanish=parseFinancialText('transferí 850 entre mis cuentas');
+  assert.equal(english.direction,'transfer');
+  assert.equal(spanish.direction,'transfer');
+  assert.equal(english.needsReview.includes('direction'),false);
+  assert.equal(spanish.needsReview.includes('direction'),false);
+});
+
