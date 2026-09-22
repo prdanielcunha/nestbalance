@@ -54,7 +54,7 @@ jobs:
           echo "NESTBALANCE_CERTIFIED_DEPLOY_RUN=${{ github.event.workflow_run.id }}"
           OFFICIAL_RUN_ID=""
           for i in {1..60}; do
-            OFFICIAL_RUN_ID="$(gh api               -H "Accept: application/vnd.github+json"               "/repos/$GITHUB_REPOSITORY/actions/workflows/publish-official-production.yml/runs?branch=production&event=push&per_page=20"               --jq --arg sha "$RELEASE_SHA" '.workflow_runs[] | select(.head_sha==$sha and .conclusion=="success") | .id'               | head -n 1)"
+            OFFICIAL_RUN_ID="$(gh api               -H "Accept: application/vnd.github+json"               "/repos/$GITHUB_REPOSITORY/actions/workflows/publish-official-production.yml/runs?branch=production&event=push&per_page=20"               | jq -r --arg sha "$RELEASE_SHA" '.workflow_runs[] | select(.head_sha==$sha and .conclusion=="success") | .id'               | head -n 1)"
             if [[ -n "$OFFICIAL_RUN_ID" ]]; then
               break
             fi
