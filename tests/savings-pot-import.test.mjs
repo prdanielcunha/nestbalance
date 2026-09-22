@@ -103,5 +103,7 @@ Davi R$ 361,00`);
   assert.deepEqual(screen.pots.map(item=>item.name),['Aniversário Davi','Aniversário','Davi']);
   assert.equal(cleanSavingsPotDisplayName('t Aniversário Davi'),'Aniversário Davi');
   assert.equal(cleanSavingsPotDisplayName('VV Aniversário'),'Aniversário');
+  assert.equal(cleanSavingsPotDisplayName('vc Reservas'),'Reservas');
+  assert.equal(cleanSavingsPotDisplayName('e Dízimo'),'Dízimo');
   assert.equal(cleanSavingsPotDisplayName('TV nova'),'TV nova');
 });
