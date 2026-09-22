@@ -1,4 +1,12 @@
 export type Locale = 'pt-BR' | 'en' | 'es';
+export const supportedLocales:Locale[]=['pt-BR','en','es'];
+export function normalizeLocale(value:unknown):Locale{
+  const raw=String(value||'').trim().toLowerCase();
+  if(raw==='en'||raw.startsWith('en-')) return 'en';
+  if(raw==='es'||raw.startsWith('es-')) return 'es';
+  return 'pt-BR';
+}
+export const localeLabels:Record<Locale,string>={'pt-BR':'Português','en':'English','es':'Español'};
 export const messages = {
   'pt-BR': {
     brandTagline: 'Sua vida financeira, finalmente simples.',
