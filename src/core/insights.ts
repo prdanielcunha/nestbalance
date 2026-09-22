@@ -54,6 +54,8 @@ export type RecurringCandidate={
   averageMinor:number;
   observedMonths:number;
   monthKeys:string[];
+  referenceTransactionId:string;
+  suggestedDueDay:number|null;
 };
 
 const CATEGORY_PATTERNS:Array<[SpendingCategory,RegExp]>=[
@@ -67,7 +69,7 @@ const CATEGORY_PATTERNS:Array<[SpendingCategory,RegExp]>=[
   ['education',/\b(escola|faculdade|curso|mensalidade escolar|material escolar|livro)\b/i]
 ];
 
-function normalize(value:string){
+export function recurringPatternKey(value:string){
   return value
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g,'')
@@ -176,7 +178,7 @@ export function deriveFinancialAnomalies(rows:InsightTransaction[],now:Date):Fin
 
   const duplicateGroups=new Map<string,InsightTransaction[]>();
   for(const row of current){
-    const key=`${normalize(row.description)}|${row.amountMinor}|${row.observedOn||''}`;
+    const key=`${recurringPatternKey(row.description)}|${row.amountMinor}|${row.observedOn||''}`;
     const group=duplicateGroups.get(key)||[];
     group.push(row);
     duplicateGroups.set(key,group);
@@ -197,7 +199,7 @@ export function deriveFinancialAnomalies(rows:InsightTransaction[],now:Date):Fin
 
   const historyByDescription=new Map<string,number[]>();
   for(const row of historical){
-    const key=normalize(row.description);
+    const key=recurringPatternKey(row.description);
     if(key.length<3) continue;
     const values=historyByDescription.get(key)||[];
     values.push(row.amountMinor);
@@ -205,7 +207,7 @@ export function deriveFinancialAnomalies(rows:InsightTransaction[],now:Date):Fin
   }
 
   for(const row of current){
-    const key=normalize(row.description);
+    const key=recurringPatternKey(row.description);
     const values=historyByDescription.get(key)||[];
     if(values.length<2) continue;
     const baseline=median(values);
@@ -235,7 +237,7 @@ export function deriveRecurringCandidates(rows:InsightTransaction[]):RecurringCa
   const expenses=rows.filter(validExpense).filter(row=>Boolean(row.observedOn));
   const groups=new Map<string,InsightTransaction[]>();
   for(const row of expenses){
-    const key=normalize(row.description);
+    const key=recurringPatternKey(row.description);
     if(key.length<3) continue;
     const group=groups.get(key)||[];
     group.push(row);
@@ -262,7 +264,14 @@ export function deriveRecurringCandidates(rows:InsightTransaction[]):RecurringCa
       description:monthly.at(-1)?.description||items[0].description,
       averageMinor:Math.round(amounts.reduce((sum,value)=>sum+value,0)/amounts.length),
       observedMonths:byMonth.size,
-      monthKeys:[...byMonth.keys()].sort()
+      monthKeys:[...byMonth.keys()].sort(),
+      referenceTransactionId:monthly.at(-1)?.id||items[0].id,
+      suggestedDueDay:(()=>{
+        const observed=monthly.at(-1)?.observedOn;
+        if(!observed||!/^\d{4}-\d{2}-\d{2}$/.test(observed)) return null;
+        const day=Number(observed.slice(8,10));
+        return Number.isInteger(day)&&day>=1&&day<=31?day:null;
+      })()
     });
   }
 
