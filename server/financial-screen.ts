@@ -255,7 +255,6 @@ export async function commitFinancialScreen(req:Request,res:Response){
       institution:screen.institution,
       analysisSource,
       counts:{accounts,pots,cards,commitments,movements,skipped},
-      analysisSource,
       createdAt:FieldValue.serverTimestamp()
     });
 
@@ -265,6 +264,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
       evidenceId:resolved.evidenceId,
       screenType:screen.screenType,
       institution:screen.institution,
+      analysisSource,
       counts:{accounts,pots,cards,commitments,movements,skipped}
     });
   }catch(err:any){
