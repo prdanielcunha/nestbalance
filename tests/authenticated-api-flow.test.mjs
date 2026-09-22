@@ -76,12 +76,21 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     assert.equal(anonymous.json.error,'AUTH_REQUIRED');
 
     const owner=await createEmulatorUser('owner@nestbalance.test','OwnerPass123!');
-    const ownerBootstrap=await post('/api/session/bootstrap',owner.token,{});
+    const ownerDevice={id:'device_owner_000001',label:'iPhone'};
+    const ownerBootstrap=await post('/api/session/bootstrap',owner.token,{preferredLocale:'en',device:ownerDevice});
     assert.equal(ownerBootstrap.json.ok,true);
     assert.equal(ownerBootstrap.json.created,true);
     assert.equal(ownerBootstrap.json.households.length,1);
     assert.equal(ownerBootstrap.json.households[0].role,'owner');
+    assert.equal(ownerBootstrap.json.locale,'en');
+    assert.equal(ownerBootstrap.json.households[0].locale,'en');
+    assert.equal(ownerBootstrap.json.deviceFirstSeen,true);
     const householdId=ownerBootstrap.json.householdId;
+
+    const devices=await post('/api/security/devices',owner.token,{device:ownerDevice});
+    assert.equal(devices.json.devices.length,1);
+    assert.equal(devices.json.devices[0].label,'iPhone');
+    assert.equal(devices.json.devices[0].current,true);
 
     const repeatBootstrap=await post('/api/session/bootstrap',owner.token,{});
     assert.equal(repeatBootstrap.json.created,false);
@@ -174,9 +183,18 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     },403);
     assert.equal(memberCannotManageFinance.json.error,'HOUSEHOLD_ACCESS_DENIED');
 
-    const ownerFinal=await post('/api/session/bootstrap',owner.token,{householdId});
+    const ownerFinal=await post('/api/session/bootstrap',owner.token,{householdId,device:ownerDevice});
     assert.equal(ownerFinal.json.householdId,householdId);
     assert.equal(ownerFinal.json.created,false);
+    assert.equal(ownerFinal.json.deviceFirstSeen,false);
+
+    const revoked=await post('/api/security/revoke-sessions',owner.token,{});
+    assert.equal(revoked.json.ok,true);
+    const ownerAfterRevocation=await post('/api/home',owner.token,{householdId},401);
+    assert.equal(ownerAfterRevocation.json.error,'INVALID_SESSION');
+
+    const partnerAfterOwnerRevocation=await post('/api/home',partner.token,{householdId});
+    assert.equal(partnerAfterOwnerRevocation.json.ok,true);
   }finally{
     server.kill('SIGTERM');
     await new Promise(resolve=>{
