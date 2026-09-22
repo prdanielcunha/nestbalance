@@ -6,6 +6,7 @@ import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { isAssignableHouseholdRole, normalizeHouseholdRole } from '../src/core/household.js';
 import { normalizeLocale, parseLocale } from '../src/core/locale.js';
 import { canSeeHouseholdActivity } from '../src/core/activity.js';
+import { normalizeProactivityPreferences } from '../src/core/proactivity.js';
 
 const INVITE_TTL_MS=7*24*60*60*1000;
 
@@ -93,6 +94,7 @@ export async function getHouseholdSettings(req:Request,res:Response){
         ownerUid:String(data.ownerUid||'')
       },
       currentRole:current.role,
+      proactivityPreferences:normalizeProactivityPreferences(current.proactivityPreferences),
       members:members.docs.map(publicMember),
       invites,
       activity

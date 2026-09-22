@@ -2,6 +2,7 @@
 import { auth } from '@/src/lib/firebase/client';
 import type { HouseholdRole } from '@/src/core/household';
 import type { AppLocale } from '@/src/core/locale';
+import type { ProactivityPreferences } from '@/src/core/proactivity';
 
 export type HouseholdMember={
   uid:string;
@@ -30,6 +31,7 @@ export type HouseholdSettingsPayload={
   ok:true;
   household:{id:string;name:string;currency:string;locale:AppLocale;ownerUid:string};
   currentRole:HouseholdRole;
+  proactivityPreferences:ProactivityPreferences;
   members:HouseholdMember[];
   invites:HouseholdInviteSummary[];
   activity:HouseholdActivity[];
@@ -76,4 +78,8 @@ export function removeHouseholdMember(input:{householdId:string;uid:string}){
 
 export function revokeHouseholdInvite(input:{householdId:string;inviteId:string}){
   return post<{ok:true;inviteId:string;status:'revoked'}>('/api/household/invite/revoke',input);
+}
+
+export function updateProactivityPreferences(input:{householdId:string;preferences:ProactivityPreferences}){
+  return post<{ok:true;preferences:ProactivityPreferences}>('/api/member/proactivity-preferences',input);
 }
