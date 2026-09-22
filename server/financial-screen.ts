@@ -5,6 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { buildImportedMovements } from '../src/core/movement-import.js';
 import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
 import type { AiFinancialScreenSnapshot } from '../src/core/ai-financial.js';
+import { normalizeSavingsPotName } from '../src/core/savings-pots.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { assertScopedAccess, requestedScope } from './privacy.js';
@@ -124,7 +125,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         skipped++;
         continue;
       }
-      const key=hash([scope,ownerUid||'','screen_pot',screen.institution||'',item.name].join('|'));
+      const key=hash([scope,ownerUid||'','screen_pot',normalizeSavingsPotName(screen.institution||''),normalizeSavingsPotName(item.name)].join('|'));
       const ref=household.collection('savingsPots').doc(key.slice(0,40));
       batch.set(ref,{
         name:safeName(item.name,'Dinheiro guardado'),
