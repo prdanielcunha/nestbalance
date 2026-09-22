@@ -5,6 +5,7 @@ import { visibleDocs } from './privacy.js';
 import { categoryFromRecordAndRules, learnedCategoryRuleFromDoc, type LearnedCategoryRule } from './category-rules.js';
 import { normalizeProactivityPreferences } from '../src/core/proactivity.js';
 import { activeAttentionDismissals } from '../src/core/attention.js';
+import { normalizeSavingsPotAutomation } from '../src/core/savings-pot-automation.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -35,9 +36,15 @@ function savingsPotDto(doc:any){
     name:String(data.name||'Dinheiro guardado'),
     balanceMinor:Number(data.balanceMinor||0),
     goalMinor:Number.isSafeInteger(data.goalMinor)?data.goalMinor:null,
+    targetDate:typeof data.targetDate==='string'?data.targetDate:null,
+    note:typeof data.note==='string'?data.note:null,
     currency:String(data.currency||'BRL'),
     institutionName:typeof data.institutionName==='string'?data.institutionName:null,
     source:typeof data.source==='string'?data.source:null,
+    trackingMode:data.trackingMode==='bank_mirror'||data.source==='screen_import'?'bank_mirror':'manual',
+    hasCover:data.hasCover===true,
+    coverVersion:Number.isSafeInteger(data.coverVersion)?data.coverVersion:null,
+    automation:normalizeSavingsPotAutomation(data.automation),
     status:String(data.status||'active'),
     scope:data.scope==='personal'?'personal':'household'
   };
