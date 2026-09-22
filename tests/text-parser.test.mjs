@@ -97,6 +97,7 @@ test('OCR com espaço no milhar continua preservando centavos',()=>{
 test('data e hora antes do valor não são confundidas com dinheiro',()=>{
   const result=parseFinancialText('paguei 05/09 às 14:32 mercado R$ 100,00');
   assert.equal(result.money.amountMinor,10000);
+  assert.equal(result.installment,undefined);
   assert.match(result.description,/mercado/i);
 });
 
@@ -106,4 +107,11 @@ test('dia de vencimento sem valor não vira R$ 10 silenciosamente',()=>{
   assert.equal(result.dueDay,10);
   assert.ok(result.needsReview.includes('amount'));
   assert.ok(result.needsReview.includes('amount_positive'));
+});
+
+
+test('data curta depois do valor com contexto de data não vira parcela',()=>{
+  const result=parseFinancialText('paguei R$ 100,00 no mercado em 05/09');
+  assert.equal(result.money.amountMinor,10000);
+  assert.equal(result.installment,undefined);
 });
