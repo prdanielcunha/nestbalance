@@ -590,9 +590,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setError('');
     setNotice('');
     try {
+      let finalEvidenceId=preparedEvidenceId;
+      if(screenSnapshot&&!finalEvidenceId&&file){
+        const evidence=await ingestEvidence(householdId,file,progress=>setUpload(progress),scope);
+        finalEvidenceId=evidence.canonicalEvidenceId;
+        setPreparedEvidenceId(finalEvidenceId);
+      }
+
       let created = 0;
-      if(screenSnapshot&&preparedEvidenceId){
-        await commitFinancialScreen({householdId,evidenceId:preparedEvidenceId,scope});
+      if(screenSnapshot&&finalEvidenceId){
+        await commitFinancialScreen({householdId,evidenceId:finalEvidenceId,scope});
         created++;
       }
       let duplicates = 0;
@@ -601,8 +608,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           householdId,
           uid,
           interpretation: interpretations[i],
-          evidenceId: i === 0 ? preparedEvidenceId : null,
-          file: i === 0 && !preparedEvidenceId ? file : null,
+          evidenceId: i === 0 ? finalEvidenceId : null,
+          file: i === 0 && !finalEvidenceId ? file : null,
           onUploadProgress: progress => setUpload(progress),
           scope
         });
