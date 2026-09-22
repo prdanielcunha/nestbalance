@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
+import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { buildImportedMovements, resolveImportedMovementDirection } from '@/src/core/movement-import';
 import { parseFinancialCsv } from '@/src/core/csv-import';
 import type { FinancialInterpretation } from '@/src/core/types';
@@ -47,7 +48,7 @@ function markDocumentDerived(items: FinancialInterpretation[]) {
 }
 
 export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=false, showTrigger=true, onClose }: { householdId: string; uid: string; onCommitted?: () => void; defaultOpen?: boolean; showTrigger?: boolean; onClose?: () => void }) {
-  const {t,locale,formatMoney,formatDate}=useI18n();
+  const {t,locale,intlLocale,formatMoney,formatDate}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const [open, setOpen] = useState(defaultOpen);
   const [text, setText] = useState('');
@@ -85,6 +86,17 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const recorderStreamRef=useRef<MediaStream|null>(null);
 
   const working = saving || analyzing || recording || geminiWorking;
+  const moneyInputValue=(minor:number)=>(minor/100).toLocaleString(intlLocale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
+
+  function readEditedMoney(value:string,allowZero=false){
+    const parsed=parseMoneyInputToMinor(value,locale);
+    if(parsed===null||(allowZero?parsed<0:parsed<=0)){
+      setError(l('Confira o valor digitado.','Check the amount you entered.','Revisa el valor ingresado.'));
+      return null;
+    }
+    setError('');
+    return parsed;
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -979,7 +991,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   <span>{l('Saldo principal encontrado','Primary balance found','Saldo principal encontrado')}</span>
                 </div>
                 <div>
-                  <b>{formatMoney(account.balanceMinor)}</b>
+                  <label className="screen-money-edit">
+                    <span>{l('Saldo','Balance','Saldo')}</span>
+                    <input
+                      inputMode="decimal"
+                      defaultValue={moneyInputValue(account.balanceMinor)}
+                      aria-label={l('Saldo identificado','Detected balance','Saldo identificado')}
+                      onBlur={event=>{
+                        const parsed=readEditedMoney(event.currentTarget.value,true);
+                        if(parsed===null) return;
+                        setScreenSnapshot(current=>current?{...current,accounts:current.accounts.map((item,itemIndex)=>itemIndex===index?{...item,balanceMinor:parsed}:item)}:current);
+                      }}
+                    />
+                  </label>
                   <small>{screenSnapshot.institution||l('Instituição não confirmada','Institution not confirmed','Institución no confirmada')}</small>
                 </div>
               </div>)}
@@ -1012,7 +1036,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   <span>{screenSnapshot.institution||l('Origem não identificada','Source not identified','Origen no identificado')}</span>
                 </div>
                 <div>
-                  <b>{formatMoney(pot.balanceMinor)}</b>
+                  <label className="screen-money-edit">
+                    <span>{l('Guardado','Saved','Guardado')}</span>
+                    <input
+                      inputMode="decimal"
+                      defaultValue={moneyInputValue(pot.balanceMinor)}
+                      aria-label={l('Valor guardado','Saved amount','Valor guardado')}
+                      onBlur={event=>{
+                        const parsed=readEditedMoney(event.currentTarget.value,true);
+                        if(parsed===null) return;
+                        setScreenSnapshot(current=>current?{...current,pots:current.pots.map((item,itemIndex)=>itemIndex===index?{...item,balanceMinor:parsed}:item)}:current);
+                      }}
+                    />
+                  </label>
                   <small>{pot.goalMinor&&pot.goalMinor>0?l(`Meta ${formatMoney(pot.goalMinor)}`,`Goal ${formatMoney(pot.goalMinor)}`,`Meta ${formatMoney(pot.goalMinor)}`):l('Sem meta encontrada','No goal found','Sin meta encontrada')}</small>
                 </div>
               </div>)}
@@ -1031,7 +1067,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   <span>{commitment.recurring?l('Repete todo mês','Repeats monthly','Se repite cada mes'):l('Conta para pagar','Bill to pay','Cuenta por pagar')}</span>
                 </div>
                 <div className="screen-commitment-value">
-                  <b>{formatMoney(commitment.amountMinor)}</b>
+                  <label className="screen-money-edit">
+                    <span>{l('Valor','Amount','Valor')}</span>
+                    <input
+                      inputMode="decimal"
+                      defaultValue={moneyInputValue(commitment.amountMinor)}
+                      aria-label={l('Valor da conta','Bill amount','Valor de la cuenta')}
+                      onBlur={event=>{
+                        const parsed=readEditedMoney(event.currentTarget.value);
+                        if(parsed===null) return;
+                        setScreenSnapshot(current=>current?{...current,commitments:current.commitments.map((item,itemIndex)=>itemIndex===index?{...item,amountMinor:parsed}:item)}:current);
+                      }}
+                    />
+                  </label>
                   <label>
                     <span>{l('Dia','Day','Día')}</span>
                     <input
