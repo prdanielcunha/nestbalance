@@ -5,10 +5,9 @@ import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { categorizeSpending, categoryLabel, deriveRecurringCandidates, recurringPatternKey } from '@/src/core/insights';
+import { useI18n } from '@/src/i18n/locale-provider';
 import { confirmRecurringSuggestion, dismissRecurringSuggestion } from '@/src/lib/repositories/recurrences';
 
-const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
-const date=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
 
 type Filter='all'|'income'|'cash_expense'|'card'|'transfer';
 type ViewScope='household'|'personal';
@@ -30,6 +29,9 @@ function matchesFilter(row:HomeRow,filter:Filter){
 }
 
 export function MovementsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
+  const {t,locale,intlLocale,formatMoney}=useI18n();
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  const date=useMemo(()=>new Intl.DateTimeFormat(intlLocale,{day:'2-digit',month:'short',year:'numeric'}),[intlLocale]);
   const [rows,setRows]=useState<HomeRow[]>([]);
   const [commitments,setCommitments]=useState<HomeRow[]>([]);
   const [dismissedRecurrenceKeys,setDismissedRecurrenceKeys]=useState<string[]>([]);
@@ -50,7 +52,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
       setCommitments(data.commitments||[]);
       setDismissedRecurrenceKeys(data.dismissedRecurrenceKeys||[]);
     }catch{
-      setError('Não conseguimos carregar seus movimentos agora.');
+      setError(l('Não conseguimos carregar seus movimentos agora.','We could not load your activity right now.','No pudimos cargar tus movimientos ahora.'));
     }finally{
       if(!silent) setLoading(false);
     }
@@ -101,9 +103,9 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   }),[scopedRows]);
 
   const visible=useMemo(()=>{
-    const q=query.trim().toLocaleLowerCase('pt-BR');
-    return scopedRows.filter(row=>matchesFilter(row,filter)&&(!q||row.description.toLocaleLowerCase('pt-BR').includes(q)));
-  },[scopedRows,filter,query]);
+    const q=query.trim().toLocaleLowerCase(intlLocale);
+    return scopedRows.filter(row=>matchesFilter(row,filter)&&(!q||row.description.toLocaleLowerCase(intlLocale).includes(q)));
+  },[scopedRows,filter,query,intlLocale]);
 
   const filters:{value:Filter;label:string}[]=[
     {value:'all',label:'Todos'},
@@ -115,14 +117,14 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
 
   return <main className="app-shell movements-shell">
     <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Movimentos</span></div>
+      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navMovements}</span></div>
     </header>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="area-hero">
-      <span>Seu histórico</span>
-      <h1>Tudo que aconteceu com seu dinheiro.</h1>
-      <p>O NestBalance separa o que você recebeu, o que pagou, o que foi para o cartão e o que só mudou de uma conta sua para outra.</p>
+      <span>{l('Seu histórico','Your history','Tu historial')}</span>
+      <h1>{t.movementsTitle}</h1>
+      <p>{t.movementsIntro}</p>
     </section>
 
     {recurringCandidates.length>0&&<section className="recurrence-suggestions" aria-labelledby="recurrence-title">
@@ -138,7 +140,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
           <div>
             <span>{candidate.scope==='personal'?'Só para mim':'Lar'} · apareceu em {candidate.observedMonths} meses</span>
             <strong>{candidate.description}</strong>
-            <p>Cerca de {money.format(candidate.averageMinor/100)} por mês{candidate.suggestedDueDay?' · normalmente perto do dia '+candidate.suggestedDueDay:''}.</p>
+            <p>Cerca de {formatMoney(candidate.averageMinor)} por mês{candidate.suggestedDueDay?' · normalmente perto do dia '+candidate.suggestedDueDay:''}.</p>
           </div>
           {role!=='read_only'
             ? <div className="recurrence-actions">
@@ -156,17 +158,17 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     </section>}
 
     <section className="movement-summary-grid">
-      <article><span>Recebi</span><strong>{money.format(summary.income/100)}</strong></article>
-      <article><span>Paguei</span><strong>{money.format(summary.cashExpense/100)}</strong></article>
-      <article><span>No cartão</span><strong>{money.format(summary.card/100)}</strong></article>
-      <article><span>Entre contas</span><strong>{money.format(summary.transfers/100)}</strong></article>
+      <article><span>Recebi</span><strong>{formatMoney(summary.income)}</strong></article>
+      <article><span>Paguei</span><strong>{formatMoney(summary.cashExpense)}</strong></article>
+      <article><span>No cartão</span><strong>{formatMoney(summary.card)}</strong></article>
+      <article><span>Entre contas</span><strong>{formatMoney(summary.transfers)}</strong></article>
     </section>
 
     <section className="movement-controls">
       <div className="movement-filter-row">
         {filters.map(item=><button key={item.value} className={filter===item.value?'active':''} onClick={()=>setFilter(item.value)}>{item.label}</button>)}
       </div>
-      <input className="premium-input movement-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por descrição"/>
+      <input className="premium-input movement-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder={l('Buscar por descrição','Search by description','Buscar por descripción')}/>
     </section>
 
     {error&&<p className="error-copy" role="alert">{error}</p>}
@@ -180,10 +182,10 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
               <div className="movement-full-copy">
                 <strong>{row.description}</strong>
                 <span>{label(row)}{row.scope==='personal'?' · Só para mim':''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
-                {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<small>{categoryLabel(categorizeSpending(row.description))}</small>}
+                {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<small>{categoryLabel(categorizeSpending(row.description),locale)}</small>}
                 {row.installment&&<small>Parcela {row.installment.current} de {row.installment.total}</small>}
               </div>
-              <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {money.format(row.amountMinor/100)}</b>
+              <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {formatMoney(row.amountMinor)}</b>
             </article>)}
           </section>}
 
