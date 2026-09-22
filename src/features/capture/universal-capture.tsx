@@ -7,6 +7,8 @@ import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
 import { detectDocumentSignals } from '@/src/core/document-signals';
 import { parseSavingsPotsFromOcr } from '@/src/core/savings-pot-import';
+import { parseRecurringCommitmentsFromOcr } from '@/src/core/recurring-commitment-import';
+import { parseAccountBalanceFromOcr } from '@/src/core/account-balance-import';
 import {
   aiAmountChoices,
   aiDirectionNeedsConfirmation,
@@ -173,6 +175,60 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setNotice(noticeText);
   }
 
+  async function pasteImageFromClipboard(){
+    if(working) return;
+    setError('');
+    const clipboard=(navigator as any)?.clipboard;
+    if(!clipboard?.read){
+      setError(l('Este navegador não liberou colar imagens por botão. Você ainda pode copiar o print e usar Colar no navegador, ou escolher a imagem sem precisar manter uma cópia depois.','This browser does not expose image paste through a button. You can still use the browser Paste action or choose the image.','Este navegador no permite pegar imágenes con un botón. Aún puedes usar Pegar del navegador o elegir la imagen.'));
+      return;
+    }
+    try{
+      const items=await clipboard.read();
+      for(const item of items){
+        const imageType=(item.types||[]).find((type:string)=>type.startsWith('image/'));
+        if(!imageType) continue;
+        const blob=await item.getType(imageType);
+        const extension=(imageType.split('/')[1]||'png').replace('jpeg','jpg');
+        const pasted=new File([blob],`print-colado-${Date.now()}.${extension}`,{type:imageType});
+        selectFile(pasted,l('Print colado. Já estou organizando.','Screenshot pasted. I am organizing it now.','Captura pegada. Ya la estoy organizando.'));
+        void interpret(pasted);
+        return;
+      }
+      setError(l('Não encontrei uma imagem copiada agora. Copie o print e tente novamente.','I could not find a copied image. Copy the screenshot and try again.','No encontré una imagen copiada. Copia la captura e inténtalo de nuevo.'));
+    }catch{
+      setError(l('O navegador não liberou a área de transferência. Tente novamente após copiar o print ou use “Print ou foto”.','The browser did not grant clipboard access. Copy the screenshot again or use “Screenshot or photo”.','El navegador no dio acceso al portapapeles. Copia la captura otra vez o usa “Captura o foto”.'));
+    }
+  }
+
+  function reprocessLocalAs(kind:'recurring'|'pots'|'balance'){
+    if(!localOcrText.trim()) return;
+    const next=kind==='recurring'
+      ? parseRecurringCommitmentsFromOcr(localOcrText)
+      : kind==='pots'
+        ? parseSavingsPotsFromOcr(localOcrText)
+        : parseAccountBalanceFromOcr(localOcrText);
+    if(!next){
+      setError(kind==='recurring'
+        ? l('Não encontrei linhas suficientes de contas recorrentes nesse print. Você pode corrigir pelo texto ou tentar uma imagem mais nítida.','I could not find enough recurring-bill rows in this screenshot. You can correct it with text or try a clearer image.','No encontré suficientes filas de cuentas recurrentes en esta captura. Puedes corregir por texto o probar una imagen más nítida.')
+        : kind==='pots'
+          ? l('Não encontrei uma lista de cofrinhos confiável nesse print.','I could not find a reliable savings-pot list in this screenshot.','No encontré una lista confiable de alcancías en esta captura.')
+          : l('Não encontrei um saldo principal confiável nesse print.','I could not find a reliable primary balance in this screenshot.','No encontré un saldo principal confiable en esta captura.'));
+      return;
+    }
+    setScreenSnapshot(next);
+    setInterpretations([]);
+    setAmountChoices([]);
+    setDirectionChoice(false);
+    setPendingAi(null);
+    setError('');
+    setNotice(kind==='recurring'
+      ? l(`Reanalisei como contas recorrentes e encontrei ${next.commitments.length}. Confira antes de guardar.`,`I re-read it as recurring bills and found ${next.commitments.length}. Review before saving.`,`La releí como cuentas recurrentes y encontré ${next.commitments.length}. Revisa antes de guardar.`)
+      : kind==='pots'
+        ? l(`Reanalisei como cofrinhos e encontrei ${next.pots.length}.`,`I re-read it as savings pots and found ${next.pots.length}.`,`La releí como alcancías y encontré ${next.pots.length}.`)
+        : l('Reanalisei como tela de saldo e usei o valor ligado ao saldo principal, não limites, fatura ou empréstimos.','I re-read it as a balance screen and used the amount tied to the primary balance, not limits, statements, or loans.','La releí como pantalla de saldo y usé el valor ligado al saldo principal, no límites, facturas ni préstamos.'));
+  }
+
   async function startRecording(){
     if(recording||working) return;
     setError('');
@@ -314,6 +370,21 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         signals
       });
 
+      const recurringScreen=parseRecurringCommitmentsFromOcr(ocr);
+      if(recurringScreen?.commitments.length){
+        setScreenSnapshot(recurringScreen);
+        setInterpretations([]);
+        setAmountChoices([]);
+        setDirectionChoice(false);
+        setPendingAi(null);
+        setNotice(l(
+          `Encontrei ${recurringScreen.commitments.length} conta${recurringScreen.commitments.length===1?'':'s'} recorrente${recurringScreen.commitments.length===1?'':'s'}. Vou guardar como compromissos mensais, não como movimentos soltos.`,
+          `I found ${recurringScreen.commitments.length} recurring bill${recurringScreen.commitments.length===1?'':'s'}. I will save them as monthly commitments, not isolated movements.`,
+          `Encontré ${recurringScreen.commitments.length} cuenta${recurringScreen.commitments.length===1?'':'s'} recurrente${recurringScreen.commitments.length===1?'':'s'}. Las guardaré como compromisos mensuales, no como movimientos aislados.`
+        ));
+        return true;
+      }
+
       const savingsPotsScreen=parseSavingsPotsFromOcr(ocr);
       if(savingsPotsScreen?.pots.length){
         setScreenSnapshot(savingsPotsScreen);
@@ -325,6 +396,21 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           `Encontrei ${savingsPotsScreen.pots.length} cofrinho${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' em '+savingsPotsScreen.institution:''}. Confira nomes, saldos e metas antes de guardar.`,
           `I found ${savingsPotsScreen.pots.length} savings pot${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' at '+savingsPotsScreen.institution:''}. Review names, balances, and goals before saving.`,
           `Encontré ${savingsPotsScreen.pots.length} alcancía${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' en '+savingsPotsScreen.institution:''}. Revisa nombres, saldos y metas antes de guardar.`
+        ));
+        return true;
+      }
+
+      const balanceScreen=parseAccountBalanceFromOcr(ocr);
+      if(balanceScreen?.accounts.length){
+        setScreenSnapshot(balanceScreen);
+        setInterpretations([]);
+        setAmountChoices([]);
+        setDirectionChoice(false);
+        setPendingAi(null);
+        setNotice(l(
+          'Identifiquei o saldo principal pela posição e pelo rótulo “Saldo”. Valores de cartão, limite e empréstimo ficaram de fora.',
+          'I identified the primary balance by its position and Balance label. Card, limit, and loan amounts were left out.',
+          'Identifiqué el saldo principal por su posición y la etiqueta “Saldo”. Excluí valores de tarjeta, límite y préstamo.'
         ));
         return true;
       }
@@ -714,9 +800,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <button type="button" disabled={working} onClick={()=>fileInputRef.current?.click()}>
               <strong>{l('Arquivo','File','Archivo')}</strong><span>{l('PDF, CSV ou áudio','PDF, CSV or audio','PDF, CSV o audio')}</span>
             </button>
+            <button type="button" disabled={working} onClick={()=>void pasteImageFromClipboard()}>
+              <strong>{l('Colar print','Paste screenshot','Pegar captura')}</strong><span>{l('Sem salvar na galeria','No gallery save needed','Sin guardar en galería')}</span>
+            </button>
           </div>
 
-          <div className="capture-paste-hint">{l('No computador, você também pode colar um print direto aqui.','On a computer, you can also paste a screenshot right here.','En computadora, también puedes pegar una captura directamente aquí.')}</div>
+          <div className="capture-paste-hint">{l('Você também pode copiar um print e colar direto aqui — no celular ou computador, quando o navegador permitir.','You can also copy a screenshot and paste it directly here — on mobile or desktop when the browser allows it.','También puedes copiar una captura y pegarla aquí — en móvil o computadora cuando el navegador lo permita.')}</div>
 
           <input
             ref={imageInputRef}
@@ -746,6 +835,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               e.currentTarget.value='';
             }}
           />
+
+          {localOcrText&&file?.type.startsWith('image/')&&<div className="capture-reclassify">
+            <span>{l('Se eu entendi o tipo errado, me diga o que este print mostra:','If I got the type wrong, tell me what this screenshot shows:','Si entendí mal el tipo, dime qué muestra esta captura:')}</span>
+            <div>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('recurring')}>{l('Contas recorrentes','Recurring bills','Cuentas recurrentes')}</button>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('pots')}>{l('Cofrinhos','Savings pots','Alcancías')}</button>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('balance')}>{l('Saldo da conta','Account balance','Saldo de la cuenta')}</button>
+            </div>
+          </div>}
 
           <label className="sr-only" htmlFor="universal-capture-text">{l('Conte o que aconteceu','Tell us what happened','Cuéntanos qué pasó')}</label>
           <textarea
@@ -861,8 +959,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               {interpretations.length>0&&<span><b>{interpretations.length}</b> {l(interpretations.length===1?'movimento':'movimentos',interpretations.length===1?'movement':'movements',interpretations.length===1?'movimiento':'movimientos')}</span>}
             </div>
             {screenSnapshot.pots.length>0&&<>
-              {!screenSnapshot.institution?.trim()&&<div className="screen-pot-source-confirm">
-                <label htmlFor="screen-pot-institution">{l('De qual banco são estes cofrinhos?','Which bank are these savings pots from?','¿De qué banco son estas alcancías?')}</label>
+              <div className="screen-pot-source-confirm">
+                <label htmlFor="screen-pot-institution">{l('Banco ou origem destes cofrinhos','Bank or source of these savings pots','Banco u origen de estas alcancías')}</label>
                 <input
                   id="screen-pot-institution"
                   className="pot-text-input"
@@ -872,12 +970,18 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   maxLength={120}
                   autoComplete="organization"
                 />
-                <small>{l('Só perguntamos porque o nome do banco não apareceu no print. Isso evita duplicar o mesmo cofrinho quando você enviar outra tela.','We only ask because the bank name did not appear in the screenshot. This prevents duplicates when you send another screen.','Solo preguntamos porque el nombre del banco no apareció en la captura. Esto evita duplicar la misma alcancía cuando envíes otra pantalla.')}</small>
-              </div>}
+                <small>{l('Confira a origem antes de guardar. O campo fica aberto enquanto você digita e pode ser corrigido mesmo quando eu reconhecer o banco sozinho.','Review the source before saving. The field stays open while you type and can be corrected even when I recognize the bank automatically.','Revisa el origen antes de guardar. El campo permanece abierto mientras escribes y puede corregirse incluso cuando reconozco el banco automáticamente.')}</small>
+              </div>
               <div className="screen-pot-review">
-              {screenSnapshot.pots.map((pot,index)=><div className="screen-pot-review-row" key={`${pot.name}-${index}`}>
+              {screenSnapshot.pots.map((pot,index)=><div className="screen-pot-review-row screen-pot-review-editable" key={index}>
                 <div>
-                  <strong>{pot.name}</strong>
+                  <input
+                    className="pot-inline-name"
+                    value={pot.name}
+                    maxLength={120}
+                    aria-label={l('Nome do cofrinho','Savings pot name','Nombre de la alcancía')}
+                    onChange={event=>setScreenSnapshot(current=>current?{...current,pots:current.pots.map((item,itemIndex)=>itemIndex===index?{...item,name:event.target.value}:item)}:current)}
+                  />
                   <span>{screenSnapshot.institution||l('Origem não identificada','Source not identified','Origen no identificado')}</span>
                 </div>
                 <div>
@@ -886,6 +990,39 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                 </div>
               </div>)}
             </div></>}
+
+            {screenSnapshot.commitments.length>0&&<div className="screen-pot-review screen-commitment-review">
+              {screenSnapshot.commitments.map((commitment,index)=><div className="screen-pot-review-row screen-pot-review-editable" key={index}>
+                <div>
+                  <input
+                    className="pot-inline-name"
+                    value={commitment.description}
+                    maxLength={120}
+                    aria-label={l('Nome da conta','Bill name','Nombre de la cuenta')}
+                    onChange={event=>setScreenSnapshot(current=>current?{...current,commitments:current.commitments.map((item,itemIndex)=>itemIndex===index?{...item,description:event.target.value}:item)}:current)}
+                  />
+                  <span>{commitment.recurring?l('Repete todo mês','Repeats monthly','Se repite cada mes'):l('Conta para pagar','Bill to pay','Cuenta por pagar')}</span>
+                </div>
+                <div className="screen-commitment-value">
+                  <b>{formatMoney(commitment.amountMinor)}</b>
+                  <label>
+                    <span>{l('Dia','Day','Día')}</span>
+                    <input
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={commitment.dueDay??''}
+                      placeholder="—"
+                      aria-label={l('Dia do vencimento','Due day','Día de vencimiento')}
+                      onChange={event=>{
+                        const parsed=Number(event.target.value);
+                        const dueDay=event.target.value===''?null:Number.isInteger(parsed)&&parsed>=1&&parsed<=31?parsed:null;
+                        setScreenSnapshot(current=>current?{...current,commitments:current.commitments.map((item,itemIndex)=>itemIndex===index?{...item,dueDay}:item)}:current);
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>)}
+            </div>}
             <small>{l('Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.','Balance, card limit and saved money do not become expenses. Only movements and bills are counted that way.','El saldo, el límite y el dinero guardado no se convierten en gastos. Solo los movimientos y las cuentas entran en esa categoría.')}</small>
           </div>}
 
