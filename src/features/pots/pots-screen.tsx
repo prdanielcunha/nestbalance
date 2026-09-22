@@ -72,6 +72,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   const [automationKind,setAutomationKind]=useState<SavingsPotAutomationKind>('frequency');
   const [automationMode,setAutomationMode]=useState<SavingsPotAutomationMode>('fixed');
   const [automationFrequency,setAutomationFrequency]=useState<SavingsPotFrequency>('monthly');
+  const [automationStartDate,setAutomationStartDate]=useState('');
   const [automationValue,setAutomationValue]=useState('');
   const [automationWorking,setAutomationWorking]=useState(false);
 
@@ -249,6 +250,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     setAutomationKind(a?.kind||'frequency');
     setAutomationMode(a?.mode||'fixed');
     setAutomationFrequency(a?.frequency||'monthly');
+    setAutomationStartDate(a?.kind==='frequency'?(a.anchorDate||''):'');
     if(a?.mode==='percent'&&a.percentBps){
       setAutomationValue((a.percentBps/100).toLocaleString(intlLocale,{maximumFractionDigits:2,useGrouping:false}));
     }else if(a?.amountMinor){
@@ -349,7 +351,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
           amountMinor,
           percentBps:null,
           frequency:automationKind==='frequency'?automationFrequency:null,
-          anchorDate:selected.automation?.anchorDate||(automationKind==='frequency'?null:todayKey())
+          anchorDate:automationKind==='frequency'?(automationStartDate||selected.automation?.anchorDate||null):(selected.automation?.anchorDate||todayKey())
         };
       }else{
         const numeric=Number(automationValue.replace(',','.'));
@@ -750,6 +752,10 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                               <option value="biweekly">{l('A cada 15 dias','Every 15 days','Cada 15 días')}</option>
                               <option value="monthly">{l('Todo mês','Every month','Cada mes')}</option>
                             </select>
+                          </label>
+                          <label>
+                            <span className="field-label">{l('Primeira reserva (opcional)','First saving date (optional)','Primera reserva (opcional)')}</span>
+                            <input className="pot-text-input" type="date" value={automationStartDate} onChange={e=>setAutomationStartDate(e.target.value)}/>
                           </label>
                           <label>
                             <span className="field-label">{l('Quanto reservar','Amount to save','Cuánto reservar')}</span>
