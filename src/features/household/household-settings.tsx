@@ -60,8 +60,8 @@ export function HouseholdSettings({
   const roleDescription=(role:Exclude<HouseholdRole,'owner'>)=>({
     admin:l(
       'Pode alterar dados, contas, cartões, cofrinhos, configurações, conexões e acessos. Só não pode remover o Titular nem excluir o Lar.',
-      'Can change data, accounts, cards, savings pots, settings, connections, and access. Only the Owner can be removed or delete the Household.',
-      'Puede cambiar datos, cuentas, tarjetas, alcancías, configuración, conexiones y accesos. Solo el Titular puede eliminarse o borrar el Hogar.'
+      'Can change data, accounts, cards, savings pots, settings, connections, and access. The Owner remains protected, and only the Owner can delete the Household.',
+      'Puede cambiar datos, cuentas, tarjetas, alcancías, configuración, conexiones y accesos. El Titular queda protegido y solo el Titular puede borrar el Hogar.'
     ),
     manager:l(
       'Pode organizar toda a parte financeira e conexões, mas não convida pessoas nem altera permissões ou configurações do Lar.',
@@ -454,14 +454,14 @@ export function HouseholdSettings({
             role="radio"
             aria-checked={inviteRole===role}
             className={inviteRole===role?'access-role-card active':'access-role-card'}
-            onClick={()=>setInviteRole(role)}
+            onClick={()=>{setInviteRole(role);setInviteLink('');setInviteCopied(false);}}
           >
             <span><strong>{roleName(role)}</strong><small>{roleDescription(role)}</small></span>
             <b>{inviteRole===role?l('Selecionado','Selected','Seleccionado'):''}</b>
           </button>)}
         </div>
         <div className="invite-grid invite-identity-grid">
-          <label><span>{l('E-mail da pessoa (opcional)','Person’s email (optional)','Correo de la persona (opcional)')}</span><input className="premium-input" value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder={l('pessoa@exemplo.com','person@example.com','persona@ejemplo.com')} inputMode="email"/></label>
+          <label><span>{l('E-mail da pessoa (opcional)','Person’s email (optional)','Correo de la persona (opcional)')}</span><input className="premium-input" value={inviteEmail} onChange={e=>{setInviteEmail(e.target.value);setInviteLink('');setInviteCopied(false);}} placeholder={l('pessoa@exemplo.com','person@example.com','persona@ejemplo.com')} inputMode="email"/></label>
           <div className="invite-security-copy"><strong>{roleName(inviteRole)}</strong><span>{l('Convites expiram em 7 dias. Com e-mail, só aquela conta pode aceitar.','Invites expire in 7 days. With an email, only that account can accept.','Las invitaciones vencen en 7 días. Con correo, solo esa cuenta puede aceptar.')}</span></div>
         </div>
         <button className="primary-button" disabled={creatingInvite} onClick={()=>void makeInvite()}>
