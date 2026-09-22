@@ -4,7 +4,17 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'NestBalance',
   description: 'Sua vida financeira, finalmente simples.',
-  applicationName: 'NestBalance'
+  applicationName: 'NestBalance',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/nestbalance-icon.svg',
+    shortcut: '/nestbalance-icon.svg'
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'NestBalance',
+    statusBarStyle: 'black-translucent'
+  }
 };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', colorScheme: 'light dark' };
 

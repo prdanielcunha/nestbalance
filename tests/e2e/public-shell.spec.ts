@@ -72,3 +72,16 @@ test('dark color scheme is intentional and accessible on mobile and desktop',asy
     await context.close();
   }
 });
+
+
+test('PWA manifest is installable and references the NestBalance icon',async({request})=>{
+  const response=await request.get('/manifest.webmanifest');
+  expect(response.ok()).toBeTruthy();
+  const manifest=await response.json();
+  expect(manifest.name).toBe('NestBalance');
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.start_url).toBe('/');
+  expect(manifest.scope).toBe('/');
+  expect(Array.isArray(manifest.icons)).toBeTruthy();
+  expect(manifest.icons.some((icon:any)=>icon.src==='/nestbalance-icon.svg'&&icon.type==='image/svg+xml')).toBeTruthy();
+});
