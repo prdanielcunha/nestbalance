@@ -1,4 +1,4 @@
-const CACHE_VERSION='nestbalance-shell-v1';
+const CACHE_VERSION='v1';
 const SHELL_CACHE='nestbalance-shell-'+CACHE_VERSION;
 const STATIC_CACHE='nestbalance-static-'+CACHE_VERSION;
 const PUBLIC_ASSETS=['/','/manifest.webmanifest','/nestbalance-icon.svg','/nestbalance-logo.svg'];
@@ -38,7 +38,7 @@ async function warmShell(){
           const url=new URL(value,self.location.origin);
           if(isApi(url)||!sameOrigin(url)) return;
           const asset=await fetch(url,{cache:'no-store'});
-          if(asset.ok) await cache.put(url,asset);
+          if(asset.ok) await cache.put(url.toString(),asset);
         }catch{}
       }));
     }
@@ -95,7 +95,8 @@ self.addEventListener('fetch',event=>{
   if(isStaticAsset(url)){
     event.respondWith((async()=>{
       const cache=await caches.open(STATIC_CACHE);
-      const cached=await cache.match(request);
+      const shell=await caches.open(SHELL_CACHE);
+      const cached=(await cache.match(request))||(await shell.match(request));
       if(cached) return cached;
       const response=await fetch(request);
       if(response.ok) await cache.put(request,response.clone());
