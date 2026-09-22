@@ -125,7 +125,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     }
   }
 
-  return <main className="app-shell accounts-shell">
+  return <main className="app-shell accounts-shell pots-shell">
     <header className="topbar">
       <div>
         <div className="eyebrow">NestBalance</div>
@@ -168,8 +168,8 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
           <span>{l('print primeiro, formulário só quando você quiser','screenshot first, form only when you want it','primero captura, formulario solo cuando quieras')}</span>
         </div>
       </div>
-      <div className="account-balance-grid">
-        <Link href="/add?return=/pots" className="account-balance-tile">
+      <div className="account-balance-grid pots-quick-grid">
+        <Link href="/add?return=/pots" className="account-balance-tile pots-action-tile">
           <span>{l('Mais rápido','Fastest','Más rápido')}</span>
           <h3>{l('Importar print','Import screenshot','Importar captura')}</h3>
           <strong>{l('Banco → NestBalance','Bank → NestBalance','Banco → NestBalance')}</strong>
@@ -246,7 +246,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
         {creating&&<ScopeChoice value={scope} onChange={setScope} disabled={saving}/>}
 
         <label className="field-label" htmlFor="pot-name">{l('Nome','Name','Nombre')}</label>
-        <input id="pot-name" className="text-input" value={name} onChange={e=>setName(e.target.value)} placeholder={l('Ex.: Aniversário Davi','E.g. Davi birthday','Ej.: Cumpleaños Davi')} maxLength={80}/>
+        <input id="pot-name" className="pot-text-input" value={name} onChange={e=>setName(e.target.value)} placeholder={l('Ex.: Aniversário Davi','E.g. Davi birthday','Ej.: Cumpleaños Davi')} maxLength={80}/>
 
         <label className="field-label" htmlFor="pot-balance">{l('Quanto tem agora','Saved now','Cuánto hay ahora')}</label>
         <div className="money-input-wrap"><span>R$</span><input id="pot-balance" inputMode="decimal" value={balanceInput} onChange={e=>setBalanceInput(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
@@ -255,7 +255,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
         <div className="money-input-wrap"><span>R$</span><input id="pot-goal" inputMode="decimal" value={goalInput} onChange={e=>setGoalInput(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
 
         <label className="field-label" htmlFor="pot-institution">{l('Onde está guardado (opcional)','Where it is saved (optional)','Dónde está guardado (opcional)')}</label>
-        <input id="pot-institution" className="text-input" value={institution} onChange={e=>setInstitution(e.target.value)} placeholder={l('Ex.: Mercado Pago','E.g. Mercado Pago','Ej.: Mercado Pago')} maxLength={80}/>
+        <input id="pot-institution" className="pot-text-input" value={institution} onChange={e=>setInstitution(e.target.value)} placeholder={l('Ex.: Mercado Pago','E.g. Mercado Pago','Ej.: Mercado Pago')} maxLength={80}/>
 
         {formError&&<p className="error-copy" role="alert">{formError}</p>}
 
