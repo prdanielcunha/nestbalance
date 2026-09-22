@@ -26,3 +26,11 @@ test('movement automation supports percentages',()=>{
   assert.ok(automation);
   assert.equal(automationContributionMinor(automation,20_000),1_000);
 });
+
+
+test('round-up automation saves the cents needed for the next whole real',()=>{
+  const automation=normalizeSavingsPotAutomation({enabled:true,kind:'roundup',mode:'fixed'});
+  assert.ok(automation);
+  assert.equal(automationContributionMinor(automation,1237),63);
+  assert.equal(automationContributionMinor(automation,1200),0);
+});
