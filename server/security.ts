@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin.js';
 import { invalidateNestBalanceSessionCache, requireFirebaseUser } from './auth.js';
-import { normalizeDeviceContext, type DeviceContext } from '../src/core/security.js';
+import { normalizeDeviceContext } from '../src/core/security.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
