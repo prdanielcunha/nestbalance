@@ -73,15 +73,15 @@ export function InvoiceImportSheet({
     }catch(err:any){
       const code=String(err?.message||'');
       if(code==='AI_NOT_CONFIGURED'){
-        setError('A leitura visual inteligente não está conectada neste ambiente. O original foi preservado.');
+        setError(l('A leitura visual inteligente não está conectada neste ambiente. O original foi preservado.','Visual intelligent reading is not connected in this environment. The original was preserved.','La lectura visual inteligente no está conectada en este entorno. El original fue preservado.'));
       }else if(code==='AI_ANALYSIS_IN_PROGRESS'){
-        setError('Essa imagem já está sendo analisada. Tente entender a fatura novamente em instantes.');
+        setError(l('Essa imagem já está sendo analisada. Tente entender a fatura novamente em instantes.','This image is already being analyzed. Try understanding the statement again shortly.','Esta imagen ya se está analizando. Intenta entender el resumen nuevamente en unos instantes.'));
       }else if(code==='INVOICE_IMAGE_TYPE_REQUIRED'||code==='INVOICE_IMAGE_TOO_LARGE'){
-        setError('Não consegui usar essa imagem como fatura. Confira o formato e o tamanho.');
+        setError(l('Não consegui usar essa imagem como fatura. Confira o formato e o tamanho.','I could not use this image as a statement. Check its format and size.','No pude usar esta imagen como resumen. Revisa el formato y el tamaño.'));
       }else if(code==='INVOICE_TEXT_UNAVAILABLE'||code==='EVIDENCE_ANALYSIS_REQUIRED'){
-        setError('Não encontrei texto financeiro suficiente nessa fatura.');
+        setError(l('Não encontrei texto financeiro suficiente nessa fatura.','I could not find enough financial text in this statement.','No encontré suficiente texto financiero en este resumen.'));
       }else{
-        setError('Não consegui entender essa fatura agora. O arquivo original não será duplicado.');
+        setError(l('Não consegui entender essa fatura agora. O arquivo original não será duplicado.','I could not understand this statement right now. The original file will not be duplicated.','No pude entender este resumen ahora. El archivo original no será duplicado.'));
       }
     }finally{
       setWorking(false);
@@ -103,9 +103,9 @@ export function InvoiceImportSheet({
     }catch(err:any){
       const code=String(err?.message||'');
       if(code==='INVOICE_ITEMS_STILL_NEED_REVIEW'){
-        setError('Ainda há itens individuais que precisam de conferência.');
+        setError(l('Ainda há itens individuais que precisam de conferência.','There are still individual items that need review.','Todavía hay elementos individuales que necesitan revisión.'));
       }else{
-        setError('Não conseguimos concluir essa conferência agora.');
+        setError(l('Não conseguimos concluir essa conferência agora.','We could not complete this review right now.','No pudimos completar esta revisión ahora.'));
       }
     }finally{
       setWorking(false);
@@ -124,7 +124,7 @@ export function InvoiceImportSheet({
         itemIds:clearItems.map(item=>item.id)
       });
       if(committed.created===0&&committed.duplicates>0){
-        setError('Esses itens já estavam registrados. Nenhuma cópia foi criada.');
+        setError(l('Esses itens já estavam registrados. Nenhuma cópia foi criada.','These items were already recorded. No duplicate was created.','Estos elementos ya estaban registrados. No se creó ninguna copia.'));
         return;
       }
       onCommitted?.();
@@ -132,11 +132,11 @@ export function InvoiceImportSheet({
     }catch(err:any){
       const code=String(err?.message||'');
       if(code==='INVOICE_REVIEW_REQUIRED'){
-        setError('Há item que ainda precisa de conferência. Só confirmamos o que está claro.');
+        setError(l('Há item que ainda precisa de conferência. Só confirmamos o que está claro.','An item still needs review. We only confirm what is clear.','Todavía hay un elemento por revisar. Solo confirmamos lo que está claro.'));
       }else if(code==='INVALID_INVOICE_SELECTION'){
-        setError('A fatura mudou durante a revisão. Entenda o arquivo novamente antes de confirmar.');
+        setError(l('A fatura mudou durante a revisão. Entenda o arquivo novamente antes de confirmar.','The statement changed during review. Analyze the file again before confirming.','El resumen cambió durante la revisión. Analiza el archivo nuevamente antes de confirmar.'));
       }else{
-        setError('Não conseguimos confirmar essa fatura agora. Nada foi marcado como concluído.');
+        setError(l('Não conseguimos confirmar essa fatura agora. Nada foi marcado como concluído.','We could not confirm this statement right now. Nothing was marked complete.','No pudimos confirmar este resumen ahora. Nada fue marcado como completado.'));
       }
     }finally{
       setWorking(false);
