@@ -266,6 +266,42 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     const partnerAfterPotSync=await post('/api/home',partner.token,{householdId});
     assert.equal(partnerAfterPotSync.json.savingsPots.some(item=>item.name==='Viagem'&&item.balanceMinor===120000),true);
 
+    const receiptEvidenceId='internetmar01';
+    await seedDb.doc(`households/${householdId}/evidenceAssets/${receiptEvidenceId}`).set({
+      status:'accepted',
+      immutable:true,
+      scope:'household',
+      ownerUid:null,
+      originalName:'comprovante-internet-marco.pdf',
+      mimeType:'application/pdf',
+      declaredMimeType:'application/pdf',
+      verifiedSize:256,
+      sha256:'2'.repeat(64),
+      storagePath:'test/comprovante-internet-marco.pdf',
+      lastExtractionVersion:'native-text-v1',
+      createdAt:new Date('2026-03-11T12:00:00Z')
+    });
+    await seedDb.doc(`households/${householdId}/evidenceAssets/${receiptEvidenceId}/extractions/native-text-v1`).set({
+      state:'extracted',
+      parser:'test-seed',
+      text:'Comprovante de pagamento da internet Vivo R$ 119,90 em 10/03/2026',
+      signals:{candidates:[]},
+      extraction:{
+        description:'Internet residencial',
+        payee:'Vivo',
+        amountMinor:11990,
+        dateIso:'2026-03-10',
+        evidenceSummary:'Pagamento da internet do Lar'
+      }
+    });
+
+    const vaultSearch=await post('/api/vault/search',owner.token,{
+      householdId,
+      query:'comprovante da internet de março',
+      view:'household'
+    });
+    assert.equal(vaultSearch.json.items[0]?.evidenceId,receiptEvidenceId);
+
     const matchedPayment=await post('/api/commitments/match-payment',owner.token,{
       householdId,
       amountMinor:11990,
