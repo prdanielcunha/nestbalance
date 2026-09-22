@@ -329,8 +329,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         const status=await getGeminiFallbackStatus(householdId);
         setGeminiStatus(status);
         setNotice(status.configured
-          ? 'A leitura local terminou, mas ainda há contexto ambíguo. Se quiser, posso tentar o fallback Gemini usando somente texto sanitizado — a imagem não será enviada.'
-          : 'A leitura local terminou, mas não fechou a interpretação. O fallback online gratuito não está ativado neste ambiente; você pode preencher manualmente sem perder o print.');
+          ? l('A leitura local terminou, mas ainda há contexto ambíguo. Se quiser, posso tentar o fallback Gemini usando somente texto sanitizado — a imagem não será enviada.','Local reading finished, but some context is still ambiguous. If you want, I can try the Gemini fallback using only sanitized text — the image will not be sent.','La lectura local terminó, pero todavía hay contexto ambiguo. Si quieres, puedo intentar el fallback de Gemini usando solo texto sanitizado — la imagen no se enviará.')
+          : l('A leitura local terminou, mas não fechou a interpretação. O fallback online gratuito não está ativado neste ambiente; você pode preencher manualmente sem perder o print.','Local reading finished but could not complete the interpretation. The free online fallback is not enabled in this environment; you can fill it in manually without losing the screenshot.','La lectura local terminó pero no completó la interpretación. El fallback online gratuito no está habilitado en este entorno; puedes completarlo manualmente sin perder la captura.'));
       }catch{
         setGeminiStatus(null);
         setNotice(l('A leitura local terminou, mas não fechou a interpretação. Você pode preencher manualmente; a imagem continua apenas no seu aparelho até você guardar.','Local reading finished but could not complete the interpretation. You can fill it in manually; the image stays only on your device until you save.','La lectura local terminó pero no completó la interpretación. Puedes completarla manualmente; la imagen permanece solo en tu dispositivo hasta que guardes.'));
@@ -374,8 +374,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         if(resourceCount||imported.length){
           const reviewCount=imported.filter(item=>item.needsReview.length>0).length;
           setNotice(reviewCount
-            ? `O Gemini ajudou a separar a tela usando apenas OCR sanitizado. ${reviewCount} movimento${reviewCount===1?' precisa':'s precisam'} de conferência.`
-            : 'O Gemini ajudou a separar a tela usando apenas OCR sanitizado. A imagem não foi enviada; confira antes de guardar.');
+            ? l(`O Gemini ajudou a separar a tela usando apenas OCR sanitizado. ${reviewCount} movimento${reviewCount===1?' precisa':'s precisam'} de conferência.`,`Gemini helped separate the screen using only sanitized OCR. ${reviewCount} movement${reviewCount===1?' needs':'s need'} review.`,`Gemini ayudó a separar la pantalla usando solo OCR sanitizado. ${reviewCount} movimiento${reviewCount===1?' necesita':'s necesitan'} revisión.`)
+            : l('O Gemini ajudou a separar a tela usando apenas OCR sanitizado. A imagem não foi enviada; confira antes de guardar.','Gemini helped separate the screen using only sanitized OCR. The image was not sent; review before saving.','Gemini ayudó a separar la pantalla usando solo OCR sanitizado. La imagen no se envió; revisa antes de guardar.'));
           return;
         }
       }
@@ -385,7 +385,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     }catch(err:any){
       const code=String(err?.message||'');
       if(code==='GEMINI_FREE_QUOTA_EXHAUSTED'||code==='GEMINI_FREE_DAILY_CAP_REACHED'){
-        setNotice('A cota gratuita de leitura inteligente acabou por agora. O app continua funcionando com leitura local e preenchimento manual, sem gerar cobrança.');
+        setNotice(l('A cota gratuita de leitura inteligente acabou por agora. O app continua funcionando com leitura local e preenchimento manual, sem gerar cobrança.','The free intelligent-reading quota is used up for now. The app keeps working with local reading and manual entry, with no charge.','La cuota gratuita de lectura inteligente se agotó por ahora. La app sigue funcionando con lectura local y carga manual, sin generar cobros.'));
       }else if(code==='GEMINI_FREE_NOT_CONFIGURED'){
         setGeminiStatus(current=>current?{...current,configured:false}:current);
         setNotice(l('O fallback Gemini gratuito não está ativado neste ambiente. Nenhuma cobrança foi gerada.','The free Gemini fallback is not enabled in this environment. No charge was generated.','El fallback gratuito de Gemini no está habilitado en este entorno. No se generó ningún cobro.'));
@@ -457,7 +457,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             const unresolved=ai.parsedInterpretations?.filter(item=>item.needsReview.includes('direction')).length||0;
             if(resourceCount||movementCount){
               setNotice(unresolved
-                ? `Entendi esta tela e organizei o que estava claro. Só ${unresolved} movimentação${unresolved===1?' precisa':' precisam'} de uma resposta rápida.`
+                ? l(`Entendi esta tela e organizei o que estava claro. Só ${unresolved} movimentação${unresolved===1?' precisa':' precisam'} de uma resposta rápida.`,`I understood this screen and organized what was clear. Only ${unresolved} movement${unresolved===1?' needs':'s need'} a quick answer.`,`Entendí esta pantalla y organicé lo que estaba claro. Solo ${unresolved} movimiento${unresolved===1?' necesita':'s necesitan'} una respuesta rápida.`)
                 : l('Entendi a tela financeira. Saldo, dinheiro guardado, contas, cartão e movimentos ficam separados corretamente.','I understood the financial screen. Balance, saved money, bills, card and movements stay correctly separated.','Entendí la pantalla financiera. Saldo, dinero guardado, cuentas, tarjeta y movimientos quedan correctamente separados.'));
               return;
             }
@@ -487,8 +487,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         }catch(err:any){
           if(err?.message==='AI_NOT_CONFIGURED'){
             setNotice(result.reason==='audio_input'
-              ? 'Áudio guardado. A transcrição inteligente ainda não está conectada neste ambiente.'
-              : 'Imagem guardada. A leitura inteligente ainda não está conectada neste ambiente.');
+              ? l('Áudio guardado. A transcrição inteligente ainda não está conectada neste ambiente.','Audio saved. Intelligent transcription is not connected in this environment yet.','Audio guardado. La transcripción inteligente aún no está conectada en este entorno.')
+              : l('Imagem guardada. A leitura inteligente ainda não está conectada neste ambiente.','Image saved. Intelligent reading is not connected in this environment yet.','Imagen guardada. La lectura inteligente aún no está conectada en este entorno.'));
             return;
           }
           if(err?.message==='AI_ANALYSIS_IN_PROGRESS'){
@@ -510,8 +510,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           setInterpretations(csv.items);
           const attention=csv.items.filter(item=>item.needsReview.length>0).length;
           setNotice(attention
-            ? `Importei ${csv.items.length} movimentações do arquivo. Só ${attention} precisa${attention===1?'':'m'} de uma conferência rápida.`
-            : `Importei ${csv.items.length} movimentações do arquivo. Tudo pronto para guardar.`);
+            ? l(`Importei ${csv.items.length} movimentações do arquivo. Só ${attention} precisa${attention===1?'':'m'} de uma conferência rápida.`,`I imported ${csv.items.length} movements from the file. Only ${attention} need${attention===1?'s':''} a quick review.`,`Importé ${csv.items.length} movimientos del archivo. Solo ${attention} necesita${attention===1?'':'n'} una revisión rápida.`)
+            : l(`Importei ${csv.items.length} movimentações do arquivo. Tudo pronto para guardar.`,`I imported ${csv.items.length} movements from the file. Everything is ready to save.`,`Importé ${csv.items.length} movimientos del archivo. Todo está listo para guardar.`));
           return;
         }
       }
@@ -655,16 +655,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     : 0;
   const totalOrganizedCount=interpretations.length+screenResourceCount;
   const organizedLabel = interpretations.length === 0&&screenResourceCount
-    ? `${screenResourceCount} item${screenResourceCount===1?'':'s'} da sua vida financeira`
+    ? l(`${screenResourceCount} item${screenResourceCount===1?'':'s'} da sua vida financeira`,`${screenResourceCount} item${screenResourceCount===1?'':'s'} from your financial life`,`${screenResourceCount} elemento${screenResourceCount===1?'':'s'} de tu vida financiera`)
     : interpretations.length === 1
     ? (interpretations[0].kind === 'commitment'
-        ? 'Conta para pagar'
+        ? l('Conta para pagar','Bill to pay','Cuenta por pagar')
         : interpretations[0].direction === 'income'
-          ? 'Dinheiro que entrou'
+          ? l('Dinheiro que entrou','Money received','Dinero que entró')
           : interpretations[0].direction === 'transfer'
-            ? 'Dinheiro entre suas contas'
-            : 'Dinheiro que saiu')
-    : `${interpretations.length} coisas organizadas`;
+            ? l('Dinheiro entre suas contas','Money between your accounts','Dinero entre tus cuentas')
+            : l('Dinheiro que saiu','Money spent','Dinero que salió'))
+    : l(`${interpretations.length} coisas organizadas`,`${interpretations.length} items organized`,`${interpretations.length} elementos organizados`);
 
   return <>
     {showTrigger&&<button className="capture-fab" onClick={() => setOpen(true)} aria-label={t.add}>＋ <span>{t.add}</span></button>}
