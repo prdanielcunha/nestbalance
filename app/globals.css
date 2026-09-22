@@ -1113,3 +1113,59 @@
   .pwa-install-card{display:grid;grid-template-columns:1fr}
   .pwa-install-card>.primary-button{width:100%}
 }
+
+
+/* Cofrinhos — consolidated savings goals */
+.pots-shell{max-width:1040px}
+.pots-quick-grid .pots-action-tile{
+  width:100%;
+  text-align:left;
+  color:var(--ink);
+  text-decoration:none;
+  font:inherit;
+  cursor:pointer;
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.pots-quick-grid .pots-action-tile:hover{
+  transform:translateY(-2px);
+  border-color:rgba(94,106,210,.28);
+  box-shadow:0 14px 38px rgba(25,31,52,.07);
+}
+.pots-quick-grid .pots-action-tile:active{transform:translateY(0) scale(.995)}
+.savings-pot-card progress{
+  display:block;
+  width:100%;
+  height:7px;
+  margin-top:12px;
+  border:0;
+  border-radius:999px;
+  overflow:hidden;
+  background:var(--line);
+}
+.savings-pot-card progress::-webkit-progress-bar{background:var(--line);border-radius:999px}
+.savings-pot-card progress::-webkit-progress-value{background:var(--iris);border-radius:999px}
+.savings-pot-card progress::-moz-progress-bar{background:var(--iris);border-radius:999px}
+.savings-pot-card .account-balance-foot{
+  padding-top:8px;
+  margin-top:9px;
+  border-top:1px solid var(--line);
+}
+.pot-text-input{
+  width:100%;
+  min-height:48px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:var(--paper);
+  color:var(--ink);
+  font:inherit;
+  padding:0 14px;
+  outline:none;
+}
+.pot-text-input:focus{
+  border-color:rgba(94,106,210,.6);
+  box-shadow:0 0 0 3px rgba(94,106,210,.09);
+}
+@media(max-width:560px){
+  .pots-shell .topbar-actions{gap:8px}
+  .pots-shell .topbar-actions .ghost-button{padding-inline:8px}
+}
