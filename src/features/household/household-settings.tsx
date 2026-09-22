@@ -19,6 +19,7 @@ import { useI18n } from '@/src/i18n/locale-provider';
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 import { PwaInstallCard } from '@/src/features/pwa/pwa-install-card';
 import { ThemeChoice } from '@/src/features/theme/theme-runtime';
+import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 
 
 export function HouseholdSettings({
@@ -36,7 +37,7 @@ export function HouseholdSettings({
   const [name,setName]=useState('');
   const [savingName,setSavingName]=useState(false);
   const [inviteEmail,setInviteEmail]=useState('');
-  const [inviteRole,setInviteRole]=useState<'admin'|'member'|'read_only'>('member');
+  const [inviteRole,setInviteRole]=useState<Exclude<HouseholdRole,'owner'>>('member');
   const [inviteLink,setInviteLink]=useState('');
   const [inviteCopied,setInviteCopied]=useState(false);
   const [creatingInvite,setCreatingInvite]=useState(false);
@@ -48,12 +49,38 @@ export function HouseholdSettings({
   const [savingProactivity,setSavingProactivity]=useState(false);
   const {t,locale:activeLocale,formatDate}=useI18n();
   const l=(pt:string,en:string,es:string)=>activeLocale==='en'?en:activeLocale==='es'?es:pt;
-  const roleName=(role:'owner'|'admin'|'member'|'read_only')=>({
-    owner:l('Dono do Lar','Household owner','Dueño del Hogar'),
-    admin:l('Administrador','Administrator','Administrador'),
-    member:l('Membro','Member','Miembro'),
-    read_only:l('Somente leitura','Read only','Solo lectura')
+  const roleName=(role:HouseholdRole)=>({
+    owner:l('Titular','Owner','Titular'),
+    admin:l('Sócio · acesso total','Partner · full access','Socio · acceso total'),
+    manager:l('Gestor financeiro','Financial manager','Gestor financiero'),
+    member:l('Colaborador','Contributor','Colaborador'),
+    read_only:l('Visualizador','Viewer','Visualizador')
   } as const)[role];
+
+  const roleDescription=(role:Exclude<HouseholdRole,'owner'>)=>({
+    admin:l(
+      'Pode alterar dados, contas, cartões, cofrinhos, configurações, conexões e acessos. Só não pode remover o Titular nem excluir o Lar.',
+      'Can change data, accounts, cards, savings pots, settings, connections, and access. Only the Owner can be removed or delete the Household.',
+      'Puede cambiar datos, cuentas, tarjetas, alcancías, configuración, conexiones y accesos. Solo el Titular puede eliminarse o borrar el Hogar.'
+    ),
+    manager:l(
+      'Pode organizar toda a parte financeira e conexões, mas não convida pessoas nem altera permissões ou configurações do Lar.',
+      'Can manage all financial data and connections, but cannot invite people or change permissions or Household settings.',
+      'Puede gestionar toda la parte financiera y conexiones, pero no invita personas ni cambia permisos o configuración del Hogar.'
+    ),
+    member:l(
+      'Pode adicionar e atualizar movimentos, contas recorrentes, documentos e cofrinhos compartilhados, sem administrar acessos.',
+      'Can add and update activities, recurring bills, documents, and shared savings pots without managing access.',
+      'Puede agregar y actualizar movimientos, cuentas recurrentes, documentos y alcancías compartidas sin administrar accesos.'
+    ),
+    read_only:l(
+      'Pode ver os dados compartilhados, saldos, contas e documentos, sem alterar nada.',
+      'Can view shared data, balances, bills, and documents without changing anything.',
+      'Puede ver datos compartidos, saldos, cuentas y documentos sin cambiar nada.'
+    )
+  } as const)[role];
+
+  const inviteRoles:Exclude<HouseholdRole,'owner'>[]=['admin','manager','member','read_only'];
 
   async function refresh(){
     setLoading(true);
@@ -73,7 +100,7 @@ export function HouseholdSettings({
 
   useEffect(()=>{void refresh();},[householdId]);
 
-  const canManage=data?.currentRole==='owner'||data?.currentRole==='admin';
+  const canManage=data?canHouseholdRole(data.currentRole,'manage_household'):false;
   const currentSession=useMemo(()=>sessionHouseholds.find(item=>item.id===householdId),[sessionHouseholds,householdId]);
 
   async function switchHousehold(nextId:string){
@@ -197,6 +224,25 @@ export function HouseholdSettings({
     }
   }
 
+  async function shareInvite(){
+    if(!inviteLink) return;
+    const title=l('Convite do NestBalance','NestBalance invitation','Invitación de NestBalance');
+    const shareText=l(
+      `Quero compartilhar meu NestBalance com você como ${roleName(inviteRole)}.`,
+      `I want to share my NestBalance with you as ${roleName(inviteRole)}.`,
+      `Quiero compartir mi NestBalance contigo como ${roleName(inviteRole)}.`
+    );
+    try{
+      if(navigator.share){
+        await navigator.share({title,text:shareText,url:inviteLink});
+        return;
+      }
+    }catch(err:any){
+      if(String(err?.name||'')==='AbortError') return;
+    }
+    await copyInvite(inviteLink);
+  }
+
   async function makeInvite(){
     if(!canManage||creatingInvite) return;
     setCreatingInvite(true); setError(''); setInviteLink(''); setInviteCopied(false);
@@ -218,7 +264,7 @@ export function HouseholdSettings({
     }finally{setCreatingInvite(false);}
   }
 
-  async function changeRole(uid:string,role:'admin'|'member'|'read_only'){
+  async function changeRole(uid:string,role:Exclude<HouseholdRole,'owner'>){
     if(!canManage||workingMember) return;
     setWorkingMember(uid); setError('');
     try{
@@ -255,13 +301,13 @@ export function HouseholdSettings({
     <header className="topbar">
       <div>
         <div className="eyebrow">NestBalance</div>
-        <span className="topbar-subtitle">{l('Lar e acessos','Household & access','Hogar y accesos')}</span>
+        <span className="topbar-subtitle">{l('Compartilhar e acessos','Sharing & access','Compartir y accesos')}</span>
       </div>
       <Link href="/" className="household-back">{l('Voltar','Back','Volver')}</Link>
     </header>
 
     <section className="area-hero household-hero">
-      <span>{l('Uma casa. Uma verdade financeira.','One household. One financial truth.','Un hogar. Una verdad financiera.')}</span>
+      <span>{l('Sua vida financeira pode ser compartilhada sem compartilhar senha.','Share your financial life without sharing a password.','Comparte tu vida financiera sin compartir contraseña.')}</span>
       <h1>{data?.household.name||currentSession?.name||l('Seu Lar','Your Household','Tu Hogar')}</h1>
       <p>{l('Cada pessoa entra com a própria conta. Nada de senha compartilhada, autoria perdida ou dúvida sobre quem fez o quê.','Each person signs in with their own account. No shared passwords, lost authorship, or uncertainty about who changed what.','Cada persona entra con su propia cuenta. Sin contraseñas compartidas, autoría perdida ni dudas sobre quién cambió qué.')}</p>
     </section>
@@ -368,7 +414,7 @@ export function HouseholdSettings({
             <div className="member-avatar">{(member.displayName||member.email||'?').slice(0,1).toUpperCase()}</div>
             <div className="member-copy">
               <strong>{member.uid===user.uid?l('Você','You','Tú'):member.displayName||member.email||l('Membro do Lar','Household member','Miembro del Hogar')}</strong>
-              <span>{member.email||roleName(member.role)}</span>
+              <span>{member.email||l('Conta conectada','Connected account','Cuenta conectada')} · {roleName(member.role)}</span>
             </div>
             <div className="member-access">
               {member.role==='owner'||!canManage
@@ -376,10 +422,11 @@ export function HouseholdSettings({
                 : <select
                     value={member.role}
                     disabled={workingMember===member.uid}
-                    onChange={e=>void changeRole(member.uid,e.target.value as 'admin'|'member'|'read_only')}
+                    onChange={e=>void changeRole(member.uid,e.target.value as Exclude<HouseholdRole,'owner'>)}
                     aria-label={l(`Acesso de ${member.displayName||member.email||'membro'}`,`Access for ${member.displayName||member.email||'member'}`,`Acceso de ${member.displayName||member.email||'miembro'}`)}
                   >
                     <option value="admin">{roleName('admin')}</option>
+                    <option value="manager">{roleName('manager')}</option>
                     <option value="member">{roleName('member')}</option>
                     <option value="read_only">{roleName('read_only')}</option>
                   </select>}
@@ -394,26 +441,43 @@ export function HouseholdSettings({
       </section>
 
       {canManage&&<section className="household-panel invite-panel">
-        <div className="section-title"><div><h2>{l('Convidar alguém','Invite someone','Invitar a alguien')}</h2><span>{l('o convite expira em 7 dias','the invite expires in 7 days','la invitación vence en 7 días')}</span></div></div>
-        <div className="invite-grid">
-          <label><span>{l('E-mail (opcional)','Email (optional)','Correo (opcional)')}</span><input className="premium-input" value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder={l('pessoa@exemplo.com','person@example.com','persona@ejemplo.com')} inputMode="email"/></label>
-          <label><span>{l('Acesso','Access','Acceso')}</span><select className="premium-input" value={inviteRole} onChange={e=>setInviteRole(e.target.value as typeof inviteRole)}>
-            <option value="member">{roleName('member')}</option>
-            <option value="admin">{roleName('admin')}</option>
-            <option value="read_only">{roleName('read_only')}</option>
-          </select></label>
+        <div className="section-title"><div><h2>{l('Compartilhar este Lar','Share this Household','Compartir este Hogar')}</h2><span>{l('cada pessoa usa o próprio login','everyone uses their own sign-in','cada persona usa su propio acceso')}</span></div></div>
+        <p className="household-helper">{l(
+          'Escolha o nível de acesso antes de enviar. Você pode mudar depois, sem precisar criar outro convite.',
+          'Choose the access level before sending. You can change it later without creating another invitation.',
+          'Elige el nivel de acceso antes de enviarlo. Puedes cambiarlo después sin crear otra invitación.'
+        )}</p>
+        <div className="access-role-grid" role="radiogroup" aria-label={l('Nível de acesso','Access level','Nivel de acceso')}>
+          {inviteRoles.map(role=><button
+            type="button"
+            key={role}
+            role="radio"
+            aria-checked={inviteRole===role}
+            className={inviteRole===role?'access-role-card active':'access-role-card'}
+            onClick={()=>setInviteRole(role)}
+          >
+            <span><strong>{roleName(role)}</strong><small>{roleDescription(role)}</small></span>
+            <b>{inviteRole===role?l('Selecionado','Selected','Seleccionado'):''}</b>
+          </button>)}
+        </div>
+        <div className="invite-grid invite-identity-grid">
+          <label><span>{l('E-mail da pessoa (opcional)','Person’s email (optional)','Correo de la persona (opcional)')}</span><input className="premium-input" value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder={l('pessoa@exemplo.com','person@example.com','persona@ejemplo.com')} inputMode="email"/></label>
+          <div className="invite-security-copy"><strong>{roleName(inviteRole)}</strong><span>{l('Convites expiram em 7 dias. Com e-mail, só aquela conta pode aceitar.','Invites expire in 7 days. With an email, only that account can accept.','Las invitaciones vencen en 7 días. Con correo, solo esa cuenta puede aceptar.')}</span></div>
         </div>
         <button className="primary-button" disabled={creatingInvite} onClick={()=>void makeInvite()}>
-          {creatingInvite?l('Criando convite…','Creating invite…','Creando invitación…'):l('Criar convite','Create invite','Crear invitación')}
+          {creatingInvite?l('Criando convite…','Creating invitation…','Creando invitación…'):l('Criar convite seguro','Create secure invitation','Crear invitación segura')}
         </button>
         {inviteLink&&<div className="invite-link-card">
-          <strong>{inviteCopied
-            ? l('Convite copiado','Invite copied','Invitación copiada')
-            : l('Convite pronto para compartilhar','Invite ready to share','Invitación lista para compartir')}</strong>
-          <span>{l('Compartilhe este link somente com a pessoa certa.','Share this link only with the intended person.','Comparte este enlace solo con la persona indicada.')}</span>
+          <div className="invite-link-copy">
+            <strong>{inviteCopied
+              ? l('Convite pronto e copiado','Invitation ready and copied','Invitación lista y copiada')
+              : l('Convite pronto para compartilhar','Invitation ready to share','Invitación lista para compartir')}</strong>
+            <span>{roleName(inviteRole)} · {l('não compartilhe este link publicamente','do not post this link publicly','no publiques este enlace')}</span>
+          </div>
+          <button className="primary-button" onClick={()=>void shareInvite()}>{l('Compartilhar','Share','Compartir')}</button>
           <button className="ghost-button" onClick={()=>void copyInvite()}>{inviteCopied
             ? l('Copiar novamente','Copy again','Copiar de nuevo')
-            : l('Copiar convite','Copy invite','Copiar invitación')}</button>
+            : l('Copiar link','Copy link','Copiar enlace')}</button>
         </div>}
         {data.invites.length>0&&<div className="pending-invites">
           <span>{l('Convites pendentes','Pending invites','Invitaciones pendientes')}</span>
