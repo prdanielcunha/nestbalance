@@ -140,18 +140,20 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     assert.equal(typeof invite.json.token,'string');
 
     const partner=await createEmulatorUser('partner@nestbalance.test','PartnerPass123!');
-    const partnerBootstrap=await post('/api/session/bootstrap',partner.token,{});
-    assert.equal(partnerBootstrap.json.created,true);
-    const partnerOwnHousehold=partnerBootstrap.json.householdId;
-    assert.notEqual(partnerOwnHousehold,householdId);
 
+    // Invite acceptance must work before the user's first financial bootstrap.
+    // This is the path used by /invite so an invited partner does not receive
+    // an unnecessary empty Household before joining the shared one.
     const accepted=await post('/api/household/invite/accept',partner.token,{token:invite.json.token});
     assert.equal(accepted.json.householdId,householdId);
     assert.equal(accepted.json.role,'member');
 
-    const partnerSelected=await post('/api/session/select-household',partner.token,{householdId});
-    assert.equal(partnerSelected.json.householdId,householdId);
-    assert.equal(partnerSelected.json.households.some(item=>item.id===householdId&&item.role==='member'),true);
+    const partnerBootstrap=await post('/api/session/bootstrap',partner.token,{});
+    assert.equal(partnerBootstrap.json.created,false);
+    assert.equal(partnerBootstrap.json.householdId,householdId);
+    assert.equal(partnerBootstrap.json.households.length,1);
+    assert.equal(partnerBootstrap.json.households[0].id,householdId);
+    assert.equal(partnerBootstrap.json.households[0].role,'member');
 
     const ownerHome=await post('/api/home',owner.token,{householdId});
     assert.equal(ownerHome.json.accounts.some(item=>item.name==='Conta principal'&&item.balanceMinor===250000),true);
