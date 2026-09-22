@@ -741,7 +741,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <progress max="100" value={upload.percent}>{upload.percent}%</progress>
           </div>}
 
-          {analyzing && !upload && <p className="confidence-note" role="status">{analysis?.state==='needs_ai'?'Fazendo a leitura inteligente…':'Entendendo o documento…'}</p>}
+          {analyzing && !upload && <p className="confidence-note" role="status">{localOcrPercent>0
+            ? `Lendo no seu aparelho… ${localOcrPercent}%`
+            : analysis?.state==='needs_ai'
+              ? 'Fazendo a leitura inteligente…'
+              : 'Entendendo o documento…'}</p>}
 
           {amountChoices.length > 0 && <div className="amount-choice-panel">
             <span>Qual valor devo usar?</span>
@@ -759,8 +763,20 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <small>Se só passou de uma conta sua para outra, o NestBalance não trata como dinheiro gasto ou recebido.</small>
           </div>}
 
-          {analysis?.state === 'extracted' && !aiAnalysis && <p className="native-analysis-note">Texto lido diretamente do documento · sem IA</p>}
+          {analysis?.state === 'extracted' && !aiAnalysis && !geminiUsed && <p className="native-analysis-note">Texto lido localmente · sem enviar a imagem para IA</p>}
+          {geminiUsed && <p className="native-analysis-note">Gemini analisou apenas OCR sanitizado · imagem não enviada · confirmação humana antes de guardar</p>}
           {aiAnalysis && <p className="native-analysis-note">{aiAnalysis.kind==='audio'?'Áudio transcrito com IA':'Imagem lida com IA'} · confirmação humana antes de guardar</p>}
+          {localOcrText&&geminiStatus?.configured&&!interpretations.length&&!screenSnapshot&&<div className="gemini-fallback-card">
+            <div>
+              <strong>Quer uma segunda leitura?</strong>
+              <span>Envio somente o texto OCR sanitizado para Gemini 2.5 Flash-Lite. A imagem não sai do seu aparelho neste passo, e números sensíveis são removidos antes da chamada.</span>
+            </div>
+            <button type="button" disabled={geminiWorking} onClick={()=>void runGeminiFallback()}>
+              {geminiWorking?'Analisando texto protegido…':'Tentar leitura protegida com Gemini'}
+            </button>
+            <small>O Free Tier do Gemini pode usar o conteúdo enviado para melhorar produtos do Google. Por isso este fallback é opcional e exige este toque.</small>
+          </div>}
+
           {notice && <p className="notice-copy" role="status">{notice}</p>}
           {error && <p className="error-copy" role="alert">{error}</p>}
 
@@ -788,7 +804,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               <strong>{interpretations.length === 1&&screenResourceCount===0
                 ? `${interpretations[0].description} · ${money.format(interpretations[0].money.amountMinor / 100)}`
                 : `${totalOrganizedCount} itens separados por tipo`}</strong>
-              <small>{aiAnalysis ? 'Interpretação por IA; confirme antes de guardar.' : analysis?.state === 'extracted' ? 'Leitura nativa do documento; sem IA.' : reviewCount ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.` : 'Os dados principais estão claros.'}</small>
+              <small>{geminiUsed
+                ? 'Gemini sobre OCR sanitizado; imagem não enviada. Confirme antes de guardar.'
+                : aiAnalysis
+                  ? 'Interpretação por IA; confirme antes de guardar.'
+                  : analysis?.state === 'extracted'
+                    ? 'Leitura local/determinística; sem IA remota.'
+                    : reviewCount
+                      ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.`
+                      : 'Os dados principais estão claros.'}</small>
             </div>
             <div>
               <span>VAI FICAR ASSIM</span>
