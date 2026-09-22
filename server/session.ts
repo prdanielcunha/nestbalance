@@ -4,7 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { normalizeHouseholdRole } from '../src/core/household.js';
-import { normalizeLocale } from '../src/core/locale.js';
+import { normalizeLocale, parseLocale } from '../src/core/locale.js';
 import { touchSecurityDevice } from './security.js';
 
 function error(res:Response,status:number,code:string){
@@ -77,6 +77,7 @@ export async function bootstrapSession(req:Request,res:Response){
     }
 
     const householdId=primaryHouseholdId(user.uid);
+    const preferredLocale=parseLocale(req.body?.preferredLocale)||'pt-BR';
     const householdRef=adminDb.doc(`households/${householdId}`);
     const memberRef=householdRef.collection('members').doc(user.uid);
     const userHouseholdRef=adminDb.doc(`users/${user.uid}/householdRefs/${householdId}`);
@@ -90,11 +91,16 @@ export async function bootstrapSession(req:Request,res:Response){
       ]);
       if(!household.exists){
         const displayName=typeof user.name==='string'&&user.name.trim()?user.name.trim().split(/\s+/)[0]:null;
+        const defaultName=preferredLocale==='en'
+          ? (displayName?`${displayName}'s home`:'My home')
+          : preferredLocale==='es'
+            ? (displayName?`Casa de ${displayName}`:'Mi casa')
+            : (displayName?`Casa de ${displayName}`:'Minha casa');
         tx.create(householdRef,{
           ownerUid:user.uid,
-          name:displayName?`Casa de ${displayName}`:'Minha casa',
+          name:defaultName,
           currency:'BRL',
-          locale:'pt-BR',
+          locale:preferredLocale,
           createdAt:FieldValue.serverTimestamp(),
           schemaVersion:1
         });
