@@ -12,12 +12,13 @@ import { confirmRecurringSuggestion, dismissRecurringSuggestion } from '@/src/li
 type Filter='all'|'income'|'cash_expense'|'card'|'transfer';
 type ViewScope='household'|'personal';
 
-function label(row:HomeRow){
-  if(row.source==='credit_card_invoice') return 'Compra no cartão';
-  if(row.source==='credit_card_invoice_payment') return 'Fatura paga';
-  if(row.direction==='income') return row.source==='open_finance'?'Recebido pelo banco':'Dinheiro que entrou';
-  if(row.direction==='transfer') return 'Só mudou de conta';
-  return row.source==='open_finance'?'Pago pelo banco':'Dinheiro que saiu';
+function label(row:HomeRow,locale:'pt-BR'|'en'|'es'){
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  if(row.source==='credit_card_invoice') return l('Compra no cartão','Card purchase','Compra con tarjeta');
+  if(row.source==='credit_card_invoice_payment') return l('Fatura paga','Statement paid','Tarjeta pagada');
+  if(row.direction==='income') return row.source==='open_finance'?l('Recebido pelo banco','Received via bank','Recibido por el banco'):l('Dinheiro que entrou','Money in','Dinero que entró');
+  if(row.direction==='transfer') return l('Só mudou de conta','Moved between your accounts','Solo cambió de cuenta');
+  return row.source==='open_finance'?l('Pago pelo banco','Paid via bank','Pagado por el banco'):l('Dinheiro que saiu','Money out','Dinero que salió');
 }
 
 function matchesFilter(row:HomeRow,filter:Filter){
@@ -89,8 +90,8 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
       await load(true);
     }catch{
       setRecurrenceError(action==='confirm'
-        ? 'Não conseguimos criar a conta mensal agora. Nada foi alterado.'
-        : 'Não conseguimos guardar sua preferência agora.');
+        ? l('Não conseguimos criar a conta mensal agora. Nada foi alterado.','We could not create the monthly bill right now. Nothing changed.','No pudimos crear la cuenta mensual ahora. No se cambió nada.')
+        : l('Não conseguimos guardar sua preferência agora.','We could not save your preference right now.','No pudimos guardar tu preferencia ahora.'));
     }finally{
       setRecurrenceWorking('');
     }
@@ -108,11 +109,11 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   },[scopedRows,filter,query,intlLocale]);
 
   const filters:{value:Filter;label:string}[]=[
-    {value:'all',label:'Todos'},
-    {value:'income',label:'Recebi'},
-    {value:'cash_expense',label:'Paguei'},
-    {value:'card',label:'Cartão'},
-    {value:'transfer',label:'Entre contas'}
+    {value:'all',label:l('Todos','All','Todos')},
+    {value:'income',label:l('Recebi','Money in','Recibí')},
+    {value:'cash_expense',label:l('Paguei','Paid','Pagué')},
+    {value:'card',label:l('Cartão','Card','Tarjeta')},
+    {value:'transfer',label:l('Entre contas','Between accounts','Entre cuentas')}
   ];
 
   return <main className="app-shell movements-shell">
@@ -130,38 +131,38 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     {recurringCandidates.length>0&&<section className="recurrence-suggestions" aria-labelledby="recurrence-title">
       <div className="section-title">
         <div>
-          <span className="section-kicker">Padrões que percebemos</span>
-          <h2 id="recurrence-title">Isso parece acontecer todo mês?</h2>
+          <span className="section-kicker">{l('Padrões que percebemos','Patterns we noticed','Patrones que notamos')}</span>
+          <h2 id="recurrence-title">{l('Isso parece acontecer todo mês?','Does this happen every month?','¿Esto ocurre todos los meses?')}</h2>
         </div>
-        <small>Nada é criado sem você confirmar.</small>
+        <small>{l('Nada é criado sem você confirmar.','Nothing is created until you confirm it.','Nada se crea hasta que lo confirmes.')}</small>
       </div>
       <div className="recurrence-suggestion-list">
         {recurringCandidates.map(candidate=><article key={candidate.scope+'-'+candidate.key} className="recurrence-suggestion-card">
           <div>
-            <span>{candidate.scope==='personal'?'Só para mim':'Lar'} · apareceu em {candidate.observedMonths} meses</span>
+            <span>{candidate.scope==='personal'?t.scopePersonal:t.scopeHousehold} · {l(`apareceu em ${candidate.observedMonths} meses`,`seen in ${candidate.observedMonths} months`,`apareció en ${candidate.observedMonths} meses`)}</span>
             <strong>{candidate.description}</strong>
-            <p>Cerca de {formatMoney(candidate.averageMinor)} por mês{candidate.suggestedDueDay?' · normalmente perto do dia '+candidate.suggestedDueDay:''}.</p>
+            <p>{l(`Cerca de ${formatMoney(candidate.averageMinor)} por mês${candidate.suggestedDueDay?' · normalmente perto do dia '+candidate.suggestedDueDay:''}.`,`About ${formatMoney(candidate.averageMinor)} per month${candidate.suggestedDueDay?' · usually near day '+candidate.suggestedDueDay:''}.`,`Cerca de ${formatMoney(candidate.averageMinor)} al mes${candidate.suggestedDueDay?' · normalmente cerca del día '+candidate.suggestedDueDay:''}.`)}</p>
           </div>
           {role!=='read_only'
             ? <div className="recurrence-actions">
                 <button type="button" disabled={Boolean(recurrenceWorking)} onClick={()=>void handleRecurrence(candidate.referenceTransactionId,'confirm')}>
-                  {recurrenceWorking===candidate.referenceTransactionId?'Salvando…':'É mensal'}
+                  {recurrenceWorking===candidate.referenceTransactionId?l('Salvando…','Saving…','Guardando…'):l('É mensal','It is monthly','Es mensual')}
                 </button>
                 <button type="button" className="secondary" disabled={Boolean(recurrenceWorking)} onClick={()=>void handleRecurrence(candidate.referenceTransactionId,'dismiss')}>
-                  Não sugerir
+                  {l('Não sugerir','Do not suggest','No sugerir')}
                 </button>
               </div>
-            : <span className="role-pill">Somente leitura</span>}
+            : <span className="role-pill">{t.readOnly}</span>}
         </article>)}
       </div>
       {recurrenceError&&<p className="error-copy" role="alert">{recurrenceError}</p>}
     </section>}
 
     <section className="movement-summary-grid">
-      <article><span>Recebi</span><strong>{formatMoney(summary.income)}</strong></article>
-      <article><span>Paguei</span><strong>{formatMoney(summary.cashExpense)}</strong></article>
-      <article><span>No cartão</span><strong>{formatMoney(summary.card)}</strong></article>
-      <article><span>Entre contas</span><strong>{formatMoney(summary.transfers)}</strong></article>
+      <article><span>{l('Recebi','Money in','Recibí')}</span><strong>{formatMoney(summary.income)}</strong></article>
+      <article><span>{l('Paguei','Paid','Pagué')}</span><strong>{formatMoney(summary.cashExpense)}</strong></article>
+      <article><span>{l('No cartão','On card','En tarjeta')}</span><strong>{formatMoney(summary.card)}</strong></article>
+      <article><span>{l('Entre contas','Between accounts','Entre cuentas')}</span><strong>{formatMoney(summary.transfers)}</strong></article>
     </section>
 
     <section className="movement-controls">
@@ -175,15 +176,15 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     {loading
       ? <div className="movement-full-list">{[0,1,2,3].map(i=><div className="movement-full-row skeleton-line" key={i}/>)}</div>
       : visible.length===0
-        ? <section className="empty-state"><h3>Nada por aqui.</h3><p>{query?'Tente outra busca ou filtro.':'Quando você registrar o primeiro movimento, ele aparecerá nesta timeline.'}</p></section>
+        ? <section className="empty-state"><h3>{l('Nada por aqui.','Nothing here.','Nada por aquí.')}</h3><p>{query?l('Tente outra busca ou filtro.','Try another search or filter.','Prueba otra búsqueda o filtro.'):l('Quando você registrar o primeiro movimento, ele aparecerá nesta timeline.','Your first financial movement will appear here as soon as you record it.','Tu primer movimiento financiero aparecerá aquí cuando lo registres.')}</p></section>
         : <section className="movement-full-list">
             {visible.map(row=><article className="movement-full-row" key={row.id}>
               <div className={'movement-dot '+(row.direction==='income'?'in':'')}/>
               <div className="movement-full-copy">
                 <strong>{row.description}</strong>
-                <span>{label(row)}{row.scope==='personal'?' · Só para mim':''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
+                <span>{label(row,locale)}{row.scope==='personal'?` · ${t.scopePersonal}`:''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
                 {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<small>{categoryLabel(categorizeSpending(row.description),locale)}</small>}
-                {row.installment&&<small>Parcela {row.installment.current} de {row.installment.total}</small>}
+                {row.installment&&<small>{l(`Parcela ${row.installment.current} de ${row.installment.total}`,`Installment ${row.installment.current} of ${row.installment.total}`,`Cuota ${row.installment.current} de ${row.installment.total}`)}</small>}
               </div>
               <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {formatMoney(row.amountMinor)}</b>
             </article>)}
