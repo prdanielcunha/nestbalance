@@ -285,6 +285,112 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setNotice('Li a imagem com inteligência visual. Confira antes de guardar.');
   }
 
+  async function tryLocalImage(activeFile:File){
+    setLocalOcrPercent(1);
+    try{
+      const ocr=await readImageTextLocally(activeFile,progress=>setLocalOcrPercent(progress.percent));
+      setLocalOcrText(ocr);
+      if(!ocr.trim()){
+        setNotice('Não consegui encontrar texto legível nessa imagem. Você pode tentar outro print ou contar o que aconteceu por texto.');
+        return true;
+      }
+
+      const signals=detectDocumentSignals(ocr);
+      setAnalysis({
+        state:'extracted',
+        parser:'local-ocr-v1',
+        reason:null,
+        text:ocr,
+        characters:ocr.length,
+        truncated:false,
+        totalPages:null,
+        extractedPages:null,
+        signals
+      });
+
+      const suggestion=suggestCaptureFromDocument(activeFile.name,signals);
+      if(suggestion.state==='suggested'){
+        applySourceText(suggestion.sourceText,true);
+        setNotice('Li este print no seu aparelho, sem enviar a imagem para uma IA. Confira antes de guardar.');
+        return true;
+      }
+      if(suggestion.state==='choose_amount'){
+        setAmountChoices(suggestion.amountsMinor);
+        setNotice('Li o print no seu aparelho e encontrei mais de um valor. Qual deles representa este movimento?');
+        return true;
+      }
+
+      try{
+        const status=await getGeminiFallbackStatus(householdId);
+        setGeminiStatus(status);
+        setNotice(status.configured
+          ? 'A leitura local terminou, mas ainda há contexto ambíguo. Se quiser, posso tentar o fallback Gemini usando somente texto sanitizado — a imagem não será enviada.'
+          : 'A leitura local terminou, mas não fechou a interpretação. O fallback online gratuito não está ativado neste ambiente; você pode preencher manualmente sem perder o print.');
+      }catch{
+        setGeminiStatus(null);
+        setNotice('A leitura local terminou, mas não fechou a interpretação. Você pode preencher manualmente; a imagem continua apenas no seu aparelho até você guardar.');
+      }
+      return true;
+    }catch{
+      setLocalOcrText('');
+      setNotice('Não consegui ler esse print localmente. Tente outra imagem ou conte o que aconteceu por texto.');
+      return true;
+    }finally{
+      setLocalOcrPercent(0);
+    }
+  }
+
+  async function runGeminiFallback(){
+    if(!localOcrText||!geminiStatus?.configured||geminiWorking) return;
+    setGeminiWorking(true);
+    setError('');
+    try{
+      const result=await analyzeTextWithGeminiFallback({
+        householdId,
+        text:localOcrText,
+        consentVersion:geminiStatus.consentVersion
+      });
+      const extraction=result.extraction;
+      setAiAnalysis(null);
+
+      if(extraction.screen){
+        const screen=extraction.screen;
+        const resourceCount=screen.accounts.length+screen.pots.length+screen.cards.length+screen.commitments.length;
+        if(resourceCount>0) setScreenSnapshot(screen);
+        const imported=buildImportedMovements({
+          documentType:screen.screenType==='transaction_list'?'transaction_list':'bank_screenshot',
+          institution:screen.institution,
+          overallConfidence:extraction.overallConfidence,
+          ambiguities:extraction.ambiguities,
+          items:screen.movements
+        });
+        if(imported.length) setInterpretations(imported);
+        if(resourceCount||imported.length){
+          const reviewCount=imported.filter(item=>item.needsReview.length>0).length;
+          setNotice(reviewCount
+            ? `O Gemini ajudou a separar a tela usando apenas OCR sanitizado. ${reviewCount} movimento${reviewCount===1?' precisa':'s precisam'} de conferência.`
+            : 'O Gemini ajudou a separar a tela usando apenas OCR sanitizado. A imagem não foi enviada; confira antes de guardar.');
+          return;
+        }
+      }
+
+      prepareAiReview(extraction);
+      setNotice('O Gemini analisou somente o texto OCR sanitizado. A imagem não foi enviada. Confira antes de guardar.');
+    }catch(err:any){
+      const code=String(err?.message||'');
+      if(code==='GEMINI_FREE_QUOTA_EXHAUSTED'||code==='GEMINI_FREE_DAILY_CAP_REACHED'){
+        setNotice('A cota gratuita de leitura inteligente acabou por agora. O app continua funcionando com leitura local e preenchimento manual, sem gerar cobrança.');
+      }else if(code==='GEMINI_FREE_NOT_CONFIGURED'){
+        setGeminiStatus(current=>current?{...current,configured:false}:current);
+        setNotice('O fallback Gemini gratuito não está ativado neste ambiente. Nenhuma cobrança foi gerada.');
+      }else{
+        setError('A leitura protegida não conseguiu concluir agora. Você pode continuar manualmente sem perder o original.');
+      }
+    }finally{
+      setGeminiWorking(false);
+    }
+  }
+
   async function interpret(overrideFile?:File) {
     setError('');
     setNotice('');
