@@ -177,8 +177,8 @@ export function InvoiceImportSheet({
         <div className="invoice-summary-card">
           <div>
             <span>{l('ENTENDEMOS','UNDERSTOOD','ENTENDIMOS')}</span>
-            <strong>{result.preview.items.length} item{result.preview.items.length===1?'':'s'}</strong>
-            <small>Fatura {result.preview.invoiceKey} · vence {dateLabel(result.preview.dueOn)}</small>
+            <strong>{l(`${result.preview.items.length} item${result.preview.items.length===1?'':'s'}`,`${result.preview.items.length} item${result.preview.items.length===1?'':'s'}`,`${result.preview.items.length} elemento${result.preview.items.length===1?'':'s'}`)}</strong>
+            <small>{l('Fatura','Statement','Resumen')} {result.preview.invoiceKey} · {l('vence','due','vence')} {dateLabel(result.preview.dueOn)}</small>
           </div>
           <div>
             <span>{l('CONFIRA','REVIEW','REVISA')}</span>
@@ -193,53 +193,53 @@ export function InvoiceImportSheet({
         </div>
 
         {result.preview.statementTotalMinor!==null&&<div className={result.preview.reconciliationDeltaMinor===0?'invoice-reconciliation ok':'invoice-reconciliation review'}>
-          <div><span>Total visível da fatura</span><strong>{formatMoney(result.preview.statementTotalMinor)}</strong></div>
-          <div><span>Itens reconhecidos</span><strong>{formatMoney(result.preview.observedMinor)}</strong></div>
+          <div><span>{l('Total visível da fatura','Visible statement total','Total visible del resumen')}</span><strong>{formatMoney(result.preview.statementTotalMinor)}</strong></div>
+          <div><span>{l('Itens reconhecidos','Recognized items','Elementos reconocidos')}</span><strong>{formatMoney(result.preview.observedMinor)}</strong></div>
           <small>{result.preview.reconciliationDeltaMinor===0
-            ? 'A soma dos itens reconhecidos bate com o total visível.'
-            : 'A soma não fecha com o total da fatura. A liquidação ficará bloqueada até a revisão.'}</small>
+            ? l('A soma dos itens reconhecidos bate com o total visível.','The recognized items add up to the visible total.','La suma de los elementos reconocidos coincide con el total visible.')
+            : l('A soma não fecha com o total da fatura. A liquidação ficará bloqueada até a revisão.','The recognized sum does not match the statement total. Settlement stays blocked until review.','La suma no coincide con el total del resumen. La liquidación queda bloqueada hasta la revisión.')}</small>
         </div>}
 
         {globalReview.length>0&&<div className="invoice-global-review" role="status">
-          <strong>Há uma conferência geral da fatura.</strong>
+          <strong>{l('Há uma conferência geral da fatura.','The statement needs an overall review.','El resumen necesita una revisión general.')}</strong>
           <span>{globalReview.includes('statement_total_mismatch')
-            ? 'O total visível não bate com a soma das compras reconhecidas.'
+            ? l('O total visível não bate com a soma das compras reconhecidas.','The visible total does not match the sum of recognized purchases.','El total visible no coincide con la suma de las compras reconocidas.')
             : globalReview.includes('no_invoice_items')
-              ? 'Não encontrei linhas de compra suficientes nessa imagem.'
-              : 'A imagem tem trechos que precisam de uma conferência antes de fechar a fatura.'}</span>
+              ? l('Não encontrei linhas de compra suficientes nessa imagem.','I did not find enough purchase lines in this image.','No encontré suficientes líneas de compra en esta imagen.')
+              : l('A imagem tem trechos que precisam de uma conferência antes de fechar a fatura.','Parts of the image need review before the statement can be closed.','Hay partes de la imagen que necesitan revisión antes de cerrar el resumen.')}</span>
           <div className="invoice-global-actions">
-            <button type="button" onClick={()=>setEditingItem('new')}>Adicionar item que faltou</button>
+            <button type="button" onClick={()=>setEditingItem('new')}>{l('Adicionar item que faltou','Add missing item','Agregar elemento faltante')}</button>
             {globalReview.includes('visual_invoice')&&reviewItems.length===0&&
-              <button type="button" disabled={working} onClick={acknowledgeVisualReview}>Conferi a imagem inteira</button>}
+              <button type="button" disabled={working} onClick={acknowledgeVisualReview}>{l('Conferi a imagem inteira','I reviewed the whole image','Revisé toda la imagen')}</button>}
           </div>
         </div>}
 
         {result.preview.items.length===0
-          ? <div className="invoice-empty"><strong>Não encontrei compras confiáveis.</strong><span>O original ficou preservado, mas nada será criado automaticamente.</span></div>
+          ? <div className="invoice-empty"><strong>{l('Não encontrei compras confiáveis.','I did not find reliable purchases.','No encontré compras confiables.')}</strong><span>{l('O original ficou preservado, mas nada será criado automaticamente.','The original was preserved, but nothing will be created automatically.','El original fue preservado, pero no se creará nada automáticamente.')}</span></div>
           : <>
               {result.preview.reviewCount>0&&<div className="invoice-review-toggle">
-                <button type="button" className={!showAll?'active':''} onClick={()=>setShowAll(false)}>Conferir {result.preview.reviewCount}</button>
-                <button type="button" className={showAll?'active':''} onClick={()=>setShowAll(true)}>Ver tudo</button>
+                <button type="button" className={!showAll?'active':''} onClick={()=>setShowAll(false)}>{l('Conferir','Review','Revisar')} {result.preview.reviewCount}</button>
+                <button type="button" className={showAll?'active':''} onClick={()=>setShowAll(true)}>{l('Ver tudo','View all','Ver todo')}</button>
               </div>}
               <div className="invoice-item-list">
                 {visibleItems.map(item=><article className={item.needsReview.length?'invoice-item review':'invoice-item'} key={item.id}>
                   <div className="invoice-item-main">
-                    <div><strong>{item.description}</strong><span>{dateLabel(item.purchaseOn)}{item.kind==='fee'?' · Encargo':''}</span></div>
+                    <div><strong>{item.description}</strong><span>{dateLabel(item.purchaseOn)}{item.kind==='fee'?` · ${l('Encargo','Fee','Cargo')}`:''}</span></div>
                     <b>{formatMoney(item.amountMinor)}</b>
                   </div>
                   {item.installment&&<div className="invoice-installment-row">
-                    <span>Parcela {item.installment.current} de {item.installment.total}</span>
+                    <span>{l(`Parcela ${item.installment.current} de ${item.installment.total}`,`Installment ${item.installment.current} of ${item.installment.total}`,`Cuota ${item.installment.current} de ${item.installment.total}`)}</span>
                     <small>{Math.max(0,item.installment.total-item.installment.current)} futura{item.installment.total-item.installment.current===1?'':'s'} projetada{item.installment.total-item.installment.current===1?'':'s'}</small>
                   </div>}
                   <div className="invoice-item-footer">
                     {item.needsReview.length>0
                       ? <em>Confira {item.needsReview.includes('purchase_date')?'a data da compra':item.needsReview.includes('invoice_due_date')?'o vencimento usado para projetar as parcelas':'os dados reconhecidos'}</em>
                       : <span>{result.preview.humanReviewed?'Conferido':'Reconhecido com boa confiança'}</span>}
-                    <button type="button" onClick={()=>setEditingItem(item)}>{item.needsReview.length?'Corrigir':'Editar'}</button>
+                    <button type="button" onClick={()=>setEditingItem(item)}>{item.needsReview.length?l('Corrigir','Correct','Corregir'):l('Editar','Edit','Editar')}</button>
                   </div>
                 </article>)}
               </div>
-              <button className="invoice-add-item-button" type="button" onClick={()=>setEditingItem('new')}>Adicionar item que faltou</button>
+              <button className="invoice-add-item-button" type="button" onClick={()=>setEditingItem('new')}>{l('Adicionar item que faltou','Add missing item','Agregar elemento faltante')}</button>
             </>}
 
         <p className="confidence-note">
@@ -249,7 +249,7 @@ export function InvoiceImportSheet({
         </p>
         {error&&<p className="error-copy" role="alert">{error}</p>}
         <div className="sheet-actions">
-          <button className="ghost-button" disabled={working} onClick={()=>{setResult(null);setFile(null);setError('');}}>Trocar arquivo</button>
+          <button className="ghost-button" disabled={working} onClick={()=>{setResult(null);setFile(null);setError('');}}>{l('Trocar arquivo','Change file','Cambiar archivo')}</button>
           <button className="primary-button" disabled={working||clearItems.length===0} onClick={confirmClearItems}>
             {working?'Confirmando…':clearItems.length===0?'Nada claro para confirmar':<>Confirmar {clearItems.length} item{clearItems.length===1?'':'s'}</>}
           </button>
