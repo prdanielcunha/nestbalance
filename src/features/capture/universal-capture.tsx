@@ -121,6 +121,10 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setPayingMatchId('');
     setScreenSnapshot(null);
     setScope('household');
+    setLocalOcrText('');
+    setLocalOcrPercent(0);
+    setGeminiStatus(null);
+    setGeminiWorking(false);
     setOpen(false);
     onClose?.();
     setText('');
@@ -157,6 +161,10 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setPaymentMatchDismissed(false);
     setPayingMatchId('');
     setScreenSnapshot(null);
+    setLocalOcrText('');
+    setLocalOcrPercent(0);
+    setGeminiStatus(null);
+    setGeminiWorking(false);
     setError('');
     setNotice(noticeText);
   }
