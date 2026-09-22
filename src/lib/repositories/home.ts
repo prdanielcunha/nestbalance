@@ -2,6 +2,7 @@
 import { auth } from '@/src/lib/firebase/client';
 import type { SpendingCategory } from '@/src/core/insights';
 import type { ProactivityPreferences } from '@/src/core/proactivity';
+import type { SavingsPotAutomation } from '@/src/core/savings-pot-automation';
 
 export type HomeRow={
   id:string;
@@ -73,9 +74,15 @@ export type HomeSavingsPot={
   name:string;
   balanceMinor:number;
   goalMinor:number|null;
+  targetDate:string|null;
+  note:string|null;
   currency:string;
   institutionName:string|null;
   source:string|null;
+  trackingMode:'manual'|'bank_mirror';
+  hasCover:boolean;
+  coverVersion:number|null;
+  automation:SavingsPotAutomation|null;
   status:string;
   scope?:'household'|'personal';
 };
