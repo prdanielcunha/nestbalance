@@ -1525,7 +1525,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   border-color:rgba(94,106,210,.62);
   box-shadow:var(--focus-ring);
 }
-.scope-switch{
+.scope-view-switch{
   box-shadow:var(--shadow-sm);
 }
 .app-nav{
