@@ -1247,6 +1247,21 @@
   font:inherit;
   font-size:10px;
 }
+.screen-money-edit{display:grid;grid-template-columns:auto minmax(72px,96px);align-items:center;gap:6px}
+.screen-money-edit span{margin:0!important;font-size:9px!important;color:var(--muted)!important}
+.screen-money-edit input{
+  width:100%!important;
+  min-width:72px;
+  border:1px solid var(--line)!important;
+  border-radius:9px!important;
+  background:var(--paper)!important;
+  color:var(--ink)!important;
+  padding:5px 7px!important;
+  text-align:right!important;
+  font:inherit!important;
+  font-size:10px!important;
+  font-variant-numeric:tabular-nums;
+}
 .capture-reclassify{
   margin:10px 0 14px;
   padding:11px;
