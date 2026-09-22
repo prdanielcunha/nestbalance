@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getSavingsPotCover } from '@/src/lib/repositories/savings-pots';
 
 export function SavingsPotCover({
@@ -18,12 +18,6 @@ export function SavingsPotCover({
   className?:string;
 }){
   const [url,setUrl]=useState<string|null>(null);
-  const initials=useMemo(()=>{
-    const words=name.trim().split(/\s+/).filter(Boolean);
-    if(!words.length) return 'NB';
-    return (words.length===1?words[0].slice(0,2):words[0][0]+words.at(-1)![0]).toLocaleUpperCase('pt-BR');
-  },[name]);
-
   useEffect(()=>{
     if(!hasCover){
       setUrl(current=>{if(current) URL.revokeObjectURL(current);return null;});
@@ -47,7 +41,7 @@ export function SavingsPotCover({
     };
   },[householdId,potId,hasCover,coverVersion]);
 
-  return <div className={`savings-pot-cover ${className}`.trim()} aria-hidden="true">
-    {url?<img src={url} alt="" />:<span>{initials}</span>}
+  return <div className={`savings-pot-cover ${!url?'is-empty ':''}${className}`.trim()} aria-hidden="true">
+    {url?<img src={url} alt="" />:null}
   </div>;
 }
