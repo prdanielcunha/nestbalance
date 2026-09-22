@@ -54,6 +54,7 @@ export function groupSavingsPots(items:SavingsPotLike[]):SavingsPotGroup[]{
     const goalMinor=uniqueGoals.length?Math.max(...uniqueGoals):null;
     const progress=goalMinor&&goalMinor>0?Math.max(0,Math.min(1,balanceMinor/goalMinor)):null;
     const preferred=[...sources].sort((a,b)=>b.name.length-a.name.length)[0];
+    const groupScope:'household'|'personal'=preferred?.scope==='personal'?'personal':'household';
 
     return {
       key,
@@ -61,7 +62,7 @@ export function groupSavingsPots(items:SavingsPotLike[]):SavingsPotGroup[]{
       balanceMinor,
       goalMinor,
       currency:preferred?.currency||'BRL',
-      scope:preferred?.scope==='personal'?'personal':'household',
+      scope:groupScope,
       progress,
       goalConflict:uniqueGoals.length>1,
       sources:[...sources].sort((a,b)=>
