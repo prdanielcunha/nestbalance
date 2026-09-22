@@ -1,6 +1,7 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { HouseholdRole } from '@/src/core/household';
+import type { Locale } from '@/src/i18n/messages';
 
 export type HouseholdMember={
   uid:string;
@@ -17,12 +18,22 @@ export type HouseholdInviteSummary={
   expiresAtMs:number;
   expired:boolean;
 };
+export type HouseholdActivity={
+  id:string;
+  type:string;
+  actorUid:string;
+  actorName:string|null;
+  targetName:string|null;
+  role:HouseholdRole|null;
+  createdAtMs:number|null;
+};
 export type HouseholdSettingsPayload={
   ok:true;
-  household:{id:string;name:string;currency:string;locale:string;ownerUid:string};
+  household:{id:string;name:string;currency:string;locale:Locale;ownerUid:string};
   currentRole:HouseholdRole;
   members:HouseholdMember[];
   invites:HouseholdInviteSummary[];
+  activity:HouseholdActivity[];
 };
 
 async function authToken(){
@@ -47,6 +58,9 @@ export function loadHouseholdSettings(householdId:string){
 }
 export function renameHousehold(householdId:string,name:string){
   return post<{ok:true;name:string}>('/api/household/rename',{householdId,name});
+}
+export function updateHouseholdLocale(householdId:string,locale:Locale){
+  return post<{ok:true;locale:Locale}>('/api/household/locale',{householdId,locale});
 }
 export function createHouseholdInvite(input:{householdId:string;role:'admin'|'member'|'read_only';email?:string}){
   return post<{ok:true;token:string;role:HouseholdRole;email:string|null;expiresAtMs:number}>('/api/household/invite',input);
