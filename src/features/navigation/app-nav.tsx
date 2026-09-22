@@ -10,7 +10,7 @@ export function AppNav({canContribute=true}:{canContribute?:boolean}){
     {href:'/',label:t.navHome},
     {href:'/movements',label:t.navMovements},
     {href:'/accounts',label:t.navAccounts},
-    {href:'/vault',label:t.navVault},
+    {href:'/pots',label:t.navPots},
     {href:'/assistant',label:t.navAssistant}
   ];
   return <nav className="app-nav" aria-label="Navegação principal">

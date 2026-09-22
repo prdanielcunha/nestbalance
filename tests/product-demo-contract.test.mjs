@@ -6,9 +6,10 @@ import { matchPayableCommitments } from '../.core-dist/core/commitment-payments.
 import { parseInvoiceText } from '../.core-dist/core/invoices.js';
 import { answerAssistantQuestion } from '../.core-dist/core/assistant.js';
 import { searchVaultDocuments } from '../.core-dist/core/vault-search.js';
+import { parseSavingsPotsFromOcr } from '../.core-dist/core/savings-pot-import.js';
 
 /**
- * Product-level contract for the five mandatory NestBalance demo moments.
+ * Product-level contract for the mandatory NestBalance demo moments.
  *
  * These tests intentionally exercise deterministic core behavior. They do not
  * claim to cover browser authentication, camera/OCR transport, audio capture,
@@ -138,4 +139,27 @@ test('demo contract 5: natural-language evidence search finds the remembered int
   const hits=searchVaultDocuments('comprovante da internet de março',docs);
   assert.equal(hits[0]?.evidenceId,'internet-mar');
   assert.ok(hits[0]?.score>0);
+});
+
+
+test('demo contract 6: a savings-pots screenshot becomes structured goals without creating expenses',()=>{
+  const screen=parseSavingsPotsFromOcr([
+    'Cofrinhos',
+    'Meli+',
+    'Seus cofrinhos',
+    'Aniversário Davi',
+    'R$ 1.015,68',
+    'Meta: R$ 2.550',
+    'Reservas',
+    'R$ 300,82'
+  ].join('\n'));
+
+  assert.ok(screen);
+  assert.equal(screen.screenType,'savings_pots');
+  assert.equal(screen.institution,'Mercado Pago');
+  assert.equal(screen.pots.length,2);
+  assert.equal(screen.pots[0].balanceMinor,101568);
+  assert.equal(screen.pots[0].goalMinor,255000);
+  assert.equal(screen.movements.length,0);
+  assert.equal(screen.commitments.length,0);
 });

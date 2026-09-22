@@ -2,13 +2,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import type { HouseholdRole } from '@/src/core/household';
 import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
-import { ConnectedBanks } from '@/src/features/open-finance/connected-banks';
-import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditCard, type HomeInvoiceImport, type HomeSavingsPot } from '@/src/lib/repositories/home';
+import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditCard, type HomeInvoiceImport } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
 
@@ -20,7 +20,6 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
   const [accounts,setAccounts]=useState<HomeAccount[]>([]);
   const [cards,setCards]=useState<HomeCreditCard[]>([]);
   const [invoiceImports,setInvoiceImports]=useState<HomeInvoiceImport[]>([]);
-  const [savingsPots,setSavingsPots]=useState<HomeSavingsPot[]>([]);
   const [cardSnapshots,setCardSnapshots]=useState<HomeCardSnapshot[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
@@ -39,7 +38,6 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       setAccounts(data.accounts);
       setCards(data.cards||[]);
       setInvoiceImports(data.invoiceImports||[]);
-      setSavingsPots(data.savingsPots||[]);
       setCardSnapshots(data.cardSnapshots||[]);
     }catch{
       setError(l('Não conseguimos carregar suas contas agora.','We could not load your accounts right now.','No pudimos cargar tus cuentas ahora.'));
@@ -48,12 +46,18 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
     }
   }
 
-  useEffect(()=>{void load();},[householdId,refreshKey]);
+  useEffect(()=>{
+    void load();
+    const onFocus=()=>void load(true);
+    const onVisibility=()=>{if(document.visibilityState==='visible') void load(true);};
+    window.addEventListener('focus',onFocus);
+    document.addEventListener('visibilitychange',onVisibility);
+    return ()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisibility);};
+  },[householdId,refreshKey]);
 
   const viewAccounts=useMemo(()=>accounts.filter(item=>inFinancialView(item.scope,view)),[accounts,view]);
   const viewCards=useMemo(()=>cards.filter(item=>inFinancialView(item.scope,view)),[cards,view]);
   const viewInvoices=useMemo(()=>invoiceImports.filter(item=>inFinancialView(item.scope,view)),[invoiceImports,view]);
-  const viewPots=useMemo(()=>savingsPots.filter(item=>inFinancialView(item.scope,view)),[savingsPots,view]);
   const viewSnapshots=useMemo(()=>cardSnapshots.filter(item=>inFinancialView(item.scope,view)),[cardSnapshots,view]);
   const defaultCreateScope=view==='personal'?'personal':'household';
 
@@ -63,7 +67,6 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
   const investmentTotal=useMemo(()=>viewAccounts
     .filter(item=>item.connectedProductType==='investment')
     .reduce((sum,item)=>sum+item.balanceMinor,0),[viewAccounts]);
-  const savedTotal=useMemo(()=>viewPots.reduce((sum,item)=>sum+item.balanceMinor,0),[viewPots]);
 
   function refreshed(){
     setRefreshKey(value=>value+1);
@@ -71,7 +74,6 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
 
   function accountTypeLabel(account:HomeAccount){
     if(account.connectedProductType==='investment') return l('Investimento','Investment','Inversión');
-    if(account.source==='open_finance') return l('Conta conectada','Connected account','Cuenta conectada');
     if(account.type==='wallet') return l('Carteira digital','Digital wallet','Billetera digital');
     if(account.type==='cash') return l('Dinheiro','Cash','Efectivo');
     return l('Conta bancária','Bank account','Cuenta bancaria');
@@ -119,7 +121,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navAccounts}</span></div>
       <div className="topbar-actions">
         {canManage&&<AccountOnboarding householdId={householdId} variant="compact" defaultScope={defaultCreateScope} onCreated={refreshed}/>}
-        <Link href="/household" className="avatar-dot" aria-label={t.householdSettings}/>
+        <HouseholdLink/>
       </div>
     </header>
     <ScopeViewSwitch value={view} onChange={setView}/>
@@ -137,11 +139,15 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
           : l('Saldo disponível conhecido nas contas ativas desta visão.','Known available balance across active accounts in this view.','Saldo disponible conocido en las cuentas activas de esta vista.')
         : canManage
           ? l(
-              'Adicione uma conta manualmente ou importe seus próprios arquivos. Open Finance é opcional e não é necessário para usar o NestBalance.',
-              'Add an account manually or import your own files. Open Finance is optional and is not required to use NestBalance.',
-              'Agrega una cuenta manualmente o importa tus propios archivos. Open Finance es opcional y no es necesario para usar NestBalance.'
+              'Adicione sua primeira conta ou envie um print, extrato ou arquivo. O NestBalance organiza o que conseguir reconhecer e pede só o que faltar.',
+              'Add your first account or send a screenshot, statement, or file. NestBalance organizes what it can recognize and asks only for what is missing.',
+              'Agrega tu primera cuenta o envía una captura, extracto o archivo. NestBalance organiza lo que reconoce y pregunta solo lo que falta.'
             )
           : l('Um administrador pode adicionar contas; você pode consultar o que já existe.','An administrator can add accounts; you can view what is already here.','Un administrador puede agregar cuentas; tú puedes consultar lo que ya existe.')}</p>
+      {canManage&&<div className="area-hero-actions">
+        <Link className="primary-button" href="/add?return=/accounts">{l('Enviar print ou arquivo','Send screenshot or file','Enviar captura o archivo')}</Link>
+        <span>{l('Você também pode usar “Adicionar conta” acima para informar só o saldo.','You can also use “Add account” above to enter just the balance.','También puedes usar “Agregar cuenta” arriba para informar solo el saldo.')}</span>
+      </div>}
     </section>
 
     {error&&<p className="error-copy" role="alert">{error}</p>}
@@ -159,53 +165,24 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
               ? l('Use “Adicionar conta” para começar.','Use “Add account” to get started.','Usa “Agregar cuenta” para empezar.')
               : l('Um administrador ainda não adicionou contas a este Lar.','An administrator has not added accounts to this Household yet.','Un administrador todavía no agregó cuentas a este Hogar.')}</p></div>
           : <div className="account-balance-grid">
-              {viewAccounts.map(account=>{
-                const connected=account.source==='open_finance';
-                return <article className={connected?'account-balance-tile connected':'account-balance-tile'} key={account.id}>
-                  <span>{accountTypeLabel(account)}{account.scope==='personal'&&<em className="personal-pill">{t.scopePersonal}</em>}</span>
-                  <h3>{account.name}</h3>
-                  <strong>{formatMoney(account.balanceMinor)}</strong>
-                  {account.automaticallyInvestedMinor&&account.automaticallyInvestedMinor>0
-                    ? <small>{l(
-                        `${formatMoney(account.automaticallyInvestedMinor)} aplicado automaticamente`,
-                        `${formatMoney(account.automaticallyInvestedMinor)} invested automatically`,
-                        `${formatMoney(account.automaticallyInvestedMinor)} invertido automáticamente`
-                      )}</small>
-                    : null}
-                  <div className="account-balance-foot">
-                    <small>{connected
-                      ? l(
-                          `${account.institutionName||'Open Finance'} · saldo sincronizado`,
-                          `${account.institutionName||'Open Finance'} · synced balance`,
-                          `${account.institutionName||'Open Finance'} · saldo sincronizado`
-                        )
-                      : l('Saldo atual informado','Current balance provided','Saldo actual informado')}</small>
-                    {connected
-                      ? <span className="synced-account-pill">{l('Automático','Automatic','Automático')}</span>
-                      : canManage&&<button type="button" onClick={()=>openBalance(account)}>{l('Atualizar','Update','Actualizar')}</button>}
-                  </div>
-                </article>;
-              })}
+              {viewAccounts.map(account=><article className="account-balance-tile" key={account.id}>
+                <span>{accountTypeLabel(account)}{account.scope==='personal'&&<em className="personal-pill">{t.scopePersonal}</em>}</span>
+                <h3>{account.name}</h3>
+                <strong>{formatMoney(account.balanceMinor)}</strong>
+                {account.automaticallyInvestedMinor&&account.automaticallyInvestedMinor>0
+                  ? <small>{l(
+                      `${formatMoney(account.automaticallyInvestedMinor)} reservado nesta conta`,
+                      `${formatMoney(account.automaticallyInvestedMinor)} reserved in this account`,
+                      `${formatMoney(account.automaticallyInvestedMinor)} reservado en esta cuenta`
+                    )}</small>
+                  : null}
+                <div className="account-balance-foot">
+                  <small>{account.institutionName||l('Saldo atual informado','Current balance provided','Saldo actual informado')}</small>
+                  {canManage&&<button type="button" onClick={()=>openBalance(account)}>{l('Atualizar','Update','Actualizar')}</button>}
+                </div>
+              </article>)}
             </div>}
     </section>
-
-    {!loading&&viewPots.length>0&&<section className="savings-pots-section">
-      <div className="section-title"><div><h2>{l('Dinheiro guardado','Saved money','Dinero guardado')}</h2><span>{l(
-        `${formatMoney(savedTotal)} separado do saldo para gastar`,
-        `${formatMoney(savedTotal)} kept separate from spendable balance`,
-        `${formatMoney(savedTotal)} separado del saldo para gastar`
-      )}</span></div></div>
-      <div className="savings-pot-grid">
-        {viewPots.map(pot=><article className="savings-pot-card" key={pot.id}>
-          <span>{pot.institutionName||l('Importado de um print','Imported from a screenshot','Importado de una captura')}{pot.scope==='personal'&&<em className="personal-pill">{t.scopePersonal}</em>}</span>
-          <h3>{pot.name}</h3>
-          <strong>{formatMoney(pot.balanceMinor)}</strong>
-          {pot.goalMinor&&pot.goalMinor>0
-            ? <small>{l('Meta','Goal','Meta')} {formatMoney(pot.goalMinor)}</small>
-            : <small>{l('Valor identificado na tela','Amount identified on screen','Valor identificado en la pantalla')}</small>}
-        </article>)}
-      </div>
-    </section>}
 
     {!loading&&viewSnapshots.length>0&&<section className="recognized-cards-section">
       <div className="section-title"><div><h2>{l('Cartões reconhecidos','Recognized cards','Tarjetas reconocidas')}</h2><span>{l('informações vistas nos seus prints','information seen in your screenshots','información vista en tus capturas')}</span></div></div>
@@ -219,8 +196,6 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
         </article>)}
       </div>
     </section>}
-
-    {!loading&&canManage&&view!=='personal'&&<ConnectedBanks householdId={householdId} accounts={viewAccounts} onSynced={refreshed}/>}
 
     {!loading&&<CreditCardManager
       householdId={householdId}

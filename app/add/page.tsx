@@ -10,7 +10,14 @@ function AddFlow({householdId,uid,role}:{householdId:string;uid:string;role:Hous
   const router=useRouter();
   const {locale}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
-  const done=()=>router.replace('/');
+  const done=()=>{
+    let destination='/';
+    if(typeof window!=='undefined'){
+      const candidate=new URLSearchParams(window.location.search).get('return')||'';
+      if(candidate.startsWith('/')&&!candidate.startsWith('//')&&!candidate.includes('://')) destination=candidate;
+    }
+    router.replace(destination);
+  };
 
   if(role==='read_only'){
     return <main className="center-shell"><section className="login-card">
