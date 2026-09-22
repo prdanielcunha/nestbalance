@@ -4,12 +4,11 @@ import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { buildImportedMovements } from '../src/core/movement-import.js';
 import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
-import type { AiFinancialScreenSnapshot } from '../src/core/ai-financial.js';
 import { normalizeSavingsPotName } from '../src/core/savings-pots.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { assertScopedAccess, requestedScope } from './privacy.js';
-import { ScreenSnapshotSchema } from './ai/financial-image.js';
+import { normalizeFinancialScreenSnapshot, ScreenSnapshotSchema } from './ai/financial-image.js';
 
 const ANALYSIS_VERSION='vision-v2';
 
@@ -69,9 +68,11 @@ export async function commitFinancialScreen(req:Request,res:Response){
 
     const extractionSnap=await resolved.ref.collection('extractions').doc(ANALYSIS_VERSION).get();
     const extraction=extractionSnap.exists?extractionSnap.data()?.extraction:null;
-    const persistedScreen=extraction?.screen as AiFinancialScreenSnapshot|null|undefined;
+    const persistedScreen=ScreenSnapshotSchema.safeParse(extraction?.screen);
+    const normalizedPersistedScreen=persistedScreen.success?normalizeFinancialScreenSnapshot(persistedScreen.data):null;
     const reviewed=ScreenSnapshotSchema.safeParse(req.body?.screenSnapshot);
-    const screen=persistedScreen??(reviewed.success?reviewed.data:null);
+    const reviewedScreen=reviewed.success?normalizeFinancialScreenSnapshot(reviewed.data):null;
+    const screen=normalizedPersistedScreen??reviewedScreen;
     if(!screen){
       if(!extractionSnap.exists&&req.body?.screenSnapshot===undefined) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
       return error(res,409,'SCREEN_SNAPSHOT_UNAVAILABLE');
@@ -265,7 +266,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
       const parsed=buildImportedMovements(movementList);
       for(let index=0;index<parsed.length;index++){
         const item=parsed[index];
-        if(item.needsReview.includes('direction')||item.needsReview.includes('amount')||item.needsReview.includes('amount_positive')){
+        if(item.needsReview.length>0){
           skipped++;
           continue;
         }

@@ -34,3 +34,18 @@ test('direção ambígua nunca fica silenciosamente confirmada',()=>{
   assert.equal(resolved.direction,'expense');
   assert.ok(!resolved.needsReview.includes('direction'));
 });
+
+
+test('data impossível de extrato nunca é persistida silenciosamente',()=>{
+  const [row]=buildImportedMovements({
+    documentType:'bank_statement',
+    institution:'Banco',
+    overallConfidence:0.98,
+    ambiguities:[],
+    items:[
+      {description:'Mercado',amountMinor:4590,direction:'expense',dateIso:'2026-02-31',confidence:0.98,needsReview:false,visibleText:'31/02 Mercado -45,90'}
+    ]
+  });
+  assert.equal(row.occurredOn,undefined);
+  assert.ok(row.needsReview.includes('date'));
+});

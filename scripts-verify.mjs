@@ -204,7 +204,7 @@ assert.match(officialProductionWorkflow,/fetch-depth: 2/);
 assert.match(officialProductionWorkflow,/Require certified main promotion/);
 assert.match(officialProductionWorkflow,/git merge-base --is-ancestor "\$PROMOTED_MAIN_SHA" origin\/main/);
 assert.match(officialProductionWorkflow,/PROMOTED_TREE/);
-assert.match(packageSource,/"version": "1\.2\.1"/);
+assert.match(packageSource,/"version": "1\.2\.2"/);
 assert.match(githubReleaseWorkflow,/workflow_run:/);
 assert.match(githubReleaseWorkflow,/Deploy NestBalance Production/);
 assert.match(githubReleaseWorkflow,/Publish NestBalance Official Production Site/);

@@ -1,3 +1,4 @@
+import { isValidIsoDate } from './date';
 import { parseFinancialText } from './text-parser';
 import type { FinancialInterpretation } from './types';
 
@@ -25,9 +26,6 @@ function brl(amountMinor:number){
   return (amountMinor/100).toFixed(2).replace('.',',');
 }
 
-function validDate(value:string|null){
-  return Boolean(value&&/^\d{4}-\d{2}-\d{2}$/.test(value));
-}
 
 function sourceText(item:ImportedMovementItem){
   const prefix=item.direction==='income'
@@ -48,11 +46,12 @@ export function buildImportedMovements(input:ImportedMovementList):FinancialInte
       const needsReview=[
         ...parsed.needsReview,
         ...(item.direction==='unknown'?['direction']:[]),
+        ...(item.dateIso&&!isValidIsoDate(item.dateIso)?['date']:[]),
         ...(item.needsReview||item.confidence<0.86?['import_review']:[])
       ];
       return {
         ...parsed,
-        occurredOn:validDate(item.dateIso)?item.dateIso!:undefined,
+        occurredOn:isValidIsoDate(item.dateIso)?item.dateIso:undefined,
         confidence:needsReview.length
           ? (item.confidence>=0.65?'medium':'low')
           : 'high',

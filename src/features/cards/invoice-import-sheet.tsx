@@ -22,6 +22,7 @@ export function InvoiceImportSheet({
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const dateLabel=(value:string|null)=>value?formatDate(new Date(value+'T12:00:00'),{day:'2-digit',month:'2-digit',year:'numeric'}):l('Data a conferir','Date to review','Fecha por revisar');
   const reviewReason=(item:InvoicePreviewItem)=>{
+    if(item.needsReview.includes('credit_or_refund')) return l('se este lançamento é um estorno/crédito ou uma compra','whether this entry is a refund/credit or a purchase','si este movimiento es un reembolso/crédito o una compra');
     if(item.needsReview.includes('purchase_date')) return l('a data da compra','the purchase date','la fecha de la compra');
     if(item.needsReview.includes('invoice_due_date')) return l('o vencimento usado para projetar as parcelas','the due date used to project installments','el vencimiento usado para proyectar las cuotas');
     return l('os dados reconhecidos','the recognized data','los datos reconocidos');

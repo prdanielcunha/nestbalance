@@ -73,3 +73,25 @@ test('cronograma de parcelas mantém valor por parcela e respeita parcela atual'
   assert.deepEqual(schedule.map(x=>x.dueOn),['2026-09-14','2026-10-14','2026-11-14','2026-12-14']);
   assert.equal(schedule.every(x=>x.amountMinor===8990),true);
 });
+
+
+test('fechamento no dia 31 é ajustado ao último dia real do mês',()=>{
+  const cycle=invoiceCycleForPurchase('2026-02-20',31,10);
+  assert.equal(cycle.closingOn,'2026-02-28');
+  assert.equal(cycle.dueOn,'2026-03-10');
+});
+
+test('parcelas no dia 31 respeitam fevereiro e ano bissexto sem pular mês',()=>{
+  const schedule=installmentInvoiceSchedule({
+    amountMinor:10000,
+    current:1,
+    total:4,
+    firstDueOn:'2028-01-31'
+  });
+  assert.deepEqual(schedule.map(item=>item.dueOn),[
+    '2028-01-31',
+    '2028-02-29',
+    '2028-03-31',
+    '2028-04-30'
+  ]);
+});
