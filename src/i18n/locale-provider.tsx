@@ -3,11 +3,14 @@ import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'r
 import { localeForIntl, normalizeLocale, type AppLocale } from '@/src/core/locale';
 import { messages } from './messages';
 
+type MessageKey=keyof (typeof messages)['pt-BR'];
+type MessageSet={readonly [K in MessageKey]:string};
+
 type I18nContextValue={
   locale:AppLocale;
   intlLocale:string;
   currency:string;
-  t:(typeof messages)['pt-BR'];
+  t:MessageSet;
   formatMoney:(minor:number)=>string;
   formatDate:(value:Date|number|string,options?:Intl.DateTimeFormatOptions)=>string;
 };
@@ -16,7 +19,7 @@ const fallback:I18nContextValue={
   locale:'pt-BR',
   intlLocale:'pt-BR',
   currency:'BRL',
-  t:messages['pt-BR'],
+  t:messages['pt-BR'] as MessageSet,
   formatMoney:minor=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(minor/100),
   formatDate:(value,options)=>new Intl.DateTimeFormat('pt-BR',options).format(new Date(value))
 };
@@ -43,7 +46,7 @@ export function LocaleProvider({
       locale:normalized,
       intlLocale,
       currency:safeCurrency,
-      t:messages[normalized],
+      t:messages[normalized] as MessageSet,
       formatMoney:minor=>formatter.format(minor/100),
       formatDate:(input,options)=>new Intl.DateTimeFormat(intlLocale,options).format(new Date(input))
     };
