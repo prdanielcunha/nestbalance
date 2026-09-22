@@ -137,9 +137,11 @@ export function PrivacyCenter({householdId,user,householdName,role}:{householdId
           'To organize your finances, preserve the evidence you send, and calculate the reconciliations and forecasts you request. NestBalance does not need your CVV or full card number.',
           'Para organizar tus finanzas, conservar las evidencias que envías y calcular conciliaciones y previsiones que solicitas. NestBalance no necesita tu CVV ni el número completo de tu tarjeta.'
         )}</p>
-        {status&&!status.accepted
-          ? <button className="primary-button" disabled={Boolean(working)} onClick={()=>void consent()}>{working==='consent'?l('Registrando…','Saving…','Guardando…'):l('Confirmar que entendi','Confirm I understand','Confirmar que entendí')}</button>
-          : <small className="privacy-ok">{l('Preferência registrada','Preference saved','Preferencia guardada')}{status?.acceptedAt?' · '+formatDate(status.acceptedAt,{dateStyle:'medium'}):''}.</small>}
+        {!status
+          ? <small>{l('Carregando preferência…','Loading preference…','Cargando preferencia…')}</small>
+          : !status.accepted
+            ? <button className="primary-button" disabled={Boolean(working)} onClick={()=>void consent()}>{working==='consent'?l('Registrando…','Saving…','Guardando…'):l('Confirmar que entendi','Confirm I understand','Confirmar que entendí')}</button>
+            : <small className="privacy-ok">{l('Preferência registrada','Preference saved','Preferencia guardada')}{status.acceptedAt?' · '+formatDate(status.acceptedAt,{dateStyle:'medium'}):''}.</small>}
       </article>
 
       <article className="privacy-card">
