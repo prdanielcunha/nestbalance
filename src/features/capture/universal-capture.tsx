@@ -25,13 +25,12 @@ import {
   type EvidenceTextAnalysis,
   type UploadProgress
 } from '@/src/lib/repositories/evidence';
-import { messages } from '@/src/i18n/messages';
+import { useI18n } from '@/src/i18n/locale-provider';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import type { FinancialScope } from '@/src/core/privacy';
 import { readImageTextLocally } from '@/src/lib/local-image-ocr';
 import { analyzeTextWithGeminiFallback, getGeminiFallbackStatus, type GeminiFallbackStatus } from '@/src/lib/repositories/gemini-fallback';
 
-const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
 type PendingAi={extraction:AiFinancialExtraction;amountMinor:number|null};
 
@@ -45,7 +44,8 @@ function markDocumentDerived(items: FinancialInterpretation[]) {
 }
 
 export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=false, showTrigger=true, onClose }: { householdId: string; uid: string; onCommitted?: () => void; defaultOpen?: boolean; showTrigger?: boolean; onClose?: () => void }) {
-  const t = messages['pt-BR'];
+  const {t,locale,formatMoney,formatDate}=useI18n();
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const [open, setOpen] = useState(defaultOpen);
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -749,7 +749,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           {amountChoices.length > 0 && <div className="amount-choice-panel">
             <span>Qual valor devo usar?</span>
-            <div>{amountChoices.map(value => <button key={value} type="button" onClick={()=>chooseAmount(value)}>{money.format(value/100)}</button>)}</div>
+            <div>{amountChoices.map(value => <button key={value} type="button" onClick={()=>chooseAmount(value)}>{formatMoney(value)}</button>)}</div>
             <small>Nenhum valor é escolhido automaticamente quando o documento é ambíguo.</small>
           </div>}
 
@@ -802,7 +802,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <div>
               <span>O NESTBALANCE ENTENDEU</span>
               <strong>{interpretations.length === 1&&screenResourceCount===0
-                ? `${interpretations[0].description} · ${money.format(interpretations[0].money.amountMinor / 100)}`
+                ? `${interpretations[0].description} · ${formatMoney(interpretations[0].money.amountMinor)}`
                 : `${totalOrganizedCount} itens separados por tipo`}</strong>
               <small>{geminiUsed
                 ? 'Gemini sobre OCR sanitizado; imagem não enviada. Confirme antes de guardar.'
@@ -852,7 +852,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               >
                 <span>{candidate.commitment.dueDay?'Dia '+candidate.commitment.dueDay:'Na sua lista'}</span>
                 <strong>{candidate.commitment.description}</strong>
-                <b>{money.format(candidate.commitment.amountMinor/100)}</b>
+                <b>{formatMoney(candidate.commitment.amountMinor)}</b>
                 <em>{payingMatchId===candidate.commitment.id?'Marcando…':'Marcar como pago'}</em>
               </button>)}
             </div>
@@ -867,7 +867,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           </div>}
 
           <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
-            <div><strong>{interpretation.description}</strong><b>{money.format(interpretation.money.amountMinor / 100)}</b></div>
+            <div><strong>{interpretation.description}</strong><b>{formatMoney(interpretation.money.amountMinor)}</b></div>
             <span>{interpretation.kind === 'commitment'
               ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta para pagar')
               : interpretation.needsReview.includes('direction')
@@ -877,7 +877,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   : interpretation.direction==='transfer'
                     ? 'Só mudou de conta'
                     : 'Dinheiro que saiu'}
-              {interpretation.occurredOn?` · ${new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit'}).format(new Date(interpretation.occurredOn+'T12:00:00'))}`:''}
+              {interpretation.occurredOn?` · ${formatDate(new Date(interpretation.occurredOn+'T12:00:00'),{day:'2-digit',month:'2-digit'})}`:''}
             </span>
             {interpretation.installment && <span>Parcela {interpretation.installment.current} de {interpretation.installment.total}</span>}
             {interpretation.needsReview.includes('direction')
