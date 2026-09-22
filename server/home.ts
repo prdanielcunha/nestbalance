@@ -175,7 +175,12 @@ export async function getHomeData(req:Request,res:Response){
       savingsPots:visibleDocs(savingsPots.docs,user.uid).map(savingsPotDto),
       cardSnapshots:visibleDocs(cardSnapshots.docs,user.uid).map(cardSnapshotDto),
       dismissedRecurrenceKeys:visibleDocs(recurrenceDismissals.docs,user.uid)
-        .map(doc=>String(doc.data().patternKey||''))
+        .map(doc=>{
+          const data=doc.data();
+          const key=String(data.patternKey||'');
+          if(!key) return '';
+          return `${data.scope==='personal'?'personal':'household'}|${key}`;
+        })
         .filter(Boolean),
       refreshedAt:new Date().toISOString()
     });
