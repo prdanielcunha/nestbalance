@@ -26,5 +26,6 @@ test('active attention dismissals are user-specific and expire',()=>{
 test('overdue and due-today attention cannot be silenced',()=>{
   assert.equal(isDismissibleAttentionKind('overdue'),false);
   assert.equal(isDismissibleAttentionKind('due_today'),false);
+  assert.equal(isDismissibleAttentionKind('due_soon'),false);
   assert.equal(isDismissibleAttentionKind('anomaly'),true);
 });
