@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseSavingsPotsFromOcr} from '../.core-dist/core/savings-pot-import.js';
-import {groupSavingsPots} from '../.core-dist/core/savings-pots.js';
+import {cleanSavingsPotDisplayName,groupSavingsPots} from '../.core-dist/core/savings-pots.js';
 
 test('recognizes Mercado Pago cofrinhos from OCR',()=>{
   const text=`
@@ -90,4 +90,18 @@ test('metas conflitantes entre bancos ficam explícitas sem somar metas',()=>{
   assert.equal(groups[0].balanceMinor,150000);
   assert.equal(groups[0].goalMinor,350000);
   assert.equal(groups[0].goalConflict,true);
+});
+
+
+test('removes OCR icon noise from imported savings pot names',()=>{
+  const screen=parseSavingsPotsFromOcr(`Cofrinhos
+Meli+
+t Aniversário Davi R$ 1.015,68
+VV Aniversário R$ 522,52
+Davi R$ 361,00`);
+  assert.ok(screen);
+  assert.deepEqual(screen.pots.map(item=>item.name),['Aniversário Davi','Aniversário','Davi']);
+  assert.equal(cleanSavingsPotDisplayName('t Aniversário Davi'),'Aniversário Davi');
+  assert.equal(cleanSavingsPotDisplayName('VV Aniversário'),'Aniversário');
+  assert.equal(cleanSavingsPotDisplayName('TV nova'),'TV nova');
 });
