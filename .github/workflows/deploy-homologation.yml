@@ -42,6 +42,10 @@ jobs:
       OPENAI_SECRET_NAME: ${{ vars.OPENAI_SECRET_NAME }}
       OPENAI_VISION_MODEL: ${{ vars.OPENAI_VISION_MODEL }}
       OPENAI_TRANSCRIBE_MODEL: ${{ vars.OPENAI_TRANSCRIBE_MODEL }}
+      GEMINI_SECRET_NAME: ${{ vars.GEMINI_SECRET_NAME }}
+      NESTBALANCE_ENABLE_GEMINI_FREE: ${{ vars.NESTBALANCE_ENABLE_GEMINI_FREE }}
+      NESTBALANCE_GEMINI_FREE_PROJECT_CONFIRMED: ${{ vars.NESTBALANCE_GEMINI_FREE_PROJECT_CONFIRMED }}
+      NESTBALANCE_GEMINI_FREE_DAILY_CAP: ${{ vars.NESTBALANCE_GEMINI_FREE_DAILY_CAP }}
 
     steps:
       - name: Checkout
@@ -114,8 +118,17 @@ jobs:
         run: |
           set -euo pipefail
           EXTRA_ARGS=()
+          SECRET_MAPPINGS=()
           if [[ -n "${OPENAI_SECRET_NAME:-}" ]]; then
-            EXTRA_ARGS+=(--set-secrets "OPENAI_API_KEY=${OPENAI_SECRET_NAME}:latest")
+            SECRET_MAPPINGS+=("OPENAI_API_KEY=${OPENAI_SECRET_NAME}:latest")
+          fi
+          if [[ -n "${GEMINI_SECRET_NAME:-}" ]]; then
+            SECRET_MAPPINGS+=("GEMINI_API_KEY=${GEMINI_SECRET_NAME}:latest")
+          fi
+          if (( ${#SECRET_MAPPINGS[@]} > 0 )); then
+            IFS=,
+            EXTRA_ARGS+=(--set-secrets "${SECRET_MAPPINGS[*]}")
+            unset IFS
           fi
 
           gcloud run deploy nestbalance-api \
@@ -131,7 +144,7 @@ jobs:
             --min-instances 0 \
             --max-instances 3 \
             --timeout 60 \
-            --set-env-vars "FIREBASE_PROJECT_ID=$GCP_PROJECT_ID,FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET,OPENAI_VISION_MODEL=${OPENAI_VISION_MODEL:-gpt-5.6-luna},OPENAI_TRANSCRIBE_MODEL=${OPENAI_TRANSCRIBE_MODEL:-gpt-transcribe}" \
+            --set-env-vars "FIREBASE_PROJECT_ID=$GCP_PROJECT_ID,FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET,OPENAI_VISION_MODEL=${OPENAI_VISION_MODEL:-gpt-5.6-luna},OPENAI_TRANSCRIBE_MODEL=${OPENAI_TRANSCRIBE_MODEL:-gpt-transcribe},NESTBALANCE_ENABLE_GEMINI_FREE=${NESTBALANCE_ENABLE_GEMINI_FREE:-false},NESTBALANCE_GEMINI_FREE_PROJECT_CONFIRMED=${NESTBALANCE_GEMINI_FREE_PROJECT_CONFIRMED:-false},NESTBALANCE_GEMINI_FREE_DAILY_CAP=${NESTBALANCE_GEMINI_FREE_DAILY_CAP:-100}" \
             "${EXTRA_ARGS[@]}"
 
       - name: Ensure dedicated Firebase Hosting site
