@@ -333,7 +333,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           : 'A leitura local terminou, mas não fechou a interpretação. O fallback online gratuito não está ativado neste ambiente; você pode preencher manualmente sem perder o print.');
       }catch{
         setGeminiStatus(null);
-        setNotice('A leitura local terminou, mas não fechou a interpretação. Você pode preencher manualmente; a imagem continua apenas no seu aparelho até você guardar.');
+        setNotice(l('A leitura local terminou, mas não fechou a interpretação. Você pode preencher manualmente; a imagem continua apenas no seu aparelho até você guardar.','Local reading finished but could not complete the interpretation. You can fill it in manually; the image stays only on your device until you save.','La lectura local terminó pero no completó la interpretación. Puedes completarla manualmente; la imagen permanece solo en tu dispositivo hasta que guardes.'));
       }
       return true;
     }catch{
@@ -381,16 +381,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       }
 
       prepareAiReview(extraction);
-      setNotice('O Gemini analisou somente o texto OCR sanitizado. A imagem não foi enviada. Confira antes de guardar.');
+      setNotice(l('O Gemini analisou somente o texto OCR sanitizado. A imagem não foi enviada. Confira antes de guardar.','Gemini analyzed only sanitized OCR text. The image was not sent. Review before saving.','Gemini analizó solo el texto OCR sanitizado. La imagen no se envió. Revisa antes de guardar.'));
     }catch(err:any){
       const code=String(err?.message||'');
       if(code==='GEMINI_FREE_QUOTA_EXHAUSTED'||code==='GEMINI_FREE_DAILY_CAP_REACHED'){
         setNotice('A cota gratuita de leitura inteligente acabou por agora. O app continua funcionando com leitura local e preenchimento manual, sem gerar cobrança.');
       }else if(code==='GEMINI_FREE_NOT_CONFIGURED'){
         setGeminiStatus(current=>current?{...current,configured:false}:current);
-        setNotice('O fallback Gemini gratuito não está ativado neste ambiente. Nenhuma cobrança foi gerada.');
+        setNotice(l('O fallback Gemini gratuito não está ativado neste ambiente. Nenhuma cobrança foi gerada.','The free Gemini fallback is not enabled in this environment. No charge was generated.','El fallback gratuito de Gemini no está habilitado en este entorno. No se generó ningún cobro.'));
       }else{
-        setError('A leitura protegida não conseguiu concluir agora. Você pode continuar manualmente sem perder o original.');
+        setError(l('A leitura protegida não conseguiu concluir agora. Você pode continuar manualmente sem perder o original.','Protected reading could not finish right now. You can continue manually without losing the original.','La lectura protegida no pudo finalizar ahora. Puedes continuar manualmente sin perder el original.'));
       }
     }finally{
       setGeminiWorking(false);
@@ -423,7 +423,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         if(!localOcrText) await tryLocalImage(activeFile);
         else setNotice(geminiStatus?.configured
           ? 'A leitura local já terminou. Use o fallback protegido abaixo se quiser uma segunda interpretação.'
-          : 'A leitura local já terminou. Você pode ajustar manualmente sem enviar a imagem para uma IA.');
+          : l('A leitura local já terminou. Você pode ajustar manualmente sem enviar a imagem para uma IA.','Local reading is complete. You can adjust it manually without sending the image to AI.','La lectura local ya terminó. Puedes ajustarla manualmente sin enviar la imagen a una IA.'));
       }finally{
         setAnalyzing(false);
       }
@@ -458,14 +458,14 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             if(resourceCount||movementCount){
               setNotice(unresolved
                 ? `Entendi esta tela e organizei o que estava claro. Só ${unresolved} movimentação${unresolved===1?' precisa':' precisam'} de uma resposta rápida.`
-                : 'Entendi a tela financeira. Saldo, dinheiro guardado, contas, cartão e movimentos ficam separados corretamente.');
+                : l('Entendi a tela financeira. Saldo, dinheiro guardado, contas, cartão e movimentos ficam separados corretamente.','I understood the financial screen. Balance, saved money, bills, card and movements stay correctly separated.','Entendí la pantalla financiera. Saldo, dinero guardado, cuentas, tarjeta y movimientos quedan correctamente separados.'));
               return;
             }
           }
           if(ai.kind==='audio'){
             const transcript=ai.transcript?.trim()||'';
             if(!transcript||!ai.parsedInterpretations?.length){
-              setNotice('Áudio transcrito, mas não encontrei uma movimentação clara. Você pode ajustar o texto acima.');
+              setNotice(l('Áudio transcrito, mas não encontrei uma movimentação clara. Você pode ajustar o texto acima.','Audio transcribed, but I did not find a clear financial movement. You can adjust the text above.','Audio transcrito, pero no encontré un movimiento financiero claro. Puedes ajustar el texto de arriba.'));
               if(transcript) setText(transcript);
               return;
             }
@@ -473,14 +473,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             setText(transcript);
             setInterpretations(audioItems);
             if(audioItems.length===1) void loadPaymentMatches(audioItems[0]);
-            setNotice(ai.transcriptTruncated?'Transcrevi o áudio parcialmente. Confira antes de guardar.':'Transcrevi o áudio. Confira antes de guardar.');
+            setNotice(ai.transcriptTruncated
+          ? l('Transcrevi o áudio parcialmente. Confira antes de guardar.','I transcribed the audio partially. Review it before saving.','Transcribí el audio parcialmente. Revísalo antes de guardar.')
+          : l('Transcrevi o áudio. Confira antes de guardar.','I transcribed the audio. Review it before saving.','Transcribí el audio. Revísalo antes de guardar.'));
             return;
           }
           if(ai.extraction){
             prepareAiReview(ai.extraction);
             return;
           }
-          setNotice('O original está guardado, mas não consegui extrair dados financeiros suficientes.');
+          setNotice(l('O original está guardado, mas não consegui extrair dados financeiros suficientes.','The original is saved, but I could not extract enough financial data.','El original está guardado, pero no pude extraer suficientes datos financieros.'));
           return;
         }catch(err:any){
           if(err?.message==='AI_NOT_CONFIGURED'){
@@ -490,7 +492,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             return;
           }
           if(err?.message==='AI_ANALYSIS_IN_PROGRESS'){
-            setNotice('Este arquivo já está sendo analisado. Toque em Entender novamente para buscar o resultado.');
+            setNotice(l('Este arquivo já está sendo analisado. Toque em Entender novamente para buscar o resultado.','This file is already being analyzed. Tap Understand again to fetch the result.','Este archivo ya está siendo analizado. Toca Entender de nuevo para buscar el resultado.'));
             return;
           }
           throw err;
@@ -498,7 +500,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       }
 
       if (result.state !== 'extracted') {
-        setError('Guardei o original, mas não encontrei texto confiável para organizar automaticamente.');
+        setError(l('Guardei o original, mas não encontrei texto confiável para organizar automaticamente.','I saved the original, but could not find reliable text to organize automatically.','Guardé el original, pero no encontré texto confiable para organizar automáticamente.'));
         return;
       }
 
@@ -517,19 +519,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       const suggestion = suggestCaptureFromDocument(activeFile.name, result.signals);
       if (suggestion.state === 'suggested') {
         applySourceText(suggestion.sourceText, true);
-        setNotice('Li o texto do documento sem IA. Confira antes de guardar.');
+        setNotice(l('Li o texto do documento sem IA. Confira antes de guardar.','I read the document text without AI. Review it before saving.','Leí el texto del documento sin IA. Revísalo antes de guardar.'));
         return;
       }
 
       if (suggestion.state === 'choose_amount') {
         setAmountChoices(suggestion.amountsMinor);
-        setNotice('Encontrei mais de um valor. Qual deles representa este pagamento?');
+        setNotice(l('Encontrei mais de um valor. Qual deles representa este pagamento?','I found more than one amount. Which one represents this payment?','Encontré más de un valor. ¿Cuál representa este pago?'));
         return;
       }
 
-      setNotice('Consegui ler o documento, mas não encontrei um valor claro. Diga acima o que aconteceu; o original já está guardado.');
+      setNotice(l('Consegui ler o documento, mas não encontrei um valor claro. Diga acima o que aconteceu; o original já está guardado.','I could read the document but did not find a clear amount. Describe what happened above; the original is already saved.','Pude leer el documento, pero no encontré un valor claro. Describe arriba lo que pasó; el original ya está guardado.'));
     } catch {
-      setError('Não consegui analisar esse arquivo agora. O que foi concluído com segurança não será duplicado.');
+      setError(l('Não consegui analisar esse arquivo agora. O que foi concluído com segurança não será duplicado.','I could not analyze this file right now. Anything completed safely will not be duplicated.','No pude analizar este archivo ahora. Lo que se completó de forma segura no se duplicará.'));
     } finally {
       setAnalyzing(false);
     }
@@ -543,9 +545,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     if (!file || !analysis || analysis.state !== 'extracted') return;
     try {
       applySourceText(sourceTextForChosenDocumentAmount(file.name, amountMinor, analysis.signals), true);
-      setNotice('Usei o valor que você escolheu. Confira o restante antes de guardar.');
+      setNotice(l('Usei o valor que você escolheu. Confira o restante antes de guardar.','I used the amount you chose. Review the rest before saving.','Usé el valor que elegiste. Revisa el resto antes de guardar.'));
     } catch {
-      setError('Não consegui preparar essa revisão.');
+      setError(l('Não consegui preparar essa revisão.','I could not prepare this review.','No pude preparar esta revisión.'));
     }
   }
 
@@ -574,7 +576,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       clearAll();
       onCommitted?.();
     }catch{
-      setError('Não conseguimos ligar esse pagamento à conta agora. Você pode escolher “Nenhuma dessas” e guardar normalmente.');
+      setError(l('Não conseguimos ligar esse pagamento à conta agora. Você pode escolher “Nenhuma dessas” e guardar normalmente.','We could not link this payment to the bill right now. You can choose “None of these” and save normally.','No pudimos vincular este pago con la cuenta ahora. Puedes elegir “Ninguna de estas” y guardar normalmente.'));
     }finally{
       setPayingMatchId('');
     }
@@ -583,12 +585,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   async function confirm() {
     if (!interpretations.length&&!screenSnapshot) return;
     if(paymentMatches.length&&!paymentMatchDismissed){
-      setError('Escolha a conta que este pagamento quitou ou toque em “Nenhuma dessas”.');
+      setError(l('Escolha a conta que este pagamento quitou ou toque em “Nenhuma dessas”.','Choose the bill this payment settled or tap “None of these”.','Elige la cuenta que este pago liquidó o toca “Ninguna de estas”.'));
       return;
     }
     const unresolved=interpretations.filter(item=>item.needsReview.includes('direction')).length;
     if(unresolved){
-      setError(`Só falta dizer o que aconteceu em ${unresolved} item${unresolved===1?'':'s'}.`);
+      setError(l(`Só falta dizer o que aconteceu em ${unresolved} item${unresolved===1?'':'s'}.`,`You only need to say what happened in ${unresolved} item${unresolved===1?'':'s'}.`,`Solo falta decir qué pasó en ${unresolved} elemento${unresolved===1?'':'s'}.`));
       return;
     }
     setSaving(true);
@@ -623,7 +625,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         else created++;
       }
       if (duplicates && !created) {
-        setNotice('Isso já parece estar registrado. Não criamos uma cópia.');
+        setNotice(l('Isso já parece estar registrado. Não criamos uma cópia.','This already appears to be recorded. We did not create a copy.','Esto ya parece estar registrado. No creamos una copia.'));
         setSaving(false);
         setUpload(null);
         return;
@@ -631,7 +633,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       clearAll();
       onCommitted?.();
     } catch {
-      setError('Não conseguimos salvar isso agora. Nada foi marcado como concluído.');
+      setError(l('Não conseguimos salvar isso agora. Nada foi marcado como concluído.','We could not save this right now. Nothing was marked as completed.','No pudimos guardar esto ahora. Nada se marcó como completado.'));
     } finally {
       setSaving(false);
     }
