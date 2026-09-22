@@ -46,3 +46,12 @@ test('monthly automation clamps the intended day instead of skipping short month
     ['2026-01-31','2026-02-28','2026-03-31','2026-04-30']
   );
 });
+
+
+test('daily automation advances one day at a time',()=>{
+  const automation=normalizeSavingsPotAutomation({
+    enabled:true,kind:'frequency',mode:'fixed',amountMinor:500,frequency:'daily',anchorDate:'2026-09-20'
+  });
+  assert.ok(automation);
+  assert.deepEqual(frequencyOccurrenceDates(automation,'2026-09-22'),['2026-09-20','2026-09-21','2026-09-22']);
+});
