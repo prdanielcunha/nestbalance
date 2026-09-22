@@ -451,7 +451,7 @@ export async function syncSavingsPotAutomations(req:Request,res:Response){
         if(observedOn&&observedOn<anchor) continue;
         if(String(movement.status||'confirmed')==='cancelled') continue;
         const direction=String(movement.direction||'expense');
-        if(automation.kind==='spend'){
+        if(automation.kind==='spend'||automation.kind==='roundup'){
           if(direction!=='expense'||movement.source==='credit_card_invoice_payment') continue;
         }else if(direction!=='income'){
           continue;
