@@ -1,8 +1,8 @@
 # NestBalance
 
-## Release candidate
+## Stable release
 
-Current candidate: **1.0.0-rc.1**. Blueprint closure is documented in `docs/RELEASE_CANDIDATE_1.0.md`; privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
+Current stable version: **1.0.0**. Blueprint closure and production certification are documented in `docs/RELEASE_1.0.md`; the historical release-candidate audit remains in `docs/RELEASE_CANDIDATE_1.0.md`. Privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
 
 NestBalance is the personal and family finance product of the MillionsNest ecosystem.
 
