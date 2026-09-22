@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
-import { resolveImportedMovementDirection } from '@/src/core/movement-import';
+import { buildImportedMovements, resolveImportedMovementDirection } from '@/src/core/movement-import';
 import { parseFinancialCsv } from '@/src/core/csv-import';
 import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
+import { detectDocumentSignals } from '@/src/core/document-signals';
 import {
   aiAmountChoices,
   aiDirectionNeedsConfirmation,
@@ -27,6 +28,8 @@ import {
 import { messages } from '@/src/i18n/messages';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import type { FinancialScope } from '@/src/core/privacy';
+import { readImageTextLocally } from '@/src/lib/local-image-ocr';
+import { analyzeTextWithGeminiFallback, getGeminiFallbackStatus, type GeminiFallbackStatus } from '@/src/lib/repositories/gemini-fallback';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
@@ -66,6 +69,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [payingMatchId,setPayingMatchId]=useState('');
   const [screenSnapshot,setScreenSnapshot]=useState<AiFinancialScreenSnapshot|null>(null);
   const [scope,setScope]=useState<FinancialScope>('household');
+  const [localOcrText,setLocalOcrText]=useState('');
+  const [localOcrPercent,setLocalOcrPercent]=useState(0);
+  const [geminiStatus,setGeminiStatus]=useState<GeminiFallbackStatus|null>(null);
+  const [geminiWorking,setGeminiWorking]=useState(false);
+  const [geminiUsed,setGeminiUsed]=useState(false);
   const imageInputRef=useRef<HTMLInputElement|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const textRef=useRef<HTMLTextAreaElement|null>(null);
@@ -73,7 +81,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const recorderChunksRef=useRef<BlobPart[]>([]);
   const recorderStreamRef=useRef<MediaStream|null>(null);
 
-  const working = saving || analyzing || recording;
+  const working = saving || analyzing || recording || geminiWorking;
 
   useEffect(() => {
     if (!open) return;
@@ -114,6 +122,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setPayingMatchId('');
     setScreenSnapshot(null);
     setScope('household');
+    setLocalOcrText('');
+    setLocalOcrPercent(0);
+    setGeminiStatus(null);
+    setGeminiWorking(false);
+    setGeminiUsed(false);
     setOpen(false);
     onClose?.();
     setText('');
@@ -150,6 +163,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setPaymentMatchDismissed(false);
     setPayingMatchId('');
     setScreenSnapshot(null);
+    setLocalOcrText('');
+    setLocalOcrPercent(0);
+    setGeminiStatus(null);
+    setGeminiWorking(false);
+    setGeminiUsed(false);
     setError('');
     setNotice(noticeText);
   }
@@ -270,6 +288,113 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setNotice('Li a imagem com inteligência visual. Confira antes de guardar.');
   }
 
+  async function tryLocalImage(activeFile:File){
+    setLocalOcrPercent(1);
+    try{
+      const ocr=await readImageTextLocally(activeFile,progress=>setLocalOcrPercent(progress.percent));
+      setLocalOcrText(ocr);
+      if(!ocr.trim()){
+        setNotice('Não consegui encontrar texto legível nessa imagem. Você pode tentar outro print ou contar o que aconteceu por texto.');
+        return true;
+      }
+
+      const signals=detectDocumentSignals(ocr);
+      setAnalysis({
+        state:'extracted',
+        parser:'local-ocr-v1',
+        reason:null,
+        text:ocr,
+        characters:ocr.length,
+        truncated:false,
+        totalPages:null,
+        extractedPages:null,
+        signals
+      });
+
+      const suggestion=suggestCaptureFromDocument(activeFile.name,signals);
+      if(suggestion.state==='suggested'){
+        applySourceText(suggestion.sourceText,true);
+        setNotice('Li este print no seu aparelho, sem enviar a imagem para uma IA. Confira antes de guardar.');
+        return true;
+      }
+      if(suggestion.state==='choose_amount'){
+        setAmountChoices(suggestion.amountsMinor);
+        setNotice('Li o print no seu aparelho e encontrei mais de um valor. Qual deles representa este movimento?');
+        return true;
+      }
+
+      try{
+        const status=await getGeminiFallbackStatus(householdId);
+        setGeminiStatus(status);
+        setNotice(status.configured
+          ? 'A leitura local terminou, mas ainda há contexto ambíguo. Se quiser, posso tentar o fallback Gemini usando somente texto sanitizado — a imagem não será enviada.'
+          : 'A leitura local terminou, mas não fechou a interpretação. O fallback online gratuito não está ativado neste ambiente; você pode preencher manualmente sem perder o print.');
+      }catch{
+        setGeminiStatus(null);
+        setNotice('A leitura local terminou, mas não fechou a interpretação. Você pode preencher manualmente; a imagem continua apenas no seu aparelho até você guardar.');
+      }
+      return true;
+    }catch{
+      setLocalOcrText('');
+      setNotice('Não consegui ler esse print localmente. Tente outra imagem ou conte o que aconteceu por texto.');
+      return true;
+    }finally{
+      setLocalOcrPercent(0);
+    }
+  }
+
+  async function runGeminiFallback(){
+    if(!localOcrText||!geminiStatus?.configured||geminiWorking) return;
+    setGeminiWorking(true);
+    setError('');
+    try{
+      const result=await analyzeTextWithGeminiFallback({
+        householdId,
+        text:localOcrText,
+        consentVersion:geminiStatus.consentVersion
+      });
+      const extraction=result.extraction;
+      setAiAnalysis(null);
+      setGeminiUsed(true);
+
+      if(extraction.screen){
+        const screen=extraction.screen;
+        const resourceCount=screen.accounts.length+screen.pots.length+screen.cards.length+screen.commitments.length;
+        if(resourceCount>0) setScreenSnapshot(screen);
+        const imported=buildImportedMovements({
+          documentType:screen.screenType==='transaction_list'?'transaction_list':'bank_screenshot',
+          institution:screen.institution,
+          overallConfidence:extraction.overallConfidence,
+          ambiguities:extraction.ambiguities,
+          items:screen.movements
+        });
+        if(imported.length) setInterpretations(imported);
+        if(resourceCount||imported.length){
+          const reviewCount=imported.filter(item=>item.needsReview.length>0).length;
+          setNotice(reviewCount
+            ? `O Gemini ajudou a separar a tela usando apenas OCR sanitizado. ${reviewCount} movimento${reviewCount===1?' precisa':'s precisam'} de conferência.`
+            : 'O Gemini ajudou a separar a tela usando apenas OCR sanitizado. A imagem não foi enviada; confira antes de guardar.');
+          return;
+        }
+      }
+
+      prepareAiReview(extraction);
+      setNotice('O Gemini analisou somente o texto OCR sanitizado. A imagem não foi enviada. Confira antes de guardar.');
+    }catch(err:any){
+      const code=String(err?.message||'');
+      if(code==='GEMINI_FREE_QUOTA_EXHAUSTED'||code==='GEMINI_FREE_DAILY_CAP_REACHED'){
+        setNotice('A cota gratuita de leitura inteligente acabou por agora. O app continua funcionando com leitura local e preenchimento manual, sem gerar cobrança.');
+      }else if(code==='GEMINI_FREE_NOT_CONFIGURED'){
+        setGeminiStatus(current=>current?{...current,configured:false}:current);
+        setNotice('O fallback Gemini gratuito não está ativado neste ambiente. Nenhuma cobrança foi gerada.');
+      }else{
+        setError('A leitura protegida não conseguiu concluir agora. Você pode continuar manualmente sem perder o original.');
+      }
+    }finally{
+      setGeminiWorking(false);
+    }
+  }
+
   async function interpret(overrideFile?:File) {
     setError('');
     setNotice('');
@@ -286,6 +411,20 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
     if (!activeFile) {
       setError('Escreva, fale, cole um print ou escolha um arquivo.');
+      return;
+    }
+
+    if(activeFile.type.startsWith('image/')){
+      setAnalyzing(true);
+      setUpload(null);
+      try{
+        if(!localOcrText) await tryLocalImage(activeFile);
+        else setNotice(geminiStatus?.configured
+          ? 'A leitura local já terminou. Use o fallback protegido abaixo se quiser uma segunda interpretação.'
+          : 'A leitura local já terminou. Você pode ajustar manualmente sem enviar a imagem para uma IA.');
+      }finally{
+        setAnalyzing(false);
+      }
       return;
     }
 
@@ -455,9 +594,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setError('');
     setNotice('');
     try {
+      let finalEvidenceId=preparedEvidenceId;
+      if(screenSnapshot&&!finalEvidenceId&&file){
+        const evidence=await ingestEvidence(householdId,file,progress=>setUpload(progress),scope);
+        finalEvidenceId=evidence.canonicalEvidenceId;
+        setPreparedEvidenceId(finalEvidenceId);
+      }
+
       let created = 0;
-      if(screenSnapshot&&preparedEvidenceId){
-        await commitFinancialScreen({householdId,evidenceId:preparedEvidenceId,scope});
+      if(screenSnapshot&&finalEvidenceId){
+        await commitFinancialScreen({householdId,evidenceId:finalEvidenceId,scope});
         created++;
       }
       let duplicates = 0;
@@ -466,8 +612,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           householdId,
           uid,
           interpretation: interpretations[i],
-          evidenceId: i === 0 ? preparedEvidenceId : null,
-          file: i === 0 && !preparedEvidenceId ? file : null,
+          evidenceId: i === 0 ? finalEvidenceId : null,
+          file: i === 0 && !finalEvidenceId ? file : null,
           onUploadProgress: progress => setUpload(progress),
           scope
         });
@@ -595,7 +741,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <progress max="100" value={upload.percent}>{upload.percent}%</progress>
           </div>}
 
-          {analyzing && !upload && <p className="confidence-note" role="status">{analysis?.state==='needs_ai'?'Fazendo a leitura inteligente…':'Entendendo o documento…'}</p>}
+          {analyzing && !upload && <p className="confidence-note" role="status">{localOcrPercent>0
+            ? `Lendo no seu aparelho… ${localOcrPercent}%`
+            : analysis?.state==='needs_ai'
+              ? 'Fazendo a leitura inteligente…'
+              : 'Entendendo o documento…'}</p>}
 
           {amountChoices.length > 0 && <div className="amount-choice-panel">
             <span>Qual valor devo usar?</span>
@@ -613,8 +763,20 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <small>Se só passou de uma conta sua para outra, o NestBalance não trata como dinheiro gasto ou recebido.</small>
           </div>}
 
-          {analysis?.state === 'extracted' && !aiAnalysis && <p className="native-analysis-note">Texto lido diretamente do documento · sem IA</p>}
+          {analysis?.state === 'extracted' && !aiAnalysis && !geminiUsed && <p className="native-analysis-note">Texto lido localmente · sem enviar a imagem para IA</p>}
+          {geminiUsed && <p className="native-analysis-note">Gemini analisou apenas OCR sanitizado · imagem não enviada · confirmação humana antes de guardar</p>}
           {aiAnalysis && <p className="native-analysis-note">{aiAnalysis.kind==='audio'?'Áudio transcrito com IA':'Imagem lida com IA'} · confirmação humana antes de guardar</p>}
+          {localOcrText&&geminiStatus?.configured&&!interpretations.length&&!screenSnapshot&&<div className="gemini-fallback-card">
+            <div>
+              <strong>Quer uma segunda leitura?</strong>
+              <span>Envio somente o texto OCR sanitizado para Gemini 2.5 Flash-Lite. A imagem não sai do seu aparelho neste passo, e números sensíveis são removidos antes da chamada.</span>
+            </div>
+            <button type="button" disabled={geminiWorking} onClick={()=>void runGeminiFallback()}>
+              {geminiWorking?'Analisando texto protegido…':'Tentar leitura protegida com Gemini'}
+            </button>
+            <small>O Free Tier do Gemini pode usar o conteúdo enviado para melhorar produtos do Google. Por isso este fallback é opcional e exige este toque.</small>
+          </div>}
+
           {notice && <p className="notice-copy" role="status">{notice}</p>}
           {error && <p className="error-copy" role="alert">{error}</p>}
 
@@ -642,7 +804,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               <strong>{interpretations.length === 1&&screenResourceCount===0
                 ? `${interpretations[0].description} · ${money.format(interpretations[0].money.amountMinor / 100)}`
                 : `${totalOrganizedCount} itens separados por tipo`}</strong>
-              <small>{aiAnalysis ? 'Interpretação por IA; confirme antes de guardar.' : analysis?.state === 'extracted' ? 'Leitura nativa do documento; sem IA.' : reviewCount ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.` : 'Os dados principais estão claros.'}</small>
+              <small>{geminiUsed
+                ? 'Gemini sobre OCR sanitizado; imagem não enviada. Confirme antes de guardar.'
+                : aiAnalysis
+                  ? 'Interpretação por IA; confirme antes de guardar.'
+                  : analysis?.state === 'extracted'
+                    ? 'Leitura local/determinística; sem IA remota.'
+                    : reviewCount
+                      ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.`
+                      : 'Os dados principais estão claros.'}</small>
             </div>
             <div>
               <span>VAI FICAR ASSIM</span>

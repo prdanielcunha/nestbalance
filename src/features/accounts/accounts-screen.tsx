@@ -116,7 +116,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
         ? investmentTotal>0
           ? `${money.format(investmentTotal/100)} estão separados como investimentos e não entram no dinheiro disponível.`
           : 'Saldo disponível conhecido nas contas ativas do Lar.'
-        : canManage ? 'Adicione uma conta manualmente ou conecte seu banco com Open Finance.' : 'Um administrador pode adicionar contas; você pode consultar o que já existe.'}</p>
+        : canManage ? 'Adicione uma conta manualmente ou importe seus próprios arquivos. Open Finance é opcional e não é necessário para usar o NestBalance.' : 'Um administrador pode adicionar contas; você pode consultar o que já existe.'}</p>
     </section>
 
     {error&&<p className="error-copy" role="alert">{error}</p>}
@@ -185,6 +185,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       invoiceImports={viewInvoices}
       defaultScope={defaultCreateScope}
       canManage={canManage}
+      suggestedCards={viewSnapshots}
       onCreated={refreshed}
     />}
 

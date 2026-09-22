@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { OPEN_FINANCE_INSTITUTIONS, type OpenFinanceInstitutionKey } from '@/src/core/open-finance';
 import type { HomeAccount } from '@/src/lib/repositories/home';
@@ -146,6 +147,28 @@ export function ConnectedBanks({
     }finally{
       setSyncing('');
     }
+  }
+
+  const hasActiveConnections=connections.some(item=>item.status!=='disconnected');
+  if(!loading&&configured===false&&!hasActiveConnections){
+    return <section className="connected-banks-section">
+      <div className="section-title">
+        <div><h2>Atualização automática</h2><span>opcional — o app funciona sem isso</span></div>
+        <span className="open-finance-badge">Open Finance</span>
+      </div>
+      <article className="open-finance-hero">
+        <div>
+          <span>SEM INTEGRAÇÃO PAGA OBRIGATÓRIA</span>
+          <h3>Open Finance não está ativado nesta versão.</h3>
+          <p>O NestBalance continua funcionando com cadastro manual e importação de arquivos. A conexão automática fica desligada enquanto depender de um provedor pago.</p>
+        </div>
+        <div className="open-finance-security">
+          <strong>Você não precisa conectar banco</strong>
+          <span>Use conta manual, PDF, CSV ou seus próprios comprovantes.</span>
+          <Link href="/add" className="connect-bank-button">Adicionar sem conectar banco</Link>
+        </div>
+      </article>
+    </section>;
   }
 
   return <section className="connected-banks-section">
