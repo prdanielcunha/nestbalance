@@ -36,6 +36,7 @@ const firebaseHosting=read('./firebase.json');
 const productionFirebase=read('./firebase.production.json');
 const productionWorkflow=read('./.github/workflows/deploy-production.yml');
 const officialProductionWorkflow=read('./.github/workflows/publish-official-production.yml');
+const githubReleaseWorkflow=read('./.github/workflows/publish-github-release.yml');
 const browserWorkflow=read('./.github/workflows/browser-quality.yml');
 const packageSource=read('./package.json');
 const envExample=read('./.env.example');
@@ -177,7 +178,12 @@ assert.match(productionWorkflow,/sw\.js/);
 assert.match(productionWorkflow,/cache-control:\.\*no-store/i);
 assert.match(officialProductionWorkflow,/sw\.js/);
 assert.match(officialProductionWorkflow,/cache-control:\.\*no-store/i);
-assert.match(packageSource,/"version": "1\.0\.0-rc\.1"/);
+assert.match(packageSource,/"version": "1\.0\.0"/);
+assert.match(githubReleaseWorkflow,/workflow_run:/);
+assert.match(githubReleaseWorkflow,/Publish NestBalance Official Production Site/);
+assert.match(githubReleaseWorkflow,/deploy-production\.yml/);
+assert.match(githubReleaseWorkflow,/gh release create/);
+assert.match(githubReleaseWorkflow,/test "\$TAG_SHA" = "\$RELEASE_SHA"/);
 
 function sourceFiles(root){
   const out=[];

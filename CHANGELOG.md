@@ -2,6 +2,17 @@
 
 All notable NestBalance product releases are documented here.
 
+## 1.0.0 — 2026-09-22
+
+First stable NestBalance personal/family finance release, promoted after the complete `1.0.0-rc.1` production certification passed on the official domain.
+
+### Stable release
+- Closes blueprint MVP phases 0–5 and all five mandatory demonstration moments.
+- Keeps paid Open Finance fail-closed and outside the initial MVP, as frozen by the product blueprint.
+- Certifies Universal Capture, cards/invoices/installments, explainable Assistant, contextual Vault, household collaboration, privacy/session controls, PT-BR/EN/ES and the installable PWA.
+- Production release gates passed CI, Firestore Rules, authenticated two-person API flow, TypeScript/build, Browser Quality/accessibility, container smoke, Cloud Run deployment, Firebase Hosting deployment and official-domain health/PWA checks.
+- Paid integrations remain disabled by default; the stable release does not introduce a paid-service dependency.
+
 ## 1.0.0-rc.1 — 2026-09-22
 
 Release candidate for the initial NestBalance personal/family finance product.
