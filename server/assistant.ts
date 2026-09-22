@@ -19,6 +19,19 @@ function accountDto(doc:any){
   };
 }
 
+function transactionDto(doc:any){
+  const data=doc.data();
+  return {
+    id:doc.id,
+    description:String(data.description||'Movimento'),
+    amountMinor:Number(data.amountMinor||0),
+    direction:data.direction||'expense',
+    source:typeof data.source==='string'?data.source:null,
+    status:String(data.status||'confirmed'),
+    observedOn:typeof data.observedOn==='string'?data.observedOn:null
+  };
+}
+
 function commitmentDto(doc:any){
   const data=doc.data();
   return {
@@ -74,8 +87,9 @@ export async function answerFinanceAssistant(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid);
     const household=adminDb.collection('households').doc(householdId);
 
-    const [accounts,commitments,invoices,plans]=await Promise.all([
+    const [accounts,transactions,commitments,invoices,plans]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
+      household.collection('transactions').orderBy('createdAt','desc').limit(500).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(150).get(),
       household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get(),
       household.collection('installmentPlans').where('status','==','active').limit(100).get()
@@ -88,6 +102,7 @@ export async function answerFinanceAssistant(req:Request,res:Response){
     const answer=answerAssistantQuestion({
       question,
       accounts:scoped(accounts.docs).map(accountDto),
+      transactions:scoped(transactions.docs).map(transactionDto),
       commitments:scoped(commitments.docs).map(commitmentDto),
       invoices:scoped(invoices.docs).map(invoiceDto),
       installmentPlans:scoped(plans.docs).map(planDto),
