@@ -290,12 +290,12 @@ export function answerAssistantQuestion(input:{
     if(!active.length){
       return {
         intent,
-        title:'Nenhuma parcela ativa conhecida.',
-        summary:'Não encontrei planos de parcelamento reconciliados ainda.',
+        title:tr(locale,'Nenhuma parcela ativa conhecida.','No known active installments.','No hay cuotas activas conocidas.'),
+        summary:tr(locale,'Não encontrei planos de parcelamento reconciliados ainda.','I have not found reconciled installment plans yet.','Todavía no encontré planes de cuotas conciliados.'),
         answerMinor:0,
         sources:[],
         cards:[],
-        suggestions:['O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?','Dá para gastar R$ 500?']
+        suggestions:[prompts.future,prompts.remaining,prompts.spend]
       };
     }
 
@@ -305,24 +305,29 @@ export function answerAssistantQuestion(input:{
 
     return {
       intent,
-      title:endingSoon.length?'Estas parcelas terminam primeiro.':'Estas são as parcelas mais próximas do fim.',
+      title:endingSoon.length?tr(locale,'Estas parcelas terminam primeiro.','These installments end first.','Estas cuotas terminan primero.'):tr(locale,'Estas são as parcelas mais próximas do fim.','These are the installments closest to ending.','Estas son las cuotas más próximas a terminar.'),
       summary:endingSoon.length
-        ? `${endingSoon.length} plano${endingSoon.length===1?' termina':'s terminam'} em até 3 parcelas. Quando acabarem, ${formatMoneyMinor(releasedSoonMinor)} por mês deixam de estar comprometidos, considerando os valores atuais.`
-        : 'Nenhum plano termina nas próximas 3 parcelas, mas estes são os mais próximos do fim.',
+        ? tr(
+            locale,
+            `${endingSoon.length} plano${endingSoon.length===1?' termina':'s terminam'} em até 3 parcelas. Quando acabarem, ${formatMoneyMinor(releasedSoonMinor,locale)} por mês deixam de estar comprometidos, considerando os valores atuais.`,
+            `${endingSoon.length} plan${endingSoon.length===1?' ends':'s end'} within 3 installments. When they end, ${formatMoneyMinor(releasedSoonMinor,locale)} per month will no longer be committed at current amounts.`,
+            `${endingSoon.length} plan${endingSoon.length===1?' termina':'es terminan'} en hasta 3 cuotas. Cuando terminen, ${formatMoneyMinor(releasedSoonMinor,locale)} al mes dejarán de estar comprometidos con los valores actuales.`
+          )
+        : tr(locale,'Nenhum plano termina nas próximas 3 parcelas, mas estes são os mais próximos do fim.','No plan ends within the next 3 installments, but these are the closest to ending.','Ningún plan termina en las próximas 3 cuotas, pero estos son los más próximos a finalizar.'),
       answerMinor:endingSoon.length?releasedSoonMinor:null,
       sources:visible.map(plan=>({
         kind:'installment_plan' as const,
         id:plan.id,
-        label:plan.description||'Compra parcelada',
+        label:plan.description||tr(locale,'Compra parcelada','Installment purchase','Compra en cuotas'),
         amountMinor:positive(plan.amountMinor),
-        detail:`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'} de ${plan.totalInstallments}`
+        detail:tr(locale,`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'} de ${plan.totalInstallments}`,`${plan.remaining} installment${plan.remaining===1?'':'s'} left of ${plan.totalInstallments}`,`Falta${plan.remaining===1?'':'n'} ${plan.remaining} cuota${plan.remaining===1?'':'s'} de ${plan.totalInstallments}`)
       })),
       cards:visible.slice(0,6).map(plan=>({
-        label:plan.description||'Compra parcelada',
+        label:plan.description||tr(locale,'Compra parcelada','Installment purchase','Compra en cuotas'),
         amountMinor:positive(plan.amountMinor),
-        detail:`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'}`
+        detail:tr(locale,`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'}`,`${plan.remaining} installment${plan.remaining===1?'':'s'} left`,`Falta${plan.remaining===1?'':'n'} ${plan.remaining} cuota${plan.remaining===1?'':'s'}`)
       })),
-      suggestions:['Dá para gastar R$ 500?','O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?']
+      suggestions:[prompts.spend,prompts.future,prompts.remaining]
     };
   }
 
