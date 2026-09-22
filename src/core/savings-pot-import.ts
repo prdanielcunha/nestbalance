@@ -1,5 +1,20 @@
 import type { AiFinancialScreenSnapshot } from './ai-financial.js';
-import { cleanSavingsPotDisplayName } from './savings-pots.js';
+
+const OCR_ICON_PREFIXES=new Set(['t','v','vv','vc','vy','vw','w','ww','e','i','ii','l','ll','c','y','iv','vi']);
+
+function cleanSavingsPotDisplayName(value:string){
+  let clean=String(value||'')
+    .normalize('NFKC')
+    .replace(/^[^\p{L}\p{N}]+/u,'')
+    .replace(/[|•·]+$/g,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  const parts=clean.split(' ').filter(Boolean);
+  if(parts.length>=2&&OCR_ICON_PREFIXES.has(parts[0].toLocaleLowerCase('pt-BR'))){
+    clean=parts.slice(1).join(' ');
+  }
+  return clean.slice(0,120);
+}
 
 const POT_SCREEN_HINT=/\b(cofrinhos?|caixinhas?|money\s*boxes?|savings\s*pots?|alcanc[ií]as?)\b/i;
 const MONEY=/R\$\s*\d(?:[\d.\u00a0 ]*\d)?(?:,\d{1,2})?(?=\s|$|[^\d.,])/gi;
