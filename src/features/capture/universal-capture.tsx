@@ -329,11 +329,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         const status=await getGeminiFallbackStatus(householdId);
         setGeminiStatus(status);
         setNotice(status.configured
-          ? 'A leitura local terminou, mas ainda há contexto ambíguo. Se quiser, posso tentar o fallback Gemini usando somente texto sanitizado — a imagem não será enviada.'
-          : 'A leitura local terminou, mas não fechou a interpretação. O fallback online gratuito não está ativado neste ambiente; você pode preencher manualmente sem perder o print.');
+          ? l('A leitura local terminou, mas ainda há contexto ambíguo. Se quiser, posso tentar o fallback Gemini usando somente texto sanitizado — a imagem não será enviada.','Local reading finished, but some context is still ambiguous. If you want, I can try the Gemini fallback using only sanitized text — the image will not be sent.','La lectura local terminó, pero todavía hay contexto ambiguo. Si quieres, puedo intentar el fallback de Gemini usando solo texto sanitizado — la imagen no se enviará.')
+          : l('A leitura local terminou, mas não fechou a interpretação. O fallback online gratuito não está ativado neste ambiente; você pode preencher manualmente sem perder o print.','Local reading finished but could not complete the interpretation. The free online fallback is not enabled in this environment; you can fill it in manually without losing the screenshot.','La lectura local terminó pero no completó la interpretación. El fallback online gratuito no está habilitado en este entorno; puedes completarlo manualmente sin perder la captura.'));
       }catch{
         setGeminiStatus(null);
-        setNotice('A leitura local terminou, mas não fechou a interpretação. Você pode preencher manualmente; a imagem continua apenas no seu aparelho até você guardar.');
+        setNotice(l('A leitura local terminou, mas não fechou a interpretação. Você pode preencher manualmente; a imagem continua apenas no seu aparelho até você guardar.','Local reading finished but could not complete the interpretation. You can fill it in manually; the image stays only on your device until you save.','La lectura local terminó pero no completó la interpretación. Puedes completarla manualmente; la imagen permanece solo en tu dispositivo hasta que guardes.'));
       }
       return true;
     }catch{
@@ -374,23 +374,23 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         if(resourceCount||imported.length){
           const reviewCount=imported.filter(item=>item.needsReview.length>0).length;
           setNotice(reviewCount
-            ? `O Gemini ajudou a separar a tela usando apenas OCR sanitizado. ${reviewCount} movimento${reviewCount===1?' precisa':'s precisam'} de conferência.`
-            : 'O Gemini ajudou a separar a tela usando apenas OCR sanitizado. A imagem não foi enviada; confira antes de guardar.');
+            ? l(`O Gemini ajudou a separar a tela usando apenas OCR sanitizado. ${reviewCount} movimento${reviewCount===1?' precisa':'s precisam'} de conferência.`,`Gemini helped separate the screen using only sanitized OCR. ${reviewCount} movement${reviewCount===1?' needs':'s need'} review.`,`Gemini ayudó a separar la pantalla usando solo OCR sanitizado. ${reviewCount} movimiento${reviewCount===1?' necesita':'s necesitan'} revisión.`)
+            : l('O Gemini ajudou a separar a tela usando apenas OCR sanitizado. A imagem não foi enviada; confira antes de guardar.','Gemini helped separate the screen using only sanitized OCR. The image was not sent; review before saving.','Gemini ayudó a separar la pantalla usando solo OCR sanitizado. La imagen no se envió; revisa antes de guardar.'));
           return;
         }
       }
 
       prepareAiReview(extraction);
-      setNotice('O Gemini analisou somente o texto OCR sanitizado. A imagem não foi enviada. Confira antes de guardar.');
+      setNotice(l('O Gemini analisou somente o texto OCR sanitizado. A imagem não foi enviada. Confira antes de guardar.','Gemini analyzed only sanitized OCR text. The image was not sent. Review before saving.','Gemini analizó solo el texto OCR sanitizado. La imagen no se envió. Revisa antes de guardar.'));
     }catch(err:any){
       const code=String(err?.message||'');
       if(code==='GEMINI_FREE_QUOTA_EXHAUSTED'||code==='GEMINI_FREE_DAILY_CAP_REACHED'){
-        setNotice('A cota gratuita de leitura inteligente acabou por agora. O app continua funcionando com leitura local e preenchimento manual, sem gerar cobrança.');
+        setNotice(l('A cota gratuita de leitura inteligente acabou por agora. O app continua funcionando com leitura local e preenchimento manual, sem gerar cobrança.','The free intelligent-reading quota is used up for now. The app keeps working with local reading and manual entry, with no charge.','La cuota gratuita de lectura inteligente se agotó por ahora. La app sigue funcionando con lectura local y carga manual, sin generar cobros.'));
       }else if(code==='GEMINI_FREE_NOT_CONFIGURED'){
         setGeminiStatus(current=>current?{...current,configured:false}:current);
-        setNotice('O fallback Gemini gratuito não está ativado neste ambiente. Nenhuma cobrança foi gerada.');
+        setNotice(l('O fallback Gemini gratuito não está ativado neste ambiente. Nenhuma cobrança foi gerada.','The free Gemini fallback is not enabled in this environment. No charge was generated.','El fallback gratuito de Gemini no está habilitado en este entorno. No se generó ningún cobro.'));
       }else{
-        setError('A leitura protegida não conseguiu concluir agora. Você pode continuar manualmente sem perder o original.');
+        setError(l('A leitura protegida não conseguiu concluir agora. Você pode continuar manualmente sem perder o original.','Protected reading could not finish right now. You can continue manually without losing the original.','La lectura protegida no pudo finalizar ahora. Puedes continuar manualmente sin perder el original.'));
       }
     }finally{
       setGeminiWorking(false);
@@ -407,7 +407,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
     if (!overrideFile&&text.trim()) {
       try { applySourceText(text); }
-      catch { setError('Conte o que aconteceu e, se souber, o valor.'); }
+      catch { setError(l('Conte o que aconteceu e, se souber, o valor.','Tell me what happened and, if you know it, the amount.','Cuéntame qué pasó y, si sabes, el valor.')); }
       return;
     }
 
@@ -422,8 +422,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       try{
         if(!localOcrText) await tryLocalImage(activeFile);
         else setNotice(geminiStatus?.configured
-          ? 'A leitura local já terminou. Use o fallback protegido abaixo se quiser uma segunda interpretação.'
-          : 'A leitura local já terminou. Você pode ajustar manualmente sem enviar a imagem para uma IA.');
+          ? l('A leitura local já terminou. Use o fallback protegido abaixo se quiser uma segunda interpretação.','Local reading is complete. Use the protected fallback below if you want a second interpretation.','La lectura local ya terminó. Usa el fallback protegido de abajo si quieres una segunda interpretación.')
+          : l('A leitura local já terminou. Você pode ajustar manualmente sem enviar a imagem para uma IA.','Local reading is complete. You can adjust it manually without sending the image to AI.','La lectura local ya terminó. Puedes ajustarla manualmente sin enviar la imagen a una IA.'));
       }finally{
         setAnalyzing(false);
       }
@@ -457,15 +457,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             const unresolved=ai.parsedInterpretations?.filter(item=>item.needsReview.includes('direction')).length||0;
             if(resourceCount||movementCount){
               setNotice(unresolved
-                ? `Entendi esta tela e organizei o que estava claro. Só ${unresolved} movimentação${unresolved===1?' precisa':' precisam'} de uma resposta rápida.`
-                : 'Entendi a tela financeira. Saldo, dinheiro guardado, contas, cartão e movimentos ficam separados corretamente.');
+                ? l(`Entendi esta tela e organizei o que estava claro. Só ${unresolved} movimentação${unresolved===1?' precisa':' precisam'} de uma resposta rápida.`,`I understood this screen and organized what was clear. Only ${unresolved} movement${unresolved===1?' needs':'s need'} a quick answer.`,`Entendí esta pantalla y organicé lo que estaba claro. Solo ${unresolved} movimiento${unresolved===1?' necesita':'s necesitan'} una respuesta rápida.`)
+                : l('Entendi a tela financeira. Saldo, dinheiro guardado, contas, cartão e movimentos ficam separados corretamente.','I understood the financial screen. Balance, saved money, bills, card and movements stay correctly separated.','Entendí la pantalla financiera. Saldo, dinero guardado, cuentas, tarjeta y movimientos quedan correctamente separados.'));
               return;
             }
           }
           if(ai.kind==='audio'){
             const transcript=ai.transcript?.trim()||'';
             if(!transcript||!ai.parsedInterpretations?.length){
-              setNotice('Áudio transcrito, mas não encontrei uma movimentação clara. Você pode ajustar o texto acima.');
+              setNotice(l('Áudio transcrito, mas não encontrei uma movimentação clara. Você pode ajustar o texto acima.','Audio transcribed, but I did not find a clear financial movement. You can adjust the text above.','Audio transcrito, pero no encontré un movimiento financiero claro. Puedes ajustar el texto de arriba.'));
               if(transcript) setText(transcript);
               return;
             }
@@ -473,24 +473,26 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             setText(transcript);
             setInterpretations(audioItems);
             if(audioItems.length===1) void loadPaymentMatches(audioItems[0]);
-            setNotice(ai.transcriptTruncated?'Transcrevi o áudio parcialmente. Confira antes de guardar.':'Transcrevi o áudio. Confira antes de guardar.');
+            setNotice(ai.transcriptTruncated
+          ? l('Transcrevi o áudio parcialmente. Confira antes de guardar.','I transcribed the audio partially. Review it before saving.','Transcribí el audio parcialmente. Revísalo antes de guardar.')
+          : l('Transcrevi o áudio. Confira antes de guardar.','I transcribed the audio. Review it before saving.','Transcribí el audio. Revísalo antes de guardar.'));
             return;
           }
           if(ai.extraction){
             prepareAiReview(ai.extraction);
             return;
           }
-          setNotice('O original está guardado, mas não consegui extrair dados financeiros suficientes.');
+          setNotice(l('O original está guardado, mas não consegui extrair dados financeiros suficientes.','The original is saved, but I could not extract enough financial data.','El original está guardado, pero no pude extraer suficientes datos financieros.'));
           return;
         }catch(err:any){
           if(err?.message==='AI_NOT_CONFIGURED'){
             setNotice(result.reason==='audio_input'
-              ? 'Áudio guardado. A transcrição inteligente ainda não está conectada neste ambiente.'
-              : 'Imagem guardada. A leitura inteligente ainda não está conectada neste ambiente.');
+              ? l('Áudio guardado. A transcrição inteligente ainda não está conectada neste ambiente.','Audio saved. Intelligent transcription is not connected in this environment yet.','Audio guardado. La transcripción inteligente aún no está conectada en este entorno.')
+              : l('Imagem guardada. A leitura inteligente ainda não está conectada neste ambiente.','Image saved. Intelligent reading is not connected in this environment yet.','Imagen guardada. La lectura inteligente aún no está conectada en este entorno.'));
             return;
           }
           if(err?.message==='AI_ANALYSIS_IN_PROGRESS'){
-            setNotice('Este arquivo já está sendo analisado. Toque em Entender novamente para buscar o resultado.');
+            setNotice(l('Este arquivo já está sendo analisado. Toque em Entender novamente para buscar o resultado.','This file is already being analyzed. Tap Understand again to fetch the result.','Este archivo ya está siendo analizado. Toca Entender de nuevo para buscar el resultado.'));
             return;
           }
           throw err;
@@ -498,7 +500,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       }
 
       if (result.state !== 'extracted') {
-        setError('Guardei o original, mas não encontrei texto confiável para organizar automaticamente.');
+        setError(l('Guardei o original, mas não encontrei texto confiável para organizar automaticamente.','I saved the original, but could not find reliable text to organize automatically.','Guardé el original, pero no encontré texto confiable para organizar automáticamente.'));
         return;
       }
 
@@ -508,8 +510,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           setInterpretations(csv.items);
           const attention=csv.items.filter(item=>item.needsReview.length>0).length;
           setNotice(attention
-            ? `Importei ${csv.items.length} movimentações do arquivo. Só ${attention} precisa${attention===1?'':'m'} de uma conferência rápida.`
-            : `Importei ${csv.items.length} movimentações do arquivo. Tudo pronto para guardar.`);
+            ? l(`Importei ${csv.items.length} movimentações do arquivo. Só ${attention} precisa${attention===1?'':'m'} de uma conferência rápida.`,`I imported ${csv.items.length} movements from the file. Only ${attention} need${attention===1?'s':''} a quick review.`,`Importé ${csv.items.length} movimientos del archivo. Solo ${attention} necesita${attention===1?'':'n'} una revisión rápida.`)
+            : l(`Importei ${csv.items.length} movimentações do arquivo. Tudo pronto para guardar.`,`I imported ${csv.items.length} movements from the file. Everything is ready to save.`,`Importé ${csv.items.length} movimientos del archivo. Todo está listo para guardar.`));
           return;
         }
       }
@@ -517,19 +519,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       const suggestion = suggestCaptureFromDocument(activeFile.name, result.signals);
       if (suggestion.state === 'suggested') {
         applySourceText(suggestion.sourceText, true);
-        setNotice('Li o texto do documento sem IA. Confira antes de guardar.');
+        setNotice(l('Li o texto do documento sem IA. Confira antes de guardar.','I read the document text without AI. Review it before saving.','Leí el texto del documento sin IA. Revísalo antes de guardar.'));
         return;
       }
 
       if (suggestion.state === 'choose_amount') {
         setAmountChoices(suggestion.amountsMinor);
-        setNotice('Encontrei mais de um valor. Qual deles representa este pagamento?');
+        setNotice(l('Encontrei mais de um valor. Qual deles representa este pagamento?','I found more than one amount. Which one represents this payment?','Encontré más de un valor. ¿Cuál representa este pago?'));
         return;
       }
 
-      setNotice('Consegui ler o documento, mas não encontrei um valor claro. Diga acima o que aconteceu; o original já está guardado.');
+      setNotice(l('Consegui ler o documento, mas não encontrei um valor claro. Diga acima o que aconteceu; o original já está guardado.','I could read the document but did not find a clear amount. Describe what happened above; the original is already saved.','Pude leer el documento, pero no encontré un valor claro. Describe arriba lo que pasó; el original ya está guardado.'));
     } catch {
-      setError('Não consegui analisar esse arquivo agora. O que foi concluído com segurança não será duplicado.');
+      setError(l('Não consegui analisar esse arquivo agora. O que foi concluído com segurança não será duplicado.','I could not analyze this file right now. Anything completed safely will not be duplicated.','No pude analizar este archivo ahora. Lo que se completó de forma segura no se duplicará.'));
     } finally {
       setAnalyzing(false);
     }
@@ -543,9 +545,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     if (!file || !analysis || analysis.state !== 'extracted') return;
     try {
       applySourceText(sourceTextForChosenDocumentAmount(file.name, amountMinor, analysis.signals), true);
-      setNotice('Usei o valor que você escolheu. Confira o restante antes de guardar.');
+      setNotice(l('Usei o valor que você escolheu. Confira o restante antes de guardar.','I used the amount you chose. Review the rest before saving.','Usé el valor que elegiste. Revisa el resto antes de guardar.'));
     } catch {
-      setError('Não consegui preparar essa revisão.');
+      setError(l('Não consegui preparar essa revisão.','I could not prepare this review.','No pude preparar esta revisión.'));
     }
   }
 
@@ -574,7 +576,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       clearAll();
       onCommitted?.();
     }catch{
-      setError('Não conseguimos ligar esse pagamento à conta agora. Você pode escolher “Nenhuma dessas” e guardar normalmente.');
+      setError(l('Não conseguimos ligar esse pagamento à conta agora. Você pode escolher “Nenhuma dessas” e guardar normalmente.','We could not link this payment to the bill right now. You can choose “None of these” and save normally.','No pudimos vincular este pago con la cuenta ahora. Puedes elegir “Ninguna de estas” y guardar normalmente.'));
     }finally{
       setPayingMatchId('');
     }
@@ -583,12 +585,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   async function confirm() {
     if (!interpretations.length&&!screenSnapshot) return;
     if(paymentMatches.length&&!paymentMatchDismissed){
-      setError('Escolha a conta que este pagamento quitou ou toque em “Nenhuma dessas”.');
+      setError(l('Escolha a conta que este pagamento quitou ou toque em “Nenhuma dessas”.','Choose the bill this payment settled or tap “None of these”.','Elige la cuenta que este pago liquidó o toca “Ninguna de estas”.'));
       return;
     }
     const unresolved=interpretations.filter(item=>item.needsReview.includes('direction')).length;
     if(unresolved){
-      setError(`Só falta dizer o que aconteceu em ${unresolved} item${unresolved===1?'':'s'}.`);
+      setError(l(`Só falta dizer o que aconteceu em ${unresolved} item${unresolved===1?'':'s'}.`,`You only need to say what happened in ${unresolved} item${unresolved===1?'':'s'}.`,`Solo falta decir qué pasó en ${unresolved} elemento${unresolved===1?'':'s'}.`));
       return;
     }
     setSaving(true);
@@ -623,7 +625,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         else created++;
       }
       if (duplicates && !created) {
-        setNotice('Isso já parece estar registrado. Não criamos uma cópia.');
+        setNotice(l('Isso já parece estar registrado. Não criamos uma cópia.','This already appears to be recorded. We did not create a copy.','Esto ya parece estar registrado. No creamos una copia.'));
         setSaving(false);
         setUpload(null);
         return;
@@ -631,7 +633,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       clearAll();
       onCommitted?.();
     } catch {
-      setError('Não conseguimos salvar isso agora. Nada foi marcado como concluído.');
+      setError(l('Não conseguimos salvar isso agora. Nada foi marcado como concluído.','We could not save this right now. Nothing was marked as completed.','No pudimos guardar esto ahora. Nada se marcó como completado.'));
     } finally {
       setSaving(false);
     }
@@ -653,16 +655,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     : 0;
   const totalOrganizedCount=interpretations.length+screenResourceCount;
   const organizedLabel = interpretations.length === 0&&screenResourceCount
-    ? `${screenResourceCount} item${screenResourceCount===1?'':'s'} da sua vida financeira`
+    ? l(`${screenResourceCount} item${screenResourceCount===1?'':'s'} da sua vida financeira`,`${screenResourceCount} item${screenResourceCount===1?'':'s'} from your financial life`,`${screenResourceCount} elemento${screenResourceCount===1?'':'s'} de tu vida financiera`)
     : interpretations.length === 1
     ? (interpretations[0].kind === 'commitment'
-        ? 'Conta para pagar'
+        ? l('Conta para pagar','Bill to pay','Cuenta por pagar')
         : interpretations[0].direction === 'income'
-          ? 'Dinheiro que entrou'
+          ? l('Dinheiro que entrou','Money received','Dinero que entró')
           : interpretations[0].direction === 'transfer'
-            ? 'Dinheiro entre suas contas'
-            : 'Dinheiro que saiu')
-    : `${interpretations.length} coisas organizadas`;
+            ? l('Dinheiro entre suas contas','Money between your accounts','Dinero entre tus cuentas')
+            : l('Dinheiro que saiu','Money spent','Dinero que salió'))
+    : l(`${interpretations.length} coisas organizadas`,`${interpretations.length} items organized`,`${interpretations.length} elementos organizados`);
 
   return <>
     {showTrigger&&<button className="capture-fab" onClick={() => setOpen(true)} aria-label={t.add}>＋ <span>{t.add}</span></button>}
@@ -765,16 +767,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <small>{l('Se só passou de uma conta sua para outra, o NestBalance não trata como dinheiro gasto ou recebido.','If it only moved between your own accounts, NestBalance does not count it as spent or received money.','Si solo pasó entre tus propias cuentas, NestBalance no lo cuenta como dinero gastado o recibido.')}</small>
           </div>}
 
-          {analysis?.state === 'extracted' && !aiAnalysis && !geminiUsed && <p className="native-analysis-note">Texto lido localmente · sem enviar a imagem para IA</p>}
-          {geminiUsed && <p className="native-analysis-note">Gemini analisou apenas OCR sanitizado · imagem não enviada · confirmação humana antes de guardar</p>}
-          {aiAnalysis && <p className="native-analysis-note">{aiAnalysis.kind==='audio'?'Áudio transcrito com IA':'Imagem lida com IA'} · confirmação humana antes de guardar</p>}
+          {analysis?.state === 'extracted' && !aiAnalysis && !geminiUsed && <p className="native-analysis-note">{l('Texto lido localmente · sem enviar a imagem para IA','Text read locally · image not sent to AI','Texto leído localmente · imagen no enviada a IA')}</p>}
+          {geminiUsed && <p className="native-analysis-note">{l('Gemini analisou apenas OCR sanitizado · imagem não enviada · confirmação humana antes de guardar','Gemini analyzed only sanitized OCR · image not sent · human confirmation before saving','Gemini analizó solo OCR sanitizado · imagen no enviada · confirmación humana antes de guardar')}</p>}
+          {aiAnalysis && <p className="native-analysis-note">{aiAnalysis.kind==='audio'?l('Áudio transcrito com IA','Audio transcribed with AI','Audio transcrito con IA'):l('Imagem lida com IA','Image read with AI','Imagen leída con IA')} · {l('confirmação humana antes de guardar','human confirmation before saving','confirmación humana antes de guardar')}</p>}
           {localOcrText&&geminiStatus?.configured&&!interpretations.length&&!screenSnapshot&&<div className="gemini-fallback-card">
             <div>
-              <strong>Quer uma segunda leitura?</strong>
-              <span>Envio somente o texto OCR sanitizado para Gemini 2.5 Flash-Lite. A imagem não sai do seu aparelho neste passo, e números sensíveis são removidos antes da chamada.</span>
+              <strong>{l('Quer uma segunda leitura?','Want a second reading?','¿Quieres una segunda lectura?')}</strong>
+              <span>{l('Envio somente o texto OCR sanitizado para Gemini 2.5 Flash-Lite. A imagem não sai do seu aparelho neste passo, e números sensíveis são removidos antes da chamada.','Only sanitized OCR text is sent to Gemini 2.5 Flash-Lite. The image does not leave your device in this step, and sensitive numbers are removed before the call.','Solo se envía texto OCR sanitizado a Gemini 2.5 Flash-Lite. La imagen no sale de tu dispositivo en este paso y los números sensibles se eliminan antes de la llamada.')}</span>
             </div>
             <button type="button" disabled={geminiWorking} onClick={()=>void runGeminiFallback()}>
-              {geminiWorking?'Analisando texto protegido…':'Tentar leitura protegida com Gemini'}
+              {geminiWorking?l('Analisando texto protegido…','Analyzing protected text…','Analizando texto protegido…'):l('Tentar leitura protegida com Gemini','Try protected reading with Gemini','Intentar lectura protegida con Gemini')}
             </button>
             <small>O Free Tier do Gemini pode usar o conteúdo enviado para melhorar produtos do Google. Por isso este fallback é opcional e exige este toque.</small>
           </div>}
@@ -805,16 +807,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               <span>{l('O NESTBALANCE ENTENDEU','NESTBALANCE UNDERSTOOD','NESTBALANCE ENTENDIÓ')}</span>
               <strong>{interpretations.length === 1&&screenResourceCount===0
                 ? `${interpretations[0].description} · ${formatMoney(interpretations[0].money.amountMinor)}`
-                : `${totalOrganizedCount} itens separados por tipo`}</strong>
+                : l(`${totalOrganizedCount} itens separados por tipo`,`${totalOrganizedCount} items separated by type`,`${totalOrganizedCount} elementos separados por tipo`)}</strong>
               <small>{geminiUsed
-                ? 'Gemini sobre OCR sanitizado; imagem não enviada. Confirme antes de guardar.'
+                ? l('Gemini sobre OCR sanitizado; imagem não enviada. Confirme antes de guardar.','Gemini used sanitized OCR; the image was not sent. Confirm before saving.','Gemini usó OCR sanitizado; la imagen no se envió. Confirma antes de guardar.')
                 : aiAnalysis
-                  ? 'Interpretação por IA; confirme antes de guardar.'
+                  ? l('Interpretação por IA; confirme antes de guardar.','AI interpretation; confirm before saving.','Interpretación por IA; confirma antes de guardar.')
                   : analysis?.state === 'extracted'
-                    ? 'Leitura local/determinística; sem IA remota.'
+                    ? l('Leitura local/determinística; sem IA remota.','Local/deterministic reading; no remote AI.','Lectura local/determinista; sin IA remota.')
                     : reviewCount
-                      ? `${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.`
-                      : 'Os dados principais estão claros.'}</small>
+                      ? l(`${reviewCount} precisa${reviewCount > 1 ? 'm' : ''} de conferência.`,`${reviewCount} item${reviewCount===1?' needs':'s need'} review.`,`${reviewCount} elemento${reviewCount===1?' necesita':'s necesitan'} revisión.`)
+                      : l('Os dados principais estão claros.','The main data is clear.','Los datos principales están claros.')}</small>
             </div>
             <div>
               <span>{l('VAI FICAR ASSIM','IT WILL BE SAVED AS','SE GUARDARÁ ASÍ')}</span>
@@ -825,25 +827,25 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           {screenSnapshot&&<div className="financial-screen-summary">
             <div className="financial-screen-summary-head">
-              <span>{screenSnapshot.institution||'Tela financeira'}</span>
-              <strong>Entendi o que cada número significa.</strong>
+              <span>{screenSnapshot.institution||l('Tela financeira','Financial screen','Pantalla financiera')}</span>
+              <strong>{l('Entendi o que cada número significa.','I understood what each number means.','Entendí qué significa cada número.')}</strong>
             </div>
             <div className="financial-screen-chips">
-              {screenSnapshot.accounts.length>0&&<span><b>{screenSnapshot.accounts.length}</b> saldo{screenSnapshot.accounts.length===1?'':'s'}</span>}
-              {screenSnapshot.pots.length>0&&<span><b>{screenSnapshot.pots.length}</b> dinheiro guardado</span>}
-              {screenSnapshot.cards.length>0&&<span><b>{screenSnapshot.cards.length}</b> cartão{screenSnapshot.cards.length===1?'':'ões'}</span>}
-              {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> conta{screenSnapshot.commitments.length===1?'':'s'} / parcela{screenSnapshot.commitments.length===1?'':'s'}</span>}
-              {interpretations.length>0&&<span><b>{interpretations.length}</b> movimento{interpretations.length===1?'':'s'}</span>}
+              {screenSnapshot.accounts.length>0&&<span><b>{screenSnapshot.accounts.length}</b> {l(screenSnapshot.accounts.length===1?'saldo':'saldos',screenSnapshot.accounts.length===1?'balance':'balances',screenSnapshot.accounts.length===1?'saldo':'saldos')}</span>}
+              {screenSnapshot.pots.length>0&&<span><b>{screenSnapshot.pots.length}</b> {l('dinheiro guardado','saved money','dinero guardado')}</span>}
+              {screenSnapshot.cards.length>0&&<span><b>{screenSnapshot.cards.length}</b> {l(screenSnapshot.cards.length===1?'cartão':'cartões',screenSnapshot.cards.length===1?'card':'cards',screenSnapshot.cards.length===1?'tarjeta':'tarjetas')}</span>}
+              {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> {l('conta / parcela','bill / installment','cuenta / cuota')}</span>}
+              {interpretations.length>0&&<span><b>{interpretations.length}</b> {l(interpretations.length===1?'movimento':'movimentos',interpretations.length===1?'movement':'movements',interpretations.length===1?'movimiento':'movimientos')}</span>}
             </div>
-            <small>Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.</small>
+            <small>{l('Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.','Balance, card limit and saved money do not become expenses. Only movements and bills are counted that way.','El saldo, el límite y el dinero guardado no se convierten en gastos. Solo los movimientos y las cuentas entran en esa categoría.')}</small>
           </div>}
 
-          {matchingPayments&&interpretations.length===1&&<p className="confidence-note" role="status">Conferindo se isso paga alguma conta que já estava na sua lista…</p>}
+          {matchingPayments&&interpretations.length===1&&<p className="confidence-note" role="status">{l('Conferindo se isso paga alguma conta que já estava na sua lista…','Checking whether this pays a bill already on your list…','Comprobando si esto paga alguna cuenta que ya estaba en tu lista…')}</p>}
 
           {paymentMatches.length>0&&!paymentMatchDismissed&&<div className="payment-match-panel">
             <div>
-              <span>{paymentMatches.length===1?'Parece que encontramos a conta':'Qual conta você pagou?'}</span>
-              <strong>{paymentMatches.length===1?'Isso pode quitar algo que já estava pendente.':'Há mais de uma conta parecida. Escolha só se tiver certeza.'}</strong>
+              <span>{paymentMatches.length===1?l('Parece que encontramos a conta','Looks like we found the bill','Parece que encontramos la cuenta'):l('Qual conta você pagou?','Which bill did you pay?','¿Qué cuenta pagaste?')}</span>
+              <strong>{paymentMatches.length===1?l('Isso pode quitar algo que já estava pendente.','This may settle something that was already pending.','Esto puede liquidar algo que ya estaba pendiente.'):l('Há mais de uma conta parecida. Escolha só se tiver certeza.','There is more than one similar bill. Choose only if you are sure.','Hay más de una cuenta parecida. Elige solo si estás seguro.')}</strong>
             </div>
             <div className="payment-match-options">
               {paymentMatches.map(candidate=><button
@@ -852,55 +854,55 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                 disabled={Boolean(payingMatchId)}
                 onClick={()=>void confirmMatchedPayment(candidate)}
               >
-                <span>{candidate.commitment.dueDay?'Dia '+candidate.commitment.dueDay:'Na sua lista'}</span>
+                <span>{candidate.commitment.dueDay?l('Dia '+candidate.commitment.dueDay,'Day '+candidate.commitment.dueDay,'Día '+candidate.commitment.dueDay):l('Na sua lista','On your list','En tu lista')}</span>
                 <strong>{candidate.commitment.description}</strong>
                 <b>{formatMoney(candidate.commitment.amountMinor)}</b>
-                <em>{payingMatchId===candidate.commitment.id?'Marcando…':'Marcar como pago'}</em>
+                <em>{payingMatchId===candidate.commitment.id?l('Marcando…','Marking…','Marcando…'):l('Marcar como pago','Mark as paid','Marcar como pagado')}</em>
               </button>)}
             </div>
             <button type="button" className="payment-match-none" disabled={Boolean(payingMatchId)} onClick={()=>setPaymentMatchDismissed(true)}>
-              Nenhuma dessas
+              {l('Nenhuma dessas','None of these','Ninguna de estas')}
             </button>
           </div>}
 
           {interpretations.length>1&&<div className="capture-review-summary">
-            <div><strong>{readyInterpretations.length}</strong><span>já organizado{readyInterpretations.length===1?'':'s'}</span></div>
-            <div className={attentionInterpretations.length?'attention':''}><strong>{attentionInterpretations.length}</strong><span>para conferir</span></div>
+            <div><strong>{readyInterpretations.length}</strong><span>{l(readyInterpretations.length===1?'já organizado':'já organizados','already organized',readyInterpretations.length===1?'ya organizado':'ya organizados')}</span></div>
+            <div className={attentionInterpretations.length?'attention':''}><strong>{attentionInterpretations.length}</strong><span>{l('para conferir','to review','para revisar')}</span></div>
           </div>}
 
           <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
             <div><strong>{interpretation.description}</strong><b>{formatMoney(interpretation.money.amountMinor)}</b></div>
             <span>{interpretation.kind === 'commitment'
-              ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta para pagar')
+              ? (interpretation.recurring ? l(`Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}`,`Every month${interpretation.dueDay ? ` · day ${interpretation.dueDay}` : ''}`,`Cada mes${interpretation.dueDay ? ` · día ${interpretation.dueDay}` : ''}`) : l('Conta para pagar','Bill to pay','Cuenta por pagar'))
               : interpretation.needsReview.includes('direction')
-                ? 'Só falta dizer se entrou ou saiu'
+                ? l('Só falta dizer se entrou ou saiu','Just tell me whether it came in or went out','Solo falta decir si entró o salió')
                 : interpretation.direction==='income'
-                  ? 'Dinheiro que entrou'
+                  ? l('Dinheiro que entrou','Money received','Dinero que entró')
                   : interpretation.direction==='transfer'
-                    ? 'Só mudou de conta'
-                    : 'Dinheiro que saiu'}
+                    ? l('Só mudou de conta','It only moved accounts','Solo cambió de cuenta')
+                    : l('Dinheiro que saiu','Money spent','Dinero que salió')}
               {interpretation.occurredOn?` · ${formatDate(new Date(interpretation.occurredOn+'T12:00:00'),{day:'2-digit',month:'2-digit'})}`:''}
             </span>
-            {interpretation.installment && <span>Parcela {interpretation.installment.current} de {interpretation.installment.total}</span>}
+            {interpretation.installment && <span>{l(`Parcela ${interpretation.installment.current} de ${interpretation.installment.total}`,`Installment ${interpretation.installment.current} of ${interpretation.installment.total}`,`Cuota ${interpretation.installment.current} de ${interpretation.installment.total}`)}</span>}
             {interpretation.needsReview.includes('direction')
               ? <div className="inline-direction-choice">
                   <button type="button" onClick={()=>chooseImportedDirection(index,'expense')}>{l('Eu paguei','I paid','Yo pagué')}</button>
                   <button type="button" onClick={()=>chooseImportedDirection(index,'income')}>{l('Eu recebi','I received','Yo recibí')}</button>
-                  <button type="button" onClick={()=>chooseImportedDirection(index,'transfer')}>Mudou de conta</button>
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'transfer')}>{l('Mudou de conta','Moved accounts','Cambió de cuenta')}</button>
                 </div>
-              : interpretation.confidence !== 'high' && <em>Confira este item</em>}
+              : interpretation.confidence !== 'high' && <em>{l('Confira este item','Review this item','Revisa este elemento')}</em>}
           </div>)}</div>
 
           {hiddenReadyCount>0&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(true)}>
-            Ver {hiddenReadyCount} item{hiddenReadyCount===1?'':'s'} já organizado{hiddenReadyCount===1?'':'s'}
+            {l(`Ver ${hiddenReadyCount} item${hiddenReadyCount===1?'':'s'} já organizado${hiddenReadyCount===1?'':'s'}`,`View ${hiddenReadyCount} already organized item${hiddenReadyCount===1?'':'s'}`,`Ver ${hiddenReadyCount} elemento${hiddenReadyCount===1?'':'s'} ya organizado${hiddenReadyCount===1?'':'s'}`)}
           </button>}
           {showAllReview&&interpretations.length>3&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(false)}>
-            Mostrar só o que importa
+            {l('Mostrar só o que importa','Show only what matters','Mostrar solo lo que importa')}
           </button>}
 
           {reviewCount > 0 && <p className="confidence-note">{unresolvedDirectionCount
-            ? `Só ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' precisa':'s precisam'} de uma resposta rápida. O restante já está organizado.`
-            : 'O que estava claro já foi organizado. Confira apenas os itens sinalizados.'}</p>}
+            ? l(`Só ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' precisa':'s precisam'} de uma resposta rápida. O restante já está organizado.`,`Only ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' needs':'s need'} a quick answer. The rest is already organized.`,`Solo ${unresolvedDirectionCount} elemento${unresolvedDirectionCount===1?' necesita':'s necesitan'} una respuesta rápida. El resto ya está organizado.`)
+            : l('O que estava claro já foi organizado. Confira apenas os itens sinalizados.','What was clear is already organized. Review only the flagged items.','Lo que estaba claro ya está organizado. Revisa solo los elementos señalados.')}</p>}
           {upload && <div className="upload-status" role="status" aria-live="polite">
             <div><span>{upload.phase === 'uploading' ? l('Guardando original…','Saving original…','Guardando original…') : l('Conferindo arquivo…','Checking file…','Revisando archivo…')}</span><b>{upload.percent}%</b></div>
             <progress max="100" value={upload.percent}>{upload.percent}%</progress>
@@ -911,11 +913,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
             <button className="primary-button" disabled={working||unresolvedDirectionCount>0||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
-              ? (upload?.phase === 'verifying' ? 'Conferindo…' : 'Guardando…')
+              ? (upload?.phase === 'verifying' ? l('Conferindo…','Checking…','Revisando…') : l('Guardando…','Saving…','Guardando…'))
               : unresolvedDirectionCount
-                ? `Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`
+                ? l(`Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`,`${unresolvedDirectionCount} confirmation${unresolvedDirectionCount===1?'':'s'} remaining`,`Falta${unresolvedDirectionCount===1?'':'n'} ${unresolvedDirectionCount} confirmación${unresolvedDirectionCount===1?'':'es'}`)
                 : paymentMatches.length>0&&!paymentMatchDismissed
-                  ? 'Escolha a conta acima'
+                  ? l('Escolha a conta acima','Choose the bill above','Elige la cuenta de arriba')
                   : l('Guardar','Save','Guardar')}</button>
           </div>
         </>}
