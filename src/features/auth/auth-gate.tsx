@@ -3,12 +3,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, firebaseConfigured } from '@/src/lib/firebase/client';
 import { bootstrapSession, type HouseholdSessionOption } from '@/src/lib/repositories/session';
-import { messages } from '@/src/i18n/messages';
+import { messages, type Locale } from '@/src/i18n/messages';
+import { LocaleProvider, preferredBrowserLocale } from '@/src/i18n/locale-provider';
 
 export type SessionState = {
   user: User;
   householdId: string;
   households: HouseholdSessionOption[];
+  locale: Locale;
 };
 
 export function AuthGate({ children }: { children: (ctx: SessionState) => React.ReactNode }) {
@@ -16,7 +18,8 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
   const [sessionError, setSessionError] = useState('');
-  const t = messages['pt-BR'];
+  const [uiLocale,setUiLocale]=useState<Locale>('pt-BR');
+  const t = messages[uiLocale];
 
   const establishSession = useCallback(async (user: User, forceRefresh = false) => {
     setLoading(true);
@@ -24,7 +27,11 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     try {
       if (forceRefresh) await user.getIdToken(true);
       const session = await bootstrapSession();
-      setState({ user, householdId: session.householdId, households: session.households || [] });
+      const households=session.households||[];
+      const selected=households.find(item=>item.id===session.householdId);
+      const locale=selected?.locale||preferredBrowserLocale();
+      setUiLocale(locale);
+      setState({ user, householdId: session.householdId, households, locale });
     } catch (error) {
       setState(null);
       setSessionError(error instanceof Error ? error.message : 'SESSION_BOOTSTRAP_FAILED');
@@ -32,6 +39,8 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
       setLoading(false);
     }
   }, []);
+
+  useEffect(()=>{ setUiLocale(preferredBrowserLocale()); },[]);
 
   useEffect(() => {
     if (!auth) {
@@ -88,5 +97,5 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   }
 
   if (!state) return <main className="center-shell"><section className="login-card"><div><div className="eyebrow">MillionsNest</div><h1>NestBalance</h1><p>{t.brandTagline}</p>{sessionError && <p className="error-copy" role="alert">{t.authSignInProblem}</p>}</div><button className="primary-button" disabled={signingIn} onClick={() => void startGoogleSignIn()}>{signingIn ? t.signingIn : t.signIn}</button></section></main>;
-  return <>{children(state)}</>;
+  return <LocaleProvider locale={state.locale}>{children(state)}</LocaleProvider>;
 }
