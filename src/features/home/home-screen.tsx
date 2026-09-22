@@ -134,9 +134,9 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         key:'due-'+dueSoon.id,
         kind:Number(dueSoon.dueDay)===today?l('VENCE HOJE','DUE TODAY','VENCE HOY'):l('PRÓXIMO PAGAMENTO','UPCOMING PAYMENT','PRÓXIMO PAGO'),
         title:l(`${dueSoon.description} ${Number(dueSoon.dueDay)===today?'vence hoje':`vence dia ${dueSoon.dueDay}`}.`,`${dueSoon.description} ${Number(dueSoon.dueDay)===today?'is due today':`is due on day ${dueSoon.dueDay}`}.`,`${dueSoon.description} ${Number(dueSoon.dueDay)===today?'vence hoy':`vence el día ${dueSoon.dueDay}`}.`),
-        detail:`${money.format(dueSoon.amountMinor/100)} já está considerado no que ainda vai sair.`,
+        detail:l(`${formatMoney(dueSoon.amountMinor)} já está considerado no que ainda vai sair.`,`${formatMoney(dueSoon.amountMinor)} is already included in what is still expected to leave.`,`${formatMoney(dueSoon.amountMinor)} ya está incluido en lo que todavía saldrá.`),
         href:'#monthly-payments',
-        action:'Ver conta'
+        action:l('Ver conta','View bill','Ver cuenta')
       });
     }
 
