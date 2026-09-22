@@ -1,4 +1,4 @@
-import { isValidIsoDate } from './date.js';
+import { isValidIsoDate } from './date';
 import { parseFinancialText } from './text-parser';
 import type { FinancialInterpretation } from './types';
 
