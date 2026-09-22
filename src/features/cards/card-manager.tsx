@@ -289,7 +289,6 @@ export function CreditCardManager({
             className="sr-only"
             type="file"
             accept="image/*"
-            capture="environment"
             disabled={saving||localReading}
             onChange={e=>{
               const selected=e.target.files?.[0];
