@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
@@ -224,7 +225,13 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     {loading
       ? <div className="movement-full-list">{[0,1,2,3].map(i=><div className="movement-full-row skeleton-line" key={i}/>)}</div>
       : visible.length===0
-        ? <section className="empty-state"><h3>{l('Nada por aqui.','Nothing here.','Nada por aquí.')}</h3><p>{query?l('Tente outra busca ou filtro.','Try another search or filter.','Prueba otra búsqueda o filtro.'):l('Quando você registrar o primeiro movimento, ele aparecerá nesta timeline.','Your first financial movement will appear here as soon as you record it.','Tu primer movimiento financiero aparecerá aquí cuando lo registres.')}</p></section>
+        ? <section className="empty-state empty-state-action">
+            <div>
+              <h3>{l('Nada por aqui.','Nothing here.','Nada por aquí.')}</h3>
+              <p>{query?l('Tente outra busca ou filtro.','Try another search or filter.','Prueba otra búsqueda o filtro.'):l('Conte o que aconteceu do seu jeito. Texto, áudio, print ou arquivo entram pelo mesmo lugar.','Tell us what happened in your own way. Text, audio, screenshot, or file all use the same entry point.','Cuenta lo que pasó a tu manera. Texto, audio, captura o archivo entran por el mismo lugar.')}</p>
+            </div>
+            {!query&&role!=='read_only'&&<Link className="primary-button" href="/add?return=/movements">{l('Adicionar movimento','Add activity','Agregar movimiento')}</Link>}
+          </section>
         : <section className="movement-full-list">
             {visible.map(row=><article className="movement-full-row" key={row.id}>
               <div className={'movement-dot '+(row.direction==='income'?'in':'')}/>
