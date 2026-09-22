@@ -44,8 +44,9 @@ export function CreditCardManager({
   canManage?:boolean;
   defaultScope?:FinancialScope;
 }){
-  const {t,locale,intlLocale,formatMoney,formatDate}=useI18n();
+  const {t,locale,intlLocale,currency,formatMoney,formatDate}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  const currencySymbol=useMemo(()=>new Intl.NumberFormat(intlLocale,{style:'currency',currency,currencyDisplay:'narrowSymbol',minimumFractionDigits:0,maximumFractionDigits:0}).formatToParts(0).find(part=>part.type==='currency')?.value||currency,[intlLocale,currency]);
   const brandLabel=useMemo<Record<CardBrand,string>>(()=>({
     visa:'Visa',
     mastercard:'Mastercard',
@@ -382,7 +383,7 @@ export function CreditCardManager({
         </div>
 
         <label className="field-label" htmlFor="card-limit">{l('Limite total','Total limit','Límite total')} <span className="optional-field">{l('opcional','optional','opcional')}</span></label>
-        <div className="money-input-wrap"><span>R$</span><input id="card-limit" inputMode="decimal" value={limit} onChange={e=>setLimit(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
+        <div className="money-input-wrap"><span>{currencySymbol}</span><input id="card-limit" inputMode="decimal" value={limit} onChange={e=>setLimit(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
 
         <label className="field-label" htmlFor="card-last4">{l('Últimos 4 dígitos','Last 4 digits','Últimos 4 dígitos')} <span className="optional-field">{l('opcional','optional','opcional')}</span></label>
         <input id="card-last4" className="premium-input" inputMode="numeric" autoComplete="off" value={last4} onChange={e=>setLast4(e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="1234" maxLength={4}/>
