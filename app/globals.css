@@ -920,6 +920,71 @@
 }
 
 
+/* Grounded Home explainability: factual, compact, optional. */
+.balance-explanation{
+  width:min(720px,100%);
+  margin:14px auto 0;
+  border-top:1px solid color-mix(in srgb,var(--line,#e7eaf0) 80%,transparent);
+  color:var(--muted);
+}
+.balance-explanation summary{
+  width:max-content;
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:750;
+  color:var(--muted);
+  list-style:none;
+}
+.balance-explanation summary::-webkit-details-marker{display:none}
+.balance-explanation summary::after{
+  content:'＋';
+  margin-left:7px;
+  font-size:13px;
+}
+.balance-explanation[open] summary::after{content:'−'}
+.balance-explanation-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:9px;
+  padding:4px 0 10px;
+}
+.balance-explanation-grid>div{
+  display:grid;
+  gap:4px;
+  min-width:0;
+  padding:12px;
+  border:1px solid color-mix(in srgb,var(--line,#e7eaf0) 76%,transparent);
+  border-radius:16px;
+  background:color-mix(in srgb,var(--surface,#fff) 92%,transparent);
+}
+.balance-explanation-grid span{
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.08em;
+  opacity:.6;
+}
+.balance-explanation-grid strong{
+  font-size:16px;
+  color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.balance-explanation-grid small{
+  font-size:10px;
+  line-height:1.45;
+}
+.balance-explanation>p{
+  margin:3px 0 8px;
+  font-size:11px;
+  line-height:1.5;
+}
+@media(max-width:640px){
+  .balance-explanation-grid{grid-template-columns:1fr}
+  .balance-explanation summary{min-height:46px}
+}
+
 /* Explainable, quiet attention */
 .attention-reason{
   margin:0 0 12px;
@@ -994,3 +1059,4 @@
   color:var(--muted);
   opacity:.78;
 }
+
