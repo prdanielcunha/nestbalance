@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { normalizeHouseholdRole } from '../src/core/household.js';
+import { normalizeLocale } from '../src/i18n/messages.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -34,10 +35,11 @@ async function householdOptions(uid:string){
       return {
         id:doc.id,
         name:String(household.name||'Meu Lar'),
-        role:normalizeHouseholdRole(doc.data()?.role)
+        role:normalizeHouseholdRole(doc.data()?.role),
+        locale:normalizeLocale(household.locale)
       };
     })
-    .filter((value): value is {id:string;name:string;role:ReturnType<typeof normalizeHouseholdRole>}=>Boolean(value));
+    .filter((value): value is {id:string;name:string;role:ReturnType<typeof normalizeHouseholdRole>;locale:ReturnType<typeof normalizeLocale>}=>Boolean(value));
 }
 
 async function touchMemberProfile(householdId:string,uid:string,user:any){
