@@ -800,3 +800,39 @@
   .recurrence-actions{width:100%}
   .recurrence-actions button{flex:1}
 }
+
+
+.household-helper{
+  margin:12px 0 0;
+  font-size:13px;
+  line-height:1.55;
+  color:var(--muted);
+}
+.household-activity-list{
+  display:grid;
+  gap:0;
+  margin-top:4px;
+}
+.household-activity-row{
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr);
+  gap:12px;
+  align-items:center;
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+}
+.household-activity-row:last-child{border-bottom:0}
+.household-activity-row p{
+  margin:0;
+  font-size:13px;
+  line-height:1.45;
+  color:var(--ink);
+}
+.household-activity-row p strong{font-weight:800}
+.household-activity-row span{
+  display:block;
+  margin-top:3px;
+  font-size:11px;
+  line-height:1.4;
+  color:var(--muted);
+}

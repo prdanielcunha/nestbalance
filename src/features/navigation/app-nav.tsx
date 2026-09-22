@@ -1,23 +1,24 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-
-const items=[
-  {href:'/',label:'Início'},
-  {href:'/movements',label:'Movimentos'},
-  {href:'/accounts',label:'Contas'},
-  {href:'/vault',label:'Cofre'},
-  {href:'/assistant',label:'Assistente'}
-];
+import { useI18n } from '@/src/i18n/locale-provider';
 
 export function AppNav({canContribute=true}:{canContribute?:boolean}){
   const pathname=usePathname();
+  const {t}=useI18n();
+  const items=[
+    {href:'/',label:t.navHome},
+    {href:'/movements',label:t.navMovements},
+    {href:'/accounts',label:t.navAccounts},
+    {href:'/vault',label:t.navVault},
+    {href:'/assistant',label:t.navAssistant}
+  ];
   return <nav className="app-nav" aria-label="Navegação principal">
     <div className="app-nav-track">
       {items.slice(0,2).map(item=><Link key={item.href} href={item.href} aria-current={pathname===item.href?'page':undefined} className={pathname===item.href?'app-nav-link active':'app-nav-link'}>{item.label}</Link>)}
       {canContribute
-        ? <Link href="/add" className="app-nav-add" aria-label="Adicionar">＋<span>Adicionar</span></Link>
-        : <span className="app-nav-add readonly" aria-disabled="true"><span>Somente leitura</span></span>}
+        ? <Link href="/add" className="app-nav-add" aria-label={t.add}>＋<span>{t.add}</span></Link>
+        : <span className="app-nav-add readonly" aria-disabled="true"><span>{t.readOnly}</span></span>}
       {items.slice(2).map(item=><Link key={item.href} href={item.href} aria-current={pathname===item.href?'page':undefined} className={pathname===item.href?'app-nav-link active':'app-nav-link'}>{item.label}</Link>)}
     </div>
   </nav>;

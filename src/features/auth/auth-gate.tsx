@@ -4,11 +4,15 @@ import { GoogleAuthProvider, User, onAuthStateChanged, signInWithPopup, signOut 
 import { auth, firebaseConfigured } from '@/src/lib/firebase/client';
 import { bootstrapSession, type HouseholdSessionOption } from '@/src/lib/repositories/session';
 import { messages } from '@/src/i18n/messages';
+import { normalizeLocale, type AppLocale } from '@/src/core/locale';
+import { LocaleProvider } from '@/src/i18n/locale-provider';
 
 export type SessionState = {
   user: User;
   householdId: string;
   households: HouseholdSessionOption[];
+  locale: AppLocale;
+  currency: string;
 };
 
 export function AuthGate({ children }: { children: (ctx: SessionState) => React.ReactNode }) {
@@ -16,7 +20,14 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
   const [sessionError, setSessionError] = useState('');
-  const t = messages['pt-BR'];
+  const [browserLocale,setBrowserLocale]=useState<AppLocale>('pt-BR');
+  const activeLocale=state?.locale||browserLocale;
+  const activeCurrency=state?.currency||'BRL';
+  const t=messages[activeLocale];
+
+  useEffect(()=>{
+    setBrowserLocale(normalizeLocale(navigator.language));
+  },[]);
 
   const establishSession = useCallback(async (user: User, forceRefresh = false) => {
     setLoading(true);
@@ -24,7 +35,7 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     try {
       if (forceRefresh) await user.getIdToken(true);
       const session = await bootstrapSession();
-      setState({ user, householdId: session.householdId, households: session.households || [] });
+      setState({ user, householdId: session.householdId, households: session.households || [], locale:session.locale, currency:session.currency });
     } catch (error) {
       setState(null);
       setSessionError(error instanceof Error ? error.message : 'SESSION_BOOTSTRAP_FAILED');
@@ -69,12 +80,12 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     setSessionError('');
   }
 
-  if (!firebaseConfigured) return <main className="center-shell"><section className="setup-card"><div className="brand-mark">N</div><h1>NestBalance</h1><p>{t.setupMissing}</p></section></main>;
-  if (loading) return <main className="center-shell"><div className="skeleton-card" role="status"><span className="sr-only">Carregando</span></div></main>;
+  if (!firebaseConfigured) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="setup-card"><div className="brand-mark">N</div><h1>NestBalance</h1><p>{t.setupMissing}</p></section></main></LocaleProvider>;
+  if (loading) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><div className="skeleton-card" role="status"><span className="sr-only">{t.loading}</span></div></main></LocaleProvider>;
 
   const authenticatedUser = auth?.currentUser ?? null;
   if (!state && sessionError && authenticatedUser) {
-    return <main className="center-shell"><section className="login-card">
+    return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="login-card">
       <div>
         <div className="eyebrow">MillionsNest</div>
         <h1>NestBalance</h1>
@@ -84,9 +95,9 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
         <button className="ghost-button" onClick={() => void leaveSession()}>{t.signOut}</button>
         <button className="primary-button" onClick={() => void establishSession(authenticatedUser, true)}>{t.authRetry}</button>
       </div>
-    </section></main>;
+    </section></main></LocaleProvider>;
   }
 
-  if (!state) return <main className="center-shell"><section className="login-card"><div><div className="eyebrow">MillionsNest</div><h1>NestBalance</h1><p>{t.brandTagline}</p>{sessionError && <p className="error-copy" role="alert">{t.authSignInProblem}</p>}</div><button className="primary-button" disabled={signingIn} onClick={() => void startGoogleSignIn()}>{signingIn ? t.signingIn : t.signIn}</button></section></main>;
-  return <>{children(state)}</>;
+  if (!state) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="login-card"><div><div className="eyebrow">MillionsNest</div><h1>NestBalance</h1><p>{t.brandTagline}</p>{sessionError && <p className="error-copy" role="alert">{t.authSignInProblem}</p>}</div><button className="primary-button" disabled={signingIn} onClick={() => void startGoogleSignIn()}>{signingIn ? t.signingIn : t.signIn}</button></section></main></LocaleProvider>;
+  return <LocaleProvider locale={state.locale} currency={state.currency}>{children(state)}</LocaleProvider>;
 }

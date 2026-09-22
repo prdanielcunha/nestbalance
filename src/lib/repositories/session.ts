@@ -1,11 +1,14 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { HouseholdRole } from '@/src/core/household';
+import type { AppLocale } from '@/src/core/locale';
 
 export type HouseholdSessionOption={
   id:string;
   name:string;
   role:HouseholdRole;
+  locale:AppLocale;
+  currency:string;
 };
 
 async function token(){
@@ -34,6 +37,8 @@ export async function bootstrapSession(householdId?:string){
     ok:true;
     householdId:string;
     households:HouseholdSessionOption[];
+    locale:AppLocale;
+    currency:string;
     created:boolean;
   };
 }
@@ -43,5 +48,7 @@ export async function selectHousehold(householdId:string){
     ok:true;
     householdId:string;
     households:HouseholdSessionOption[];
+    locale:AppLocale;
+    currency:string;
   };
 }
