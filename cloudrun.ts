@@ -18,6 +18,7 @@ import { completeOpenFinanceConnection, disconnectOpenFinanceConnection, listOpe
 import { selectHousehold } from './server/session.js';
 import { acceptHouseholdInvite, createHouseholdInvite, getHouseholdSettings, removeHouseholdMember, renameHousehold, revokeHouseholdInvite, updateHouseholdMemberRole } from './server/household.js';
 import { deleteHousehold, deletePersonalData, exportPrivacyData, getPrivacyStatus, recordPrivacyConsent } from './server/data-rights.js';
+import { analyzeRedactedTextWithGemini, getGeminiFallbackStatus } from './server/gemini-fallback.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -32,6 +33,7 @@ app.get('/healthz', healthz);
 app.get('/api/healthz', healthz);
 app.use('/api',rateLimit({windowMs:60_000,max:180,namespace:'api'}));
 const sensitiveLimit=rateLimit({windowMs:60_000,max:12,namespace:'sensitive'});
+const aiFreeLimit=rateLimit({windowMs:60_000,max:6,namespace:'gemini-free'});
 app.post('/api/evidence/upload', express.raw({ type: '*/*', limit: '20mb' }), uploadEvidence);
 app.use(express.json({ limit: '128kb' }));
 app.post('/api/session/bootstrap', bootstrapSession);
@@ -50,6 +52,8 @@ app.post('/api/privacy/delete-personal', sensitiveLimit, deletePersonalData);
 app.post('/api/privacy/delete-household', sensitiveLimit, deleteHousehold);
 app.post('/api/home', getHomeData);
 app.post('/api/assistant/answer', answerFinanceAssistant);
+app.post('/api/ai/gemini/status', getGeminiFallbackStatus);
+app.post('/api/ai/gemini/analyze-text', aiFreeLimit, analyzeRedactedTextWithGemini);
 app.post('/api/financial-screen/commit', commitFinancialScreen);
 app.post('/api/commitments/match-payment', findCommitmentPaymentMatches);
 app.post('/api/commitments/match-payments', findCommitmentPaymentMatchesBatch);
