@@ -1,5 +1,6 @@
 import { projectHouseholdFuture, type ProjectionCommitment, type ProjectionInstallmentPlan } from './future-projection.js';
 import { categoryLabel, deriveFinancialAnomalies, deriveSpendingComparison, type InsightTransaction } from './insights.js';
+import { localeForIntl, type AppLocale } from './locale.js';
 
 export type AssistantAccount={
   id:string;
@@ -58,18 +59,44 @@ function positive(value:unknown){
   return Number.isSafeInteger(n)&&n>0?n:0;
 }
 
-function formatMoneyMinor(value:number){
-  return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value/100);
+function tr(locale:AppLocale,pt:string,en:string,es:string){
+  return locale==='en'?en:locale==='es'?es:pt;
+}
+
+function assistantPrompts(locale:AppLocale){
+  return {
+    spend:tr(locale,'Dá para gastar R$ 500?','Can I spend R$ 500?','¿Puedo gastar R$ 500?'),
+    ending:tr(locale,'Quais parcelas terminam logo?','Which installments end soon?','¿Qué cuotas terminan pronto?'),
+    remaining:tr(locale,'Quanto ainda falta pagar?','How much is still left to pay?','¿Cuánto falta pagar?'),
+    available:tr(locale,'Quanto tenho disponível?','How much do I have available?','¿Cuánto tengo disponible?'),
+    future:tr(locale,'O que já está comprometido nos próximos meses?','What is already committed in the next months?','¿Qué ya está comprometido en los próximos meses?'),
+    change:tr(locale,'Por que gastei mais este mês?','Why did I spend more this month?','¿Por qué gasté más este mes?'),
+    anomalies:tr(locale,'O que está estranho?','What looks unusual?','¿Qué se ve extraño?')
+  };
+}
+
+function formatMoneyMinor(value:number,locale:AppLocale){
+  return new Intl.NumberFormat(localeForIntl(locale),{style:'currency',currency:'BRL'}).format(value/100);
 }
 
 function parseRequestedMoneyMinor(question:string){
   const normalized=question.normalize('NFKC').replace(/\s+/g,' ').trim();
-  const currencyMatch=normalized.match(/R\$\s*([0-9.]+(?:,[0-9]{1,2})?)/i);
-  const reaisMatch=normalized.match(/([0-9.]+(?:,[0-9]{1,2})?)\s*(?:reais?|conto(?:s)?)/i);
-  const spendMatch=normalized.match(/(?:gastar|gasto|gastasse)\s*(?:de\s*)?([0-9.]+(?:,[0-9]{1,2})?)/i);
-  const raw=(currencyMatch?.[1]||reaisMatch?.[1]||spendMatch?.[1]||'').trim();
+  const currencyMatch=normalized.match(/(?:R\$|BRL)\s*([0-9.,]+)/i);
+  const wordsMatch=normalized.match(/([0-9.,]+)\s*(?:reais?|brl)/i);
+  const spendMatch=normalized.match(/(?:gastar|gasto|gastasse|spend|spent|gastar|gasto)\s*(?:de\s*)?([0-9.,]+)/i);
+  const raw=(currencyMatch?.[1]||wordsMatch?.[1]||spendMatch?.[1]||'').trim();
   if(!raw) return null;
-  const number=Number(raw.replace(/\./g,'').replace(',','.'));
+  const lastComma=raw.lastIndexOf(',');
+  const lastDot=raw.lastIndexOf('.');
+  let numeric=raw;
+  if(lastComma>=0&&lastDot>=0){
+    numeric=lastComma>lastDot?raw.replace(/\./g,'').replace(',','.'):raw.replace(/,/g,'');
+  }else if(lastComma>=0){
+    numeric=/,\d{1,2}$/.test(raw)?raw.replace(/\./g,'').replace(',','.'):raw.replace(/,/g,'');
+  }else if((raw.match(/\./g)||[]).length>1){
+    numeric=raw.replace(/\./g,'');
+  }
+  const number=Number(numeric);
   if(!Number.isFinite(number)||number<=0||number>100_000_000) return null;
   return Math.round(number*100);
 }
@@ -82,14 +109,24 @@ export function classifyAssistantIntent(question:string):AssistantAnswer['intent
     /(?:da|dá) para gastar/.test(q)||
     /posso gastar/.test(q)||
     /consigo gastar/.test(q)||
-    /se eu gastar/.test(q)
+    /se eu gastar/.test(q)||
+    /can i spend/.test(q)||
+    /if i spend/.test(q)||
+    /could i spend/.test(q)||
+    /puedo gastar/.test(q)||
+    /si gasto/.test(q)
   ) return 'spending_simulation';
 
   if(
     /por que.*gastei.*mais/.test(q)||
     /porque.*gastei.*mais/.test(q)||
     /gastei.*mais.*(?:mes|mês)/.test(q)||
-    /aumentou.*(?:gasto|despesa)/.test(q)
+    /aumentou.*(?:gasto|despesa)/.test(q)||
+    /why.*(?:spend|spent).*more/.test(q)||
+    /spending.*(?:increase|higher)/.test(q)||
+    /por que.*gaste.*mas/.test(q)||
+    /porque.*gaste.*mas/.test(q)||
+    /aument.*(?:gasto|gastos)/.test(q)
   ) return 'spending_change';
 
   if(
@@ -97,13 +134,24 @@ export function classifyAssistantIntent(question:string):AssistantAnswer['intent
     /algo.*estranh/.test(q)||
     /cobranca.*(?:diferente|fora)/.test(q)||
     /cobrança.*(?:diferente|fora)/.test(q)||
-    /duplicad/.test(q)
+    /duplicad/.test(q)||
+    /what.*(?:unusual|strange)/.test(q)||
+    /anything.*(?:unusual|strange)/.test(q)||
+    /duplicate/.test(q)||
+    /out of pattern/.test(q)||
+    /que.*(?:raro|extrano)/.test(q)||
+    /algo.*(?:raro|extrano)/.test(q)||
+    /fuera.*(?:normal|patron)/.test(q)
   ) return 'anomalies';
 
   if(
     /parcelas?.*(?:terminam|acabam|finalizam)/.test(q)||
     /parcelamentos?.*(?:terminam|acabam|finalizam)/.test(q)||
-    /quais .*parcelas?.*logo/.test(q)
+    /quais .*parcelas?.*logo/.test(q)||
+    /installments?.*(?:end|finish)/.test(q)||
+    /which .*installments?.*soon/.test(q)||
+    /cuotas?.*(?:terminan|acaban)/.test(q)||
+    /que .*cuotas?.*pronto/.test(q)
   ) return 'ending_installments';
 
   if(
@@ -112,21 +160,38 @@ export function classifyAssistantIntent(question:string):AssistantAnswer['intent
     /ainda.*pagar/.test(q)||
     /contas?.*pendentes?/.test(q)||
     /quanto.*pendente/.test(q)||
-    /ainda.*vai.*sair/.test(q)
+    /ainda.*vai.*sair/.test(q)||
+    /how much.*(?:left|still).*(?:pay|payment)/.test(q)||
+    /still.*(?:need|have).*pay/.test(q)||
+    /pending bills?/.test(q)||
+    /cuanto.*falta.*pagar/.test(q)||
+    /cuentas?.*pendientes?/.test(q)
   ) return 'remaining_to_pay';
 
   if(
     /quanto.*tenho/.test(q)||
     /saldo.*disponivel/.test(q)||
     /quanto.*disponivel/.test(q)||
-    /dinheiro.*disponivel/.test(q)
+    /dinheiro.*disponivel/.test(q)||
+    /how much.*(?:have|available)/.test(q)||
+    /available balance/.test(q)||
+    /money.*available/.test(q)||
+    /cuanto.*tengo/.test(q)||
+    /saldo.*disponible/.test(q)||
+    /dinero.*disponible/.test(q)
   ) return 'available_now';
 
   if(
     /proximos? meses?/.test(q)||
     /meses? seguintes?/.test(q)||
     /parcelas? futuras?/.test(q)||
-    /quanto.*mes.*que vem/.test(q)
+    /quanto.*mes.*que vem/.test(q)||
+    /next months?/.test(q)||
+    /coming months?/.test(q)||
+    /future installments?/.test(q)||
+    /proximos? meses?/.test(q)||
+    /mes que viene/.test(q)||
+    /cuotas? futuras?/.test(q)
   ) return 'future_months';
 
   return 'unsupported';
@@ -140,7 +205,10 @@ export function answerAssistantQuestion(input:{
   invoices:AssistantInvoice[];
   installmentPlans:AssistantInstallmentPlan[];
   now:Date;
+  locale?:AppLocale;
 }):AssistantAnswer{
+  const locale=input.locale||'pt-BR';
+  const prompts=assistantPrompts(locale);
   const intent=classifyAssistantIntent(input.question);
 
   if(intent==='spending_simulation'){
