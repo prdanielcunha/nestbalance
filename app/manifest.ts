@@ -7,9 +7,19 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'NestBalance',
     short_name: 'NestBalance',
     description: 'Sua vida financeira, finalmente simples.',
+    id: '/',
     start_url: '/',
+    scope: '/',
     display: 'standalone',
     background_color: '#F6F7F9',
-    theme_color: '#0B1020'
+    theme_color: '#0B1020',
+    icons: [
+      {
+        src: '/nestbalance-icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
+        purpose: 'any maskable'
+      }
+    ]
   };
 }
