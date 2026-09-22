@@ -1674,3 +1674,503 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
     background:rgba(18,23,37,.72);
   }
 }
+
+
+/* Cofrinhos 2.0 — goal-first, visual, and honest about bank boundaries */
+.pots-hero{padding-bottom:24px}
+.pots-hero-facts{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:18px;
+}
+.pots-hero-facts>div{
+  min-width:180px;
+  padding:13px 15px;
+  border:1px solid color-mix(in srgb,var(--line) 84%,transparent);
+  border-radius:16px;
+  background:color-mix(in srgb,var(--surface-strong) 78%,transparent);
+  box-shadow:var(--shadow-sm);
+}
+.pots-hero-facts span,.pots-hero-facts strong{display:block}
+.pots-hero-facts span{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+.pots-hero-facts strong{margin-top:4px;font-size:18px;letter-spacing:-.025em}
+.success-copy{
+  margin:12px 0 18px;
+  padding:12px 14px;
+  border:1px solid rgba(15,159,143,.18);
+  border-radius:14px;
+  background:rgba(15,159,143,.07);
+  color:var(--ink);
+  font-size:12px;
+  line-height:1.5;
+}
+.savings-pot-premium-grid{
+  grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));
+  gap:16px;
+}
+.savings-pot-premium-card{
+  padding:0;
+  overflow:hidden;
+  min-height:350px;
+  border-radius:26px;
+  background:color-mix(in srgb,var(--surface-strong) 95%,transparent);
+}
+.savings-pot-cover{
+  position:relative;
+  width:100%;
+  aspect-ratio:16/8.5;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background:
+    radial-gradient(circle at 25% 25%,rgba(255,255,255,.46),transparent 28%),
+    linear-gradient(135deg,rgba(94,106,210,.18),rgba(15,159,143,.11));
+  color:var(--ink);
+}
+.savings-pot-cover::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  box-shadow:inset 0 -60px 80px rgba(11,16,32,.08);
+  pointer-events:none;
+}
+.savings-pot-cover>span{
+  position:relative;
+  z-index:1;
+  font-size:clamp(30px,7vw,52px);
+  font-weight:900;
+  letter-spacing:-.08em;
+  opacity:.78;
+}
+.savings-pot-cover img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.savings-pot-card-body{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  padding:18px;
+}
+.savings-pot-card-kicker{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:780;
+  text-transform:uppercase;
+  letter-spacing:.075em;
+}
+.savings-pot-card-body h3{
+  margin:8px 0 4px;
+  font-size:22px;
+  line-height:1.08;
+  letter-spacing:-.035em;
+}
+.savings-pot-card-body>strong{
+  font-size:30px;
+  line-height:1;
+  letter-spacing:-.045em;
+  margin:4px 0 14px;
+  font-variant-numeric:tabular-nums;
+}
+.savings-pot-progress-copy{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:auto;
+  font-size:10px;
+  color:var(--muted);
+}
+.savings-pot-progress-copy b{color:var(--ink);font-size:11px}
+.savings-pot-card-body>small{
+  margin-top:9px;
+  min-height:30px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.45;
+}
+.savings-pot-automation-pill{
+  width:max-content;
+  max-width:100%;
+  margin-top:10px;
+  padding:6px 9px;
+  border-radius:999px;
+  background:rgba(15,159,143,.08);
+  color:color-mix(in srgb,var(--mint) 72%,var(--ink));
+  font-size:9px;
+  font-weight:800;
+  line-height:1.2;
+}
+.pot-warning{color:#9a6a17!important}
+.savings-pot-card-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  padding-top:14px;
+  margin-top:14px;
+  border-top:1px solid var(--line);
+}
+.savings-pot-card-actions button{
+  min-height:38px;
+  border:0;
+  border-radius:11px;
+  padding:0 11px;
+  background:var(--ink);
+  color:var(--paper);
+  font:inherit;
+  font-size:10px;
+  font-weight:800;
+  cursor:pointer;
+}
+.savings-pot-card-actions button.secondary{
+  background:color-mix(in srgb,var(--surface-2) 92%,transparent);
+  color:var(--ink);
+  border:1px solid var(--line);
+}
+.pots-trust-note{
+  display:grid;
+  grid-template-columns:minmax(180px,.7fr) minmax(0,1.3fr);
+  gap:28px;
+  align-items:start;
+  margin:30px 0 8px;
+  padding:22px 24px;
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  border-radius:24px;
+  background:linear-gradient(145deg,rgba(94,106,210,.05),color-mix(in srgb,var(--surface-strong) 92%,transparent));
+}
+.pots-trust-note h3{margin:5px 0 0;font-size:20px;letter-spacing:-.03em}
+.pots-trust-note p{margin:0;color:var(--muted);font-size:12px;line-height:1.62}
+.pot-editor-sheet,.pot-detail-sheet{
+  width:min(720px,100%);
+  max-height:min(92vh,940px);
+  overflow:auto;
+  overscroll-behavior:contain;
+}
+.pot-cover-editor{
+  display:grid;
+  grid-template-columns:150px 1fr;
+  gap:14px;
+  align-items:center;
+  margin:18px 0 20px;
+}
+.pot-cover-editor>.savings-pot-cover,
+.pot-cover-editor>img,
+.pot-cover-placeholder{
+  width:150px;
+  height:112px;
+  aspect-ratio:auto;
+  border-radius:20px;
+  object-fit:cover;
+  border:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  overflow:hidden;
+}
+.pot-cover-placeholder{
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:4px;
+  background:linear-gradient(135deg,rgba(94,106,210,.14),rgba(15,159,143,.09));
+}
+.pot-cover-placeholder strong{font-size:30px;letter-spacing:-.06em}
+.pot-cover-placeholder span{font-size:9px;color:var(--muted)}
+.pot-cover-editor>div:last-child{
+  display:flex;
+  align-items:flex-start;
+  flex-direction:column;
+  gap:7px;
+}
+.pot-cover-editor small{color:var(--muted);font-size:9px}
+.pot-photo-button{position:relative;overflow:hidden;cursor:pointer}
+.pot-photo-button input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.text-button{
+  min-height:34px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:10px;
+  font-weight:800;
+  cursor:pointer;
+}
+.danger-text{color:#b84b54}
+.pot-editor-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+.pot-editor-grid label{display:block}
+.pot-editor-wide{grid-column:1/-1}
+.pot-note-input{
+  width:100%;
+  min-height:88px;
+  resize:vertical;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:var(--paper);
+  color:var(--ink);
+  font:inherit;
+  padding:12px 14px;
+  outline:none;
+}
+.pot-note-input:focus{border-color:rgba(94,106,210,.6);box-shadow:var(--focus-ring)}
+.pot-balance-edit-hint{
+  display:grid;
+  gap:4px;
+  margin-top:14px;
+  padding:12px 14px;
+  border-radius:15px;
+  background:color-mix(in srgb,var(--surface-2) 88%,transparent);
+}
+.pot-balance-edit-hint strong{font-size:11px}
+.pot-balance-edit-hint span{color:var(--muted);font-size:9px;line-height:1.45}
+.savings-pot-cover-detail{
+  aspect-ratio:16/7.5;
+  margin:4px 0 16px;
+  border-radius:24px;
+}
+.pot-detail-heading{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+}
+.pot-detail-heading>div{min-width:0}
+.pot-detail-heading span{
+  display:block;
+  margin-bottom:4px;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.pot-detail-heading h2{margin:0;font-size:clamp(26px,5vw,38px);letter-spacing:-.045em}
+.pot-detail-balance{
+  margin:18px 0 14px;
+  padding:20px;
+  border-radius:22px;
+  background:linear-gradient(145deg,var(--night),color-mix(in srgb,var(--night) 82%,var(--iris)));
+  color:#fff;
+  box-shadow:0 18px 54px rgba(11,16,32,.18);
+}
+.pot-detail-balance>span{font-size:9px;opacity:.66;text-transform:uppercase;letter-spacing:.09em;font-weight:800}
+.pot-detail-balance>strong{display:block;margin:5px 0 14px;font-size:clamp(34px,8vw,52px);letter-spacing:-.055em}
+.pot-detail-balance>div{display:flex;justify-content:space-between;gap:12px;font-size:10px;opacity:.82}
+.pot-detail-balance progress{
+  width:100%;
+  height:7px;
+  border:0;
+  margin-top:8px;
+  border-radius:999px;
+  overflow:hidden;
+  background:rgba(255,255,255,.16);
+}
+.pot-detail-balance progress::-webkit-progress-bar{background:rgba(255,255,255,.16)}
+.pot-detail-balance progress::-webkit-progress-value{background:#fff}
+.pot-detail-balance progress::-moz-progress-bar{background:#fff}
+.pot-goal-insight,.pot-automation-explainer,.pot-automation-summary,.pot-inline-panel{
+  display:grid;
+  gap:5px;
+  padding:15px;
+  border:1px solid color-mix(in srgb,var(--line) 84%,transparent);
+  border-radius:18px;
+  background:color-mix(in srgb,var(--surface-strong) 88%,transparent);
+}
+.pot-goal-insight strong,.pot-automation-explainer strong,.pot-automation-summary strong{font-size:12px}
+.pot-goal-insight span,.pot-automation-explainer span,.pot-automation-summary span{color:var(--muted);font-size:10px;line-height:1.5}
+.pot-automation-summary.active{
+  border-color:rgba(15,159,143,.2);
+  background:rgba(15,159,143,.055);
+}
+.pot-detail-note{
+  margin:12px 0 0;
+  padding:0 2px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.55;
+  font-style:italic;
+}
+.pot-money-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin:16px 0;
+}
+.pot-money-actions button{
+  min-height:48px;
+  border:0;
+  border-radius:15px;
+  background:var(--night);
+  color:#fff;
+  font:inherit;
+  font-weight:850;
+  cursor:pointer;
+}
+.pot-money-actions button.secondary{
+  border:1px solid var(--line);
+  background:var(--surface-2);
+  color:var(--ink);
+}
+.pot-money-actions button:disabled{opacity:.45;cursor:not-allowed}
+.pot-inline-panel{margin:12px 0 18px}
+.pot-inline-panel h3{margin:4px 0 8px;font-size:18px}
+.pot-inline-panel>small{font-size:9px;color:var(--muted);line-height:1.5}
+.pot-automation-section,.pot-history-section{
+  margin-top:24px;
+  padding-top:2px;
+}
+.pot-automation-section .section-title,.pot-history-section .section-title{margin-bottom:10px}
+.pot-automation-section .section-title h3,.pot-history-section .section-title h3{margin:4px 0 0;font-size:17px}
+.pot-automation-editor{display:grid;gap:13px}
+.pot-toggle-row{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:10px;
+  align-items:start;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface-2);
+}
+.pot-toggle-row input{width:18px;height:18px;margin-top:1px;accent-color:var(--iris)}
+.pot-toggle-row strong,.pot-toggle-row small{display:block}
+.pot-toggle-row strong{font-size:11px}
+.pot-toggle-row small{margin-top:3px;color:var(--muted);font-size:9px;line-height:1.4}
+.pot-automation-kind-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.pot-automation-kind-grid button{
+  min-height:80px;
+  padding:11px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--surface-2);
+  color:var(--ink);
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+}
+.pot-automation-kind-grid button.active{
+  border-color:rgba(94,106,210,.48);
+  background:rgba(94,106,210,.08);
+  box-shadow:var(--focus-ring);
+}
+.pot-automation-kind-grid strong,.pot-automation-kind-grid span{display:block}
+.pot-automation-kind-grid strong{font-size:10px}
+.pot-automation-kind-grid span{margin-top:3px;color:var(--muted);font-size:8px;line-height:1.35}
+.pot-mode-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+  padding:4px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--surface-2);
+}
+.pot-mode-tabs button{
+  min-height:38px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:10px;
+  font-weight:800;
+  cursor:pointer;
+}
+.pot-mode-tabs button.active{background:var(--surface-strong);color:var(--ink);box-shadow:var(--shadow-sm)}
+.pot-percent-input{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  min-height:48px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  overflow:hidden;
+  background:var(--paper);
+}
+.pot-percent-input input{
+  width:100%;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--ink);
+  font:inherit;
+  padding:0 14px;
+}
+.pot-percent-input span{padding-right:14px;font-weight:800;color:var(--muted)}
+.pot-history-list{
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:var(--surface-strong);
+}
+.pot-history-row{
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:11px 13px;
+  border-bottom:1px solid var(--line);
+}
+.pot-history-row:last-child{border-bottom:0}
+.pot-history-row>div:first-child{min-width:0}
+.pot-history-row strong,.pot-history-row span,.pot-history-row b,.pot-history-row small{display:block}
+.pot-history-row strong{font-size:11px}
+.pot-history-row span{margin-top:2px;color:var(--muted);font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px}
+.pot-history-row>div:last-child{text-align:right;white-space:nowrap}
+.pot-history-row b{font-size:11px;font-variant-numeric:tabular-nums}
+.pot-history-row small{margin-top:2px;color:var(--muted);font-size:8px}
+.pot-history-empty{color:var(--muted);font-size:11px}
+.pot-detail-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-top:22px;
+  padding-top:16px;
+  border-top:1px solid var(--line);
+}
+.pot-detail-footer>.ghost-button{margin-left:auto}
+
+@media(max-width:680px){
+  .pots-hero-facts{display:grid;grid-template-columns:1fr 1fr}
+  .pots-hero-facts>div{min-width:0}
+  .savings-pot-premium-card{min-height:0}
+  .pots-trust-note{grid-template-columns:1fr;gap:10px;padding:18px}
+  .pot-cover-editor{grid-template-columns:110px 1fr}
+  .pot-cover-editor>.savings-pot-cover,.pot-cover-editor>img,.pot-cover-placeholder{width:110px;height:90px;border-radius:17px}
+  .pot-editor-grid{grid-template-columns:1fr}
+  .pot-editor-wide{grid-column:auto}
+  .pot-detail-heading{align-items:center}
+  .pot-detail-heading>.ghost-button{min-height:40px;padding-inline:12px}
+  .pot-automation-kind-grid{grid-template-columns:1fr}
+  .pot-automation-kind-grid button{min-height:62px}
+  .pot-history-row span{max-width:210px}
+}
+@media(max-width:390px){
+  .pots-hero-facts{grid-template-columns:1fr}
+  .pot-cover-editor{grid-template-columns:1fr}
+  .pot-cover-editor>.savings-pot-cover,.pot-cover-editor>img,.pot-cover-placeholder{width:100%;height:auto;aspect-ratio:16/9}
+  .pot-money-actions{grid-template-columns:1fr}
+  .pot-detail-heading{align-items:flex-start}
+  .pot-detail-footer{align-items:stretch;flex-direction:column}
+  .pot-detail-footer>.ghost-button{width:100%;margin-left:0}
+}
+@media(prefers-color-scheme:dark){
+  .savings-pot-premium-card,.pot-history-list{background:rgba(18,23,37,.86)}
+  .pot-detail-balance{background:linear-gradient(145deg,#171d2c,#222942)}
+  .pot-automation-summary.active{background:rgba(15,159,143,.08)}
+  .savings-pot-automation-pill{color:#8eddd1}
+}
