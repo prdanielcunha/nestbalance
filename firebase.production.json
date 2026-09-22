@@ -11,17 +11,53 @@
       {
         "source": "**",
         "headers": [
-          {"key":"X-Content-Type-Options","value":"nosniff"},
-          {"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},
-          {"key":"X-Frame-Options","value":"DENY"},
-          {"key":"Permissions-Policy","value":"geolocation=(), payment=(), usb=()"},
-          {"key":"Cross-Origin-Opener-Policy","value":"same-origin-allow-popups"},
-          {"key":"Strict-Transport-Security","value":"max-age=31536000; includeSubDomains"}
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "geolocation=(), payment=(), usb=()"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin-allow-popups"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains"
+          }
         ]
       },
       {
         "source": "/index.html",
-        "headers": [{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"}]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          },
+          {
+            "key": "Service-Worker-Allowed",
+            "value": "/"
+          }
+        ]
       }
     ],
     "rewrites": [
@@ -33,7 +69,10 @@
           "pinTag": true
         }
       },
-      {"source":"**","destination":"/index.html"}
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
     ]
   }
 }
