@@ -1,6 +1,7 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { SpendingCategory } from '@/src/core/insights';
+import type { ProactivityPreferences } from '@/src/core/proactivity';
 
 export type HomeRow={
   id:string;
@@ -125,6 +126,7 @@ export async function loadHomeData(householdId:string){
     invoiceImports:HomeInvoiceImport[];
     savingsPots:HomeSavingsPot[];
     cardSnapshots:HomeCardSnapshot[];
+    proactivityPreferences:ProactivityPreferences;
     dismissedRecurrenceKeys:string[];
     refreshedAt:string;
   };
