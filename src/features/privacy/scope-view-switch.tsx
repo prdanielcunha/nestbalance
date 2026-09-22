@@ -3,8 +3,9 @@ import { useI18n } from '@/src/i18n/locale-provider';
 export type FinancialView='household'|'personal'|'all';
 
 export function ScopeViewSwitch({value,onChange}:{value:FinancialView;onChange:(value:FinancialView)=>void}){
-  const {t}=useI18n();
-  return <div className="scope-view-switch" aria-label="O que você quer visualizar">
+  const {t,locale}=useI18n();
+  const ariaLabel=locale==='en'?'What do you want to view?':locale==='es'?'¿Qué quieres ver?':'O que você quer visualizar?';
+  return <div className="scope-view-switch" aria-label={ariaLabel}>
     <button type="button" aria-label={`${t.scopeHousehold}: ${t.scopeHouseholdHint}`} className={value==='household'?'active':''} onClick={()=>onChange('household')}>
       <strong>{t.scopeHousehold}</strong><span>{t.scopeHouseholdHint}</span>
     </button>
