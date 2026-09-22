@@ -128,7 +128,7 @@ export async function exportPrivacyData(req:Request,res:Response){
       product:'NestBalance',formatVersion:1,privacyVersion:PRIVACY_VERSION,exportedAt:new Date().toISOString(),
       mode,user:{uid:user.uid,email:user.email||null},
       household:{id:householdId,name:String(householdSnap.data()?.name||'Meu Lar'),role:member.role},
-      note:'Arquivos originais continuam disponíveis pelo Cofre autenticado; este arquivo contém dados estruturados e metadados.',
+      note:'Arquivos originais continuam disponíveis em Documentos; este arquivo contém dados estruturados e metadados.',
       data:result
     };
     const stamp=new Date().toISOString().slice(0,10);
@@ -186,7 +186,7 @@ export async function deletePersonalData(req:Request,res:Response){
       if(data.scope==='personal'&&data.ownerUid===user.uid) return true;
       const linked=[
         data.entityId,data.evidenceId,data.canonicalEvidenceId,data.transactionId,data.paymentTransactionId,
-        data.commitmentId,data.cardId,data.accountId,data.invoiceImportId
+        data.commitmentId,data.cardId,data.accountId,data.invoiceImportId,data.savingsPotId
       ].map(value=>String(value||'')).filter(Boolean);
       return linked.some(id=>deletedIds.has(id));
     });
@@ -198,7 +198,7 @@ export async function deletePersonalData(req:Request,res:Response){
       const docs=await allDocs(household.collection(collection));
       for(const doc of docs){
         const data=doc.data();
-        const linked=[data.entityId,data.accountId,data.cardId,data.evidenceId,data.transactionId,data.invoiceImportId]
+        const linked=[data.entityId,data.accountId,data.cardId,data.evidenceId,data.transactionId,data.invoiceImportId,data.savingsPotId]
           .map(value=>String(value||'')).filter(Boolean);
         if(linked.some(id=>deletedIds.has(id))) indexRefs.push(doc.ref);
       }
