@@ -22,5 +22,5 @@ export function isNestBalanceSessionRevoked(authTimeSeconds:unknown,revokedBefor
   const authTime=Number(authTimeSeconds||0);
   const revokedBefore=Number(revokedBeforeSeconds||0);
   if(!Number.isFinite(authTime)||authTime<=0||!Number.isFinite(revokedBefore)||revokedBefore<=0) return false;
-  return authTime<revokedBefore;
+  return authTime<=revokedBefore;
 }
