@@ -21,6 +21,11 @@ export function InvoiceImportSheet({
   const {locale,formatMoney,formatDate}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const dateLabel=(value:string|null)=>value?formatDate(new Date(value+'T12:00:00'),{day:'2-digit',month:'2-digit',year:'numeric'}):l('Data a conferir','Date to review','Fecha por revisar');
+  const reviewReason=(item:InvoicePreviewItem)=>{
+    if(item.needsReview.includes('purchase_date')) return l('a data da compra','the purchase date','la fecha de la compra');
+    if(item.needsReview.includes('invoice_due_date')) return l('o vencimento usado para projetar as parcelas','the due date used to project installments','el vencimiento usado para proyectar las cuotas');
+    return l('os dados reconhecidos','the recognized data','los datos reconocidos');
+  };
   const [file,setFile]=useState<File|null>(null);
   const [working,setWorking]=useState(false);
   const [progress,setProgress]=useState<UploadProgress|null>(null);
@@ -229,12 +234,12 @@ export function InvoiceImportSheet({
                   </div>
                   {item.installment&&<div className="invoice-installment-row">
                     <span>{l(`Parcela ${item.installment.current} de ${item.installment.total}`,`Installment ${item.installment.current} of ${item.installment.total}`,`Cuota ${item.installment.current} de ${item.installment.total}`)}</span>
-                    <small>{Math.max(0,item.installment.total-item.installment.current)} futura{item.installment.total-item.installment.current===1?'':'s'} projetada{item.installment.total-item.installment.current===1?'':'s'}</small>
+                    <small>{l(`${Math.max(0,item.installment.total-item.installment.current)} futura${item.installment.total-item.installment.current===1?'':'s'} projetada${item.installment.total-item.installment.current===1?'':'s'}`,`${Math.max(0,item.installment.total-item.installment.current)} future installment${item.installment.total-item.installment.current===1?'':'s'} projected`,`${Math.max(0,item.installment.total-item.installment.current)} cuota${item.installment.total-item.installment.current===1?'':'s'} futura${item.installment.total-item.installment.current===1?'':'s'} proyectada${item.installment.total-item.installment.current===1?'':'s'}`)}</small>
                   </div>}
                   <div className="invoice-item-footer">
                     {item.needsReview.length>0
-                      ? <em>Confira {item.needsReview.includes('purchase_date')?'a data da compra':item.needsReview.includes('invoice_due_date')?'o vencimento usado para projetar as parcelas':'os dados reconhecidos'}</em>
-                      : <span>{result.preview.humanReviewed?'Conferido':'Reconhecido com boa confiança'}</span>}
+                      ? <em>{l('Confira','Check','Revisa')} {reviewReason(item)}</em>
+                      : <span>{result.preview.humanReviewed?l('Conferido','Reviewed','Revisado'):l('Reconhecido com boa confiança','Recognized with good confidence','Reconocido con buena confianza')}</span>}
                     <button type="button" onClick={()=>setEditingItem(item)}>{item.needsReview.length?l('Corrigir','Correct','Corregir'):l('Editar','Edit','Editar')}</button>
                   </div>
                 </article>)}
@@ -244,14 +249,22 @@ export function InvoiceImportSheet({
 
         <p className="confidence-note">
           {reviewItems.length||globalReview.length
-            ? <>{clearItems.length} item{clearItems.length===1?'':'s'} claro{clearItems.length===1?'':'s'} pode{clearItems.length===1?'':'m'} ser confirmado{clearItems.length===1?'':'s'} agora. O que ficou ambíguo não será fechado automaticamente.</>
-            : <>Tudo que foi identificado está claro. A confirmação cria os lançamentos uma única vez e mantém as parcelas ligadas ao mesmo plano.</>}
+            ? l(
+                `${clearItems.length} item${clearItems.length===1?'':'s'} claro${clearItems.length===1?'':'s'} pode${clearItems.length===1?'':'m'} ser confirmado${clearItems.length===1?'':'s'} agora. O que ficou ambíguo não será fechado automaticamente.`,
+                `${clearItems.length} clear item${clearItems.length===1?'':'s'} can be confirmed now. Anything ambiguous will not be finalized automatically.`,
+                `${clearItems.length} elemento${clearItems.length===1?'':'s'} claro${clearItems.length===1?'':'s'} puede${clearItems.length===1?'':'n'} confirmarse ahora. Lo ambiguo no se cerrará automáticamente.`
+              )
+            : l(
+                'Tudo que foi identificado está claro. A confirmação cria os lançamentos uma única vez e mantém as parcelas ligadas ao mesmo plano.',
+                'Everything identified is clear. Confirmation creates entries only once and keeps installments linked to the same plan.',
+                'Todo lo identificado está claro. La confirmación crea los movimientos una sola vez y mantiene las cuotas vinculadas al mismo plan.'
+              )}
         </p>
         {error&&<p className="error-copy" role="alert">{error}</p>}
         <div className="sheet-actions">
           <button className="ghost-button" disabled={working} onClick={()=>{setResult(null);setFile(null);setError('');}}>{l('Trocar arquivo','Change file','Cambiar archivo')}</button>
           <button className="primary-button" disabled={working||clearItems.length===0} onClick={confirmClearItems}>
-            {working?'Confirmando…':clearItems.length===0?'Nada claro para confirmar':<>Confirmar {clearItems.length} item{clearItems.length===1?'':'s'}</>}
+            {working?l('Confirmando…','Confirming…','Confirmando…'):clearItems.length===0?l('Nada claro para confirmar','Nothing clear to confirm','Nada claro para confirmar'):l(`Confirmar ${clearItems.length} item${clearItems.length===1?'':'s'}`,`Confirm ${clearItems.length} item${clearItems.length===1?'':'s'}`,`Confirmar ${clearItems.length} elemento${clearItems.length===1?'':'s'}`)}
           </button>
         </div>
       </>}
