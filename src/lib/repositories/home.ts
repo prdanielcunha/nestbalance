@@ -1,5 +1,6 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
+import type { SpendingCategory } from '@/src/core/insights';
 
 export type HomeRow={
   id:string;
@@ -19,6 +20,7 @@ export type HomeRow={
   invoiceImportId?:string|null;
   observedOn?:string|null;
   paidThisMonth?:boolean;
+  category?:SpendingCategory|null;
   scope?:'household'|'personal';
 };
 
