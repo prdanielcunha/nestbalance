@@ -50,6 +50,7 @@ export async function upsertSavingsPot(req:Request,res:Response){
     let created=false;
     let scope:'household'|'personal';
     let ownerUid:string|null;
+    let source='manual';
 
     if(requestedPotId){
       if(!validPotId(requestedPotId)) return error(res,400,'INVALID_SAVINGS_POT_ID');
@@ -58,6 +59,7 @@ export async function upsertSavingsPot(req:Request,res:Response){
       if(!snap.exists) return error(res,404,'SAVINGS_POT_NOT_FOUND');
       const existing=snap.data()!;
       assertScopedAccess(existing,user.uid);
+      source=typeof existing.source==='string'&&existing.source?existing.source:'manual';
       scope=existing.scope==='personal'?'personal':'household';
       ownerUid=scope==='personal'?user.uid:null;
     }else{
@@ -77,7 +79,8 @@ export async function upsertSavingsPot(req:Request,res:Response){
       scope,
       ownerUid,
       status:'active',
-      source:created?'manual':'manual_override',
+      source,
+      manuallyAdjusted:!created,
       updatedAt:FieldValue.serverTimestamp(),
       importedBy:user.uid,
       schemaVersion:2,
