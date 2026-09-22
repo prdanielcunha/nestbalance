@@ -680,6 +680,12 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                       `Para llegar hasta ${formatDate(new Date(selected.targetDate+'T12:00:00'),{day:'2-digit',month:'long',year:'numeric'})}, una referencia útil es cerca de ${formatMoney(selectedPace.suggestedMonthlyMinor)} por mes o ${formatMoney(selectedPace.suggestedWeeklyMinor||0)} por semana.`
                     )
                   : l('Defina um prazo se quiser que o NestBalance calcule um ritmo sugerido.','Set a deadline if you want NestBalance to calculate a suggested pace.','Define un plazo si quieres que NestBalance calcule un ritmo sugerido.')}</span></>}
+          {!selectedPace.reached&&selectedPace.suggestedMonthlyMinor&&canContribute&&<button type="button" className="pot-goal-quick-action" onClick={()=>{
+            setMoveMode('reserve');
+            setMoveInput(formatInput(selectedPace.suggestedMonthlyMinor||0));
+            setMoveNote(l('Valor sugerido para a meta','Suggested goal amount','Valor sugerido para la meta'));
+            setDetailError('');
+          }}>{l(`Reservar ${formatMoney(selectedPace.suggestedMonthlyMinor)} agora`,`Save ${formatMoney(selectedPace.suggestedMonthlyMinor)} now`,`Reservar ${formatMoney(selectedPace.suggestedMonthlyMinor)} ahora`)}</button>}
         </div>}
 
         {selected.note&&<p className="pot-detail-note">{selected.note}</p>}
