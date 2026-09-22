@@ -177,7 +177,7 @@ assert.match(productionWorkflow,/sw\.js/);
 assert.match(productionWorkflow,/cache-control:\.\*no-store/i);
 assert.match(officialProductionWorkflow,/sw\.js/);
 assert.match(officialProductionWorkflow,/cache-control:\.\*no-store/i);
-assert.match(packageSource,/"version": "1\.0\.0-rc\.1"/);
+assert.match(packageSource,/"version": "1\.0\.0"/);
 
 function sourceFiles(root){
   const out=[];
