@@ -84,9 +84,10 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
         await syncSavingsPotAutomations(householdId).catch(()=>undefined);
       }
       const data=await loadHomeData(householdId);
-      setPots(data.savingsPots||[]);
+      const cleaned=(data.savingsPots||[]).map(item=>({...item,name:cleanSavingsPotDisplayName(item.name)||item.name}));
+      setPots(cleaned);
       if(selected){
-        const fresh=(data.savingsPots||[]).find(item=>item.id===selected.id)||null;
+        const fresh=cleaned.find(item=>item.id===selected.id)||null;
         setSelected(fresh);
       }
     }catch{
