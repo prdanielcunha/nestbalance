@@ -204,7 +204,15 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
 
     const homeAfterPayment=await post('/api/home',owner.token,{householdId});
     assert.equal(homeAfterPayment.json.commitments.some(item=>item.id===commitment.json.id&&item.paidThisMonth===true),true);
-    assert.equal(homeAfterPayment.json.transactions.some(item=>item.id===paidInternet.json.transactionId&&item.source==='commitment_payment'),true);
+    assert.equal(
+      homeAfterPayment.json.transactions.some(item=>
+        item.source==='commitment_payment'&&
+        item.amountMinor===11990&&
+        item.observedOn==='2026-09-10'
+      ),
+      true,
+      JSON.stringify(homeAfterPayment.json.transactions)
+    );
 
     const assistantAfterPayment=await post('/api/assistant/answer',owner.token,{
       householdId,
