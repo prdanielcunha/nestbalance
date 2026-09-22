@@ -23,6 +23,15 @@ function parseBalanceToken(raw:string){
     }
   }
 
+  // Thousands separator + superscript cents can become "2.72400".
+  // Read it as 2.724,00 instead of 2,724.
+  if(!token.includes(',')&&/^\d{1,3}(?:\.\d{3})+\d{2}$/.test(token)){
+    const digits=token.replace(/\D/g,'');
+    const amount=Number(digits.slice(0,-2))+Number(digits.slice(-2))/100;
+    const minor=Math.round(amount*100);
+    return Number.isSafeInteger(minor)?minor:null;
+  }
+
   let normalized=token;
   if(token.includes(',')) normalized=token.replace(/\./g,'').replace(',','.');
   else if(/^\d{1,3}(?:\.\d{3})+$/.test(token)) normalized=token.replace(/\./g,'');
