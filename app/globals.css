@@ -1097,3 +1097,19 @@
   .security-grid{grid-template-columns:1fr}
   .security-device-row{align-items:flex-start}
 }
+
+
+/* Installable app */
+.pwa-install-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+}
+.pwa-install-card h2{margin:6px 0 7px;font-size:20px;letter-spacing:-.03em}
+.pwa-install-card p{margin:0;max-width:680px;color:var(--muted);font-size:13px;line-height:1.55}
+.pwa-install-card>.primary-button{flex:0 0 auto;text-decoration:none}
+@media (max-width:680px){
+  .pwa-install-card{display:grid;grid-template-columns:1fr}
+  .pwa-install-card>.primary-button{width:100%}
+}
