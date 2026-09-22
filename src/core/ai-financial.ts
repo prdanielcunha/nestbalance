@@ -32,6 +32,8 @@ export type AiFinancialCommitmentSnapshot={
   description:string;
   amountMinor:number;
   dueOn:string|null;
+  dueDay?:number|null;
+  recurring?:boolean;
   installment:{current:number;total:number}|null;
   confidence:number;
   needsReview:boolean;

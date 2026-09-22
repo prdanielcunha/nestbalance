@@ -4,7 +4,7 @@ import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { buildImportedMovements } from '../src/core/movement-import.js';
 import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
-import { normalizeSavingsPotName } from '../src/core/savings-pots.js';
+import { cleanSavingsPotDisplayName, normalizeSavingsPotName } from '../src/core/savings-pots.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { assertScopedAccess, requestedScope } from './privacy.js';
@@ -72,16 +72,20 @@ export async function commitFinancialScreen(req:Request,res:Response){
     const normalizedPersistedScreen=persistedScreen.success?normalizeFinancialScreenSnapshot(persistedScreen.data):null;
     const reviewed=ScreenSnapshotSchema.safeParse(req.body?.screenSnapshot);
     const reviewedScreen=reviewed.success?normalizeFinancialScreenSnapshot(reviewed.data):null;
-    const screen=normalizedPersistedScreen??reviewedScreen;
+    // A reviewed snapshot is the user's correction and must win over the original
+    // machine extraction. The original evidence/extraction remains preserved.
+    const screen=reviewedScreen??normalizedPersistedScreen;
     if(!screen){
       if(!extractionSnap.exists&&req.body?.screenSnapshot===undefined) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
       return error(res,409,'SCREEN_SNAPSHOT_UNAVAILABLE');
     }
-    const analysisSource=persistedScreen
-      ? 'server_vision'
-      : ['gemini_text','local_ocr','client_reviewed'].includes(String(req.body?.analysisSource||''))
-        ? String(req.body.analysisSource)
-        : 'client_reviewed';
+    const analysisSource=reviewedScreen
+      ? 'client_reviewed'
+      : persistedScreen.success
+        ? 'server_vision'
+        : ['gemini_text','local_ocr'].includes(String(req.body?.analysisSource||''))
+          ? String(req.body.analysisSource)
+          : 'client_reviewed';
 
     const household=adminDb.collection('households').doc(householdId);
     const existingPotDocs=screen.pots.length
@@ -151,25 +155,27 @@ export async function commitFinancialScreen(req:Request,res:Response){
         skipped++;
         continue;
       }
-      const identity=potIdentity(screen.institution,item.name);
+      const cleanedName=cleanSavingsPotDisplayName(item.name);
+      if(!cleanedName){ skipped++; continue; }
+      const identity=potIdentity(screen.institution,cleanedName);
       if(seenPotIdentities.has(identity)){
         skipped++;
         continue;
       }
       seenPotIdentities.add(identity);
       const existing=existingPotsByIdentity.get(identity);
-      const key=hash([scope,ownerUid||'','screen_pot',normalizeSavingsPotName(screen.institution||''),normalizeSavingsPotName(item.name)].join('|'));
+      const key=hash([scope,ownerUid||'','screen_pot',normalizeSavingsPotName(screen.institution||''),normalizeSavingsPotName(cleanedName)].join('|'));
       const ref=existing?.ref??household.collection('savingsPots').doc(key.slice(0,40));
       const previousBalanceMinor=existing?Math.max(0,Number(existing.data().balanceMinor||0)):0;
       const delta=item.balanceMinor-previousBalanceMinor;
       batch.set(ref,{
-        name:safeName(item.name,'Dinheiro guardado'),
+        name:safeName(cleanedName,'Dinheiro guardado'),
         balanceMinor:item.balanceMinor,
         ...(Number.isSafeInteger(item.goalMinor)&&item.goalMinor!>0?{goalMinor:item.goalMinor}:{}),
         ...(item.targetDate?{targetDate:item.targetDate}:{}),
         currency:item.currency,
         institutionName:screen.institution||null,
-        normalizedName:normalizeSavingsPotName(item.name),
+        normalizedName:normalizeSavingsPotName(cleanedName),
         normalizedInstitution:normalizeSavingsPotName(screen.institution||''),
         source:'screen_import',
         trackingMode:'bank_mirror',
@@ -243,10 +249,10 @@ export async function commitFinancialScreen(req:Request,res:Response){
         ownerUid,
         evidenceIds:FieldValue.arrayUnion(resolved.evidenceId),
         status:'pending',
-        dueDay:dueDay(item.dueOn),
+        dueDay:item.dueDay??dueDay(item.dueOn),
         dueOn:item.dueOn,
-        recurring:false,
-        recurrence:null,
+        recurring:item.recurring===true,
+        recurrence:item.recurring===true?'monthly':null,
         installment:item.installment,
         updatedAt:FieldValue.serverTimestamp(),
         importedBy:user.uid,

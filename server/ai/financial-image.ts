@@ -2,11 +2,32 @@ import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import type { AiFinancialExtraction, AiFinancialScreenSnapshot } from '../../src/core/ai-financial.js';
 import { normalizeIsoDate } from '../../src/core/date.js';
+import { cleanSavingsPotDisplayName } from '../../src/core/savings-pots.js';
 import { getOpenAi, visionModel } from './openai-client.js';
 
 export const AI_IMAGE_MAX_BYTES=8*1024*1024;
 
 const MoneyCurrency=z.enum(['BRL','USD','EUR']);
+const ScreenCommitmentBaseSchema=z.object({
+  description:z.string().min(2).max(120),
+  amountMinor:z.number().int().min(1).max(1_000_000_000_000),
+  dueOn:z.string().max(10).nullable(),
+  installment:z.object({
+    current:z.number().int().min(1).max(120),
+    total:z.number().int().min(1).max(120)
+  }).nullable(),
+  confidence:z.number().min(0).max(1),
+  needsReview:z.boolean()
+});
+const ReviewedScreenCommitmentSchema=ScreenCommitmentBaseSchema.extend({
+  dueDay:z.number().int().min(1).max(31).nullable().optional(),
+  recurring:z.boolean().optional()
+});
+const ModelScreenCommitmentSchema=ScreenCommitmentBaseSchema.extend({
+  dueDay:z.number().int().min(1).max(31).nullable(),
+  recurring:z.boolean()
+});
+
 export const ScreenSnapshotSchema=z.object({
   screenType:z.enum(['single_event','account_home','transaction_list','card_home','card_statement','retail_account','savings_pots','mixed','other']),
   institution:z.string().max(120).nullable(),
@@ -35,17 +56,7 @@ export const ScreenSnapshotSchema=z.object({
     totalLimitMinor:z.number().int().min(0).max(1_000_000_000_000).nullable(),
     confidence:z.number().min(0).max(1)
   })).max(10),
-  commitments:z.array(z.object({
-    description:z.string().min(2).max(120),
-    amountMinor:z.number().int().min(1).max(1_000_000_000_000),
-    dueOn:z.string().max(10).nullable(),
-    installment:z.object({
-      current:z.number().int().min(1).max(120),
-      total:z.number().int().min(1).max(120)
-    }).nullable(),
-    confidence:z.number().min(0).max(1),
-    needsReview:z.boolean()
-  })).max(50),
+  commitments:z.array(ReviewedScreenCommitmentSchema).max(50),
   movements:z.array(z.object({
     description:z.string().min(2).max(120),
     amountMinor:z.number().int().min(1).max(1_000_000_000_000),
@@ -56,6 +67,10 @@ export const ScreenSnapshotSchema=z.object({
     visibleText:z.string().min(2).max(280)
   })).max(80),
   summary:z.string().max(280)
+});
+
+const ModelScreenSnapshotSchema=ScreenSnapshotSchema.extend({
+  commitments:z.array(ModelScreenCommitmentSchema).max(50)
 });
 
 const ExtractionSchema=z.object({
@@ -83,7 +98,7 @@ const ExtractionSchema=z.object({
   needsConfirmation:z.boolean(),
   ambiguities:z.array(z.string().max(160)).max(6),
   evidenceSummary:z.string().max(280),
-  screen:ScreenSnapshotSchema.nullable()
+  screen:ModelScreenSnapshotSchema.nullable()
 });
 
 export function normalizeFinancialScreenSnapshot(
@@ -93,9 +108,9 @@ export function normalizeFinancialScreenSnapshot(
     ...value,
     institution:value.institution?.normalize('NFKC').replace(/\s+/g,' ').trim()||null,
     accounts:value.accounts.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim()})),
-    pots:value.pots.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim(),targetDate:normalizeIsoDate(item.targetDate)})),
+    pots:value.pots.map(item=>({...item,name:cleanSavingsPotDisplayName(item.name),targetDate:normalizeIsoDate(item.targetDate)})),
     cards:value.cards.map(item=>({...item,name:item.name.normalize('NFKC').replace(/\s+/g,' ').trim(),dueOn:normalizeIsoDate(item.dueOn)})),
-    commitments:value.commitments.map(item=>({...item,description:item.description.normalize('NFKC').replace(/\s+/g,' ').trim(),dueOn:normalizeIsoDate(item.dueOn)})),
+    commitments:value.commitments.map(item=>({...item,description:item.description.normalize('NFKC').replace(/\s+/g,' ').trim(),dueOn:normalizeIsoDate(item.dueOn),dueDay:item.dueDay??null,recurring:item.recurring===true})),
     movements:value.movements.map(item=>{
       const dateIso=normalizeIsoDate(item.dateIso);
       return {
@@ -149,7 +164,9 @@ export async function extractFinancialImage(bytes:Buffer,mimeType:string){
           'Never turn balance, available balance, credit limit, total limit, statement total, savings-pot balance or dashboard totals into a transaction.',
           'Never turn a credit-card payment into a purchase. Never merge several transaction rows into one.',
           'For savings pots or reserves, create pot entries only when a distinct named bucket/reserve and its balance are visibly supported. Extract a visible goal value and target/deadline date when they are explicitly shown.',
-          'For account balances, prefer an explicitly available/spendable balance. If a displayed total clearly includes savings pots or investments and there is no separate available balance, do not duplicate the saved money as spendable cash; omit the account snapshot or lower its confidence.',
+          'For account balances, prefer an explicitly available/spendable balance. If a tab or heading says Saldo/Balance and a prominent amount is directly associated with it, that primary amount outranks connected-bank badges, loan offers, credit-card limits, statement totals and other secondary cards. If a displayed total clearly includes savings pots or investments and there is no separate available balance, do not duplicate the saved money as spendable cash; omit the account snapshot or lower its confidence.',
+          'Brazilian banking apps often render centavos as small superscript digits. Read the visual typography: for example R$ 27 followed by superscript 24 means R$ 27,24, never R$ 2.724. Do not let OCR-style digit concatenation change the monetary value.',
+          'For recurring-bill lists, represent each visible row as a commitment. Set recurring=true when the heading or context establishes recurrence, and dueDay to the visible day-of-month when present; do not invent a missing day.',
           'For store cards or retail financing (for example clothing-store cards), commitments represent visible installments or amounts due, not the full credit limit.',
           'Use BRL minor units. Use unknown direction unless the screen visibly establishes money entering, leaving, or moving between the user own accounts.',
           'If dates lack a year and the year cannot be proven from the screen, keep them null rather than guessing.',

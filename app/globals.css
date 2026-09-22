@@ -1217,6 +1217,80 @@
   font-size:9px;
   line-height:1.45;
 }
+.screen-pot-review-editable>div:first-child{flex:1}
+.pot-inline-name{
+  width:100%;
+  min-width:0;
+  border:0;
+  border-bottom:1px solid transparent;
+  outline:0;
+  background:transparent;
+  color:var(--ink);
+  font:inherit;
+  font-size:13px;
+  font-weight:850;
+  padding:2px 0 3px;
+}
+.pot-inline-name:focus{
+  border-bottom-color:rgba(94,106,210,.45);
+}
+.screen-commitment-value{display:grid;justify-items:end;gap:5px}
+.screen-commitment-value label{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:9px}
+.screen-commitment-value input{
+  width:42px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--paper);
+  color:var(--ink);
+  padding:5px 6px;
+  text-align:center;
+  font:inherit;
+  font-size:10px;
+}
+.screen-money-edit{display:grid;grid-template-columns:auto minmax(72px,96px);align-items:center;gap:6px}
+.screen-money-edit span{margin:0!important;font-size:9px!important;color:var(--muted)!important}
+.screen-money-edit input{
+  width:100%!important;
+  min-width:72px;
+  border:1px solid var(--line)!important;
+  border-radius:9px!important;
+  background:var(--paper)!important;
+  color:var(--ink)!important;
+  padding:5px 7px!important;
+  text-align:right!important;
+  font:inherit!important;
+  font-size:10px!important;
+  font-variant-numeric:tabular-nums;
+}
+.capture-reclassify{
+  margin:10px 0 14px;
+  padding:11px;
+  border:1px solid rgba(94,106,210,.18);
+  border-radius:14px;
+  background:rgba(94,106,210,.045);
+}
+.capture-reclassify>span{display:block;color:var(--muted);font-size:10px;line-height:1.4}
+.capture-reclassify>div{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.capture-reclassify button{
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--paper);
+  color:var(--ink);
+  padding:7px 10px;
+  font-size:10px;
+  font-weight:800;
+}
+.capture-reclassify button:hover{border-color:rgba(94,106,210,.35);color:var(--iris)}
+.capture-reclassify-details>summary{
+  cursor:pointer;
+  color:var(--ink);
+  font-size:10px;
+  font-weight:850;
+  list-style:none;
+}
+.capture-reclassify-details>summary::-webkit-details-marker{display:none}
+.capture-reclassify-details>summary::after{content:" +";color:var(--iris)}
+.capture-reclassify-details[open]>summary::after{content:" −"}
 
 
 /* =========================================================

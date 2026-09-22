@@ -1,12 +1,15 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
+import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { buildImportedMovements, resolveImportedMovementDirection } from '@/src/core/movement-import';
 import { parseFinancialCsv } from '@/src/core/csv-import';
 import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
 import { detectDocumentSignals } from '@/src/core/document-signals';
 import { parseSavingsPotsFromOcr } from '@/src/core/savings-pot-import';
+import { parseRecurringCommitmentsFromOcr } from '@/src/core/recurring-commitment-import';
+import { parseAccountBalanceFromOcr } from '@/src/core/account-balance-import';
 import {
   aiAmountChoices,
   aiDirectionNeedsConfirmation,
@@ -45,7 +48,7 @@ function markDocumentDerived(items: FinancialInterpretation[]) {
 }
 
 export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=false, showTrigger=true, onClose }: { householdId: string; uid: string; onCommitted?: () => void; defaultOpen?: boolean; showTrigger?: boolean; onClose?: () => void }) {
-  const {t,locale,formatMoney,formatDate}=useI18n();
+  const {t,locale,intlLocale,formatMoney,formatDate}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const [open, setOpen] = useState(defaultOpen);
   const [text, setText] = useState('');
@@ -83,6 +86,17 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const recorderStreamRef=useRef<MediaStream|null>(null);
 
   const working = saving || analyzing || recording || geminiWorking;
+  const moneyInputValue=(minor:number)=>(minor/100).toLocaleString(intlLocale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
+
+  function readEditedMoney(value:string,allowZero=false){
+    const parsed=parseMoneyInputToMinor(value,locale);
+    if(parsed===null||(allowZero?parsed<0:parsed<=0)){
+      setError(l('Confira o valor digitado.','Check the amount you entered.','Revisa el valor ingresado.'));
+      return null;
+    }
+    setError('');
+    return parsed;
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -171,6 +185,60 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setGeminiUsed(false);
     setError('');
     setNotice(noticeText);
+  }
+
+  async function pasteImageFromClipboard(){
+    if(working) return;
+    setError('');
+    const clipboard=(navigator as any)?.clipboard;
+    if(!clipboard?.read){
+      setError(l('Este navegador não liberou colar imagens por botão. Você ainda pode copiar o print e usar Colar no navegador, ou escolher a imagem sem precisar manter uma cópia depois.','This browser does not expose image paste through a button. You can still use the browser Paste action or choose the image.','Este navegador no permite pegar imágenes con un botón. Aún puedes usar Pegar del navegador o elegir la imagen.'));
+      return;
+    }
+    try{
+      const items=await clipboard.read();
+      for(const item of items){
+        const imageType=(item.types||[]).find((type:string)=>type.startsWith('image/'));
+        if(!imageType) continue;
+        const blob=await item.getType(imageType);
+        const extension=(imageType.split('/')[1]||'png').replace('jpeg','jpg');
+        const pasted=new File([blob],`print-colado-${Date.now()}.${extension}`,{type:imageType});
+        selectFile(pasted,l('Print colado. Já estou organizando.','Screenshot pasted. I am organizing it now.','Captura pegada. Ya la estoy organizando.'));
+        void interpret(pasted);
+        return;
+      }
+      setError(l('Não encontrei uma imagem copiada agora. Copie o print e tente novamente.','I could not find a copied image. Copy the screenshot and try again.','No encontré una imagen copiada. Copia la captura e inténtalo de nuevo.'));
+    }catch{
+      setError(l('O navegador não liberou a área de transferência. Tente novamente após copiar o print ou use “Print ou foto”.','The browser did not grant clipboard access. Copy the screenshot again or use “Screenshot or photo”.','El navegador no dio acceso al portapapeles. Copia la captura otra vez o usa “Captura o foto”.'));
+    }
+  }
+
+  function reprocessLocalAs(kind:'recurring'|'pots'|'balance'){
+    if(!localOcrText.trim()) return;
+    const next=kind==='recurring'
+      ? parseRecurringCommitmentsFromOcr(localOcrText)
+      : kind==='pots'
+        ? parseSavingsPotsFromOcr(localOcrText)
+        : parseAccountBalanceFromOcr(localOcrText);
+    if(!next){
+      setError(kind==='recurring'
+        ? l('Não encontrei linhas suficientes de contas recorrentes nesse print. Você pode corrigir pelo texto ou tentar uma imagem mais nítida.','I could not find enough recurring-bill rows in this screenshot. You can correct it with text or try a clearer image.','No encontré suficientes filas de cuentas recurrentes en esta captura. Puedes corregir por texto o probar una imagen más nítida.')
+        : kind==='pots'
+          ? l('Não encontrei uma lista de cofrinhos confiável nesse print.','I could not find a reliable savings-pot list in this screenshot.','No encontré una lista confiable de alcancías en esta captura.')
+          : l('Não encontrei um saldo principal confiável nesse print.','I could not find a reliable primary balance in this screenshot.','No encontré un saldo principal confiable en esta captura.'));
+      return;
+    }
+    setScreenSnapshot(next);
+    setInterpretations([]);
+    setAmountChoices([]);
+    setDirectionChoice(false);
+    setPendingAi(null);
+    setError('');
+    setNotice(kind==='recurring'
+      ? l(`Reanalisei como contas recorrentes e encontrei ${next.commitments.length}. Confira antes de guardar.`,`I re-read it as recurring bills and found ${next.commitments.length}. Review before saving.`,`La releí como cuentas recurrentes y encontré ${next.commitments.length}. Revisa antes de guardar.`)
+      : kind==='pots'
+        ? l(`Reanalisei como cofrinhos e encontrei ${next.pots.length}.`,`I re-read it as savings pots and found ${next.pots.length}.`,`La releí como alcancías y encontré ${next.pots.length}.`)
+        : l('Reanalisei como tela de saldo e usei o valor ligado ao saldo principal, não limites, fatura ou empréstimos.','I re-read it as a balance screen and used the amount tied to the primary balance, not limits, statements, or loans.','La releí como pantalla de saldo y usé el valor ligado al saldo principal, no límites, facturas ni préstamos.'));
   }
 
   async function startRecording(){
@@ -314,6 +382,21 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         signals
       });
 
+      const recurringScreen=parseRecurringCommitmentsFromOcr(ocr);
+      if(recurringScreen?.commitments.length){
+        setScreenSnapshot(recurringScreen);
+        setInterpretations([]);
+        setAmountChoices([]);
+        setDirectionChoice(false);
+        setPendingAi(null);
+        setNotice(l(
+          `Encontrei ${recurringScreen.commitments.length} conta${recurringScreen.commitments.length===1?'':'s'} recorrente${recurringScreen.commitments.length===1?'':'s'}. Vou guardar como compromissos mensais, não como movimentos soltos.`,
+          `I found ${recurringScreen.commitments.length} recurring bill${recurringScreen.commitments.length===1?'':'s'}. I will save them as monthly commitments, not isolated movements.`,
+          `Encontré ${recurringScreen.commitments.length} cuenta${recurringScreen.commitments.length===1?'':'s'} recurrente${recurringScreen.commitments.length===1?'':'s'}. Las guardaré como compromisos mensuales, no como movimientos aislados.`
+        ));
+        return true;
+      }
+
       const savingsPotsScreen=parseSavingsPotsFromOcr(ocr);
       if(savingsPotsScreen?.pots.length){
         setScreenSnapshot(savingsPotsScreen);
@@ -325,6 +408,21 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           `Encontrei ${savingsPotsScreen.pots.length} cofrinho${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' em '+savingsPotsScreen.institution:''}. Confira nomes, saldos e metas antes de guardar.`,
           `I found ${savingsPotsScreen.pots.length} savings pot${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' at '+savingsPotsScreen.institution:''}. Review names, balances, and goals before saving.`,
           `Encontré ${savingsPotsScreen.pots.length} alcancía${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' en '+savingsPotsScreen.institution:''}. Revisa nombres, saldos y metas antes de guardar.`
+        ));
+        return true;
+      }
+
+      const balanceScreen=parseAccountBalanceFromOcr(ocr);
+      if(balanceScreen?.accounts.length){
+        setScreenSnapshot(balanceScreen);
+        setInterpretations([]);
+        setAmountChoices([]);
+        setDirectionChoice(false);
+        setPendingAi(null);
+        setNotice(l(
+          'Identifiquei o saldo principal pela posição e pelo rótulo “Saldo”. Valores de cartão, limite e empréstimo ficaram de fora.',
+          'I identified the primary balance by its position and Balance label. Card, limit, and loan amounts were left out.',
+          'Identifiqué el saldo principal por su posición y la etiqueta “Saldo”. Excluí valores de tarjeta, límite y préstamo.'
         ));
         return true;
       }
@@ -666,7 +764,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const readyInterpretations=indexedInterpretations.filter(({item})=>item.confidence==='high'&&!item.needsReview.includes('direction'));
   const reviewCount = attentionInterpretations.length;
   const unresolvedDirectionCount=interpretations.filter(x=>x.needsReview.includes('direction')).length;
-  const missingPotInstitution=screenSnapshot?.screenType==='savings_pots'&&screenSnapshot.pots.length>0&&!screenSnapshot.institution?.trim();
+  const missingScreenInstitution=Boolean(screenSnapshot&&(screenSnapshot.pots.length>0||screenSnapshot.accounts.length>0)&&!screenSnapshot.institution?.trim());
   const visibleInterpretations=showAllReview
     ? indexedInterpretations
     : attentionInterpretations.length
@@ -714,9 +812,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <button type="button" disabled={working} onClick={()=>fileInputRef.current?.click()}>
               <strong>{l('Arquivo','File','Archivo')}</strong><span>{l('PDF, CSV ou áudio','PDF, CSV or audio','PDF, CSV o audio')}</span>
             </button>
+            <button type="button" disabled={working} onClick={()=>void pasteImageFromClipboard()}>
+              <strong>{l('Colar print','Paste screenshot','Pegar captura')}</strong><span>{l('Sem salvar na galeria','No gallery save needed','Sin guardar en galería')}</span>
+            </button>
           </div>
 
-          <div className="capture-paste-hint">{l('No computador, você também pode colar um print direto aqui.','On a computer, you can also paste a screenshot right here.','En computadora, también puedes pegar una captura directamente aquí.')}</div>
+          <div className="capture-paste-hint">{l('Você também pode copiar um print e colar direto aqui — no celular ou computador, quando o navegador permitir.','You can also copy a screenshot and paste it directly here — on mobile or desktop when the browser allows it.','También puedes copiar una captura y pegarla aquí — en móvil o computadora cuando el navegador lo permita.')}</div>
 
           <input
             ref={imageInputRef}
@@ -746,6 +847,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               e.currentTarget.value='';
             }}
           />
+
+          {localOcrText&&file?.type.startsWith('image/')&&<div className="capture-reclassify">
+            <span>{l('Se eu entendi o tipo errado, me diga o que este print mostra:','If I got the type wrong, tell me what this screenshot shows:','Si entendí mal el tipo, dime qué muestra esta captura:')}</span>
+            <div>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('recurring')}>{l('Contas recorrentes','Recurring bills','Cuentas recurrentes')}</button>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('pots')}>{l('Cofrinhos','Savings pots','Alcancías')}</button>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('balance')}>{l('Saldo da conta','Account balance','Saldo de la cuenta')}</button>
+            </div>
+          </div>}
 
           <label className="sr-only" htmlFor="universal-capture-text">{l('Conte o que aconteceu','Tell us what happened','Cuéntanos qué pasó')}</label>
           <textarea
@@ -860,9 +970,48 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> {l('conta / parcela','bill / installment','cuenta / cuota')}</span>}
               {interpretations.length>0&&<span><b>{interpretations.length}</b> {l(interpretations.length===1?'movimento':'movimentos',interpretations.length===1?'movement':'movements',interpretations.length===1?'movimiento':'movimientos')}</span>}
             </div>
+            {screenSnapshot.accounts.length>0&&screenSnapshot.pots.length===0&&<div className="screen-pot-source-confirm">
+              <label htmlFor="screen-account-institution">{l('De qual banco é este saldo?','Which bank is this balance from?','¿De qué banco es este saldo?')}</label>
+              <input
+                id="screen-account-institution"
+                className="pot-text-input"
+                value={screenSnapshot.institution||''}
+                onChange={event=>setScreenSnapshot(current=>current?{...current,institution:event.target.value.slice(0,120)}:current)}
+                placeholder={l('Ex.: Mercado Pago, Bradesco, Nubank…','E.g. Mercado Pago, Bradesco, Nubank…','Ej.: Mercado Pago, Bradesco, Nubank…')}
+                maxLength={120}
+                autoComplete="organization"
+              />
+              <small>{l('Uso isso para não misturar o saldo de bancos diferentes. Se eu reconhecer a instituição pela imagem, você ainda pode corrigir aqui.','I use this to avoid mixing balances from different banks. If I recognize the institution from the image, you can still correct it here.','Lo uso para no mezclar saldos de bancos distintos. Si reconozco la institución en la imagen, todavía puedes corregirla aquí.')}</small>
+            </div>}
+
+            {screenSnapshot.accounts.length>0&&<div className="screen-pot-review">
+              {screenSnapshot.accounts.map((account,index)=><div className="screen-pot-review-row" key={index}>
+                <div>
+                  <strong>{account.name}</strong>
+                  <span>{l('Saldo principal encontrado','Primary balance found','Saldo principal encontrado')}</span>
+                </div>
+                <div>
+                  <label className="screen-money-edit">
+                    <span>{l('Saldo','Balance','Saldo')}</span>
+                    <input
+                      inputMode="decimal"
+                      defaultValue={moneyInputValue(account.balanceMinor)}
+                      aria-label={l('Saldo identificado','Detected balance','Saldo identificado')}
+                      onBlur={event=>{
+                        const parsed=readEditedMoney(event.currentTarget.value,true);
+                        if(parsed===null) return;
+                        setScreenSnapshot(current=>current?{...current,accounts:current.accounts.map((item,itemIndex)=>itemIndex===index?{...item,balanceMinor:parsed}:item)}:current);
+                      }}
+                    />
+                  </label>
+                  <small>{screenSnapshot.institution||l('Instituição não confirmada','Institution not confirmed','Institución no confirmada')}</small>
+                </div>
+              </div>)}
+            </div>}
+
             {screenSnapshot.pots.length>0&&<>
-              {!screenSnapshot.institution?.trim()&&<div className="screen-pot-source-confirm">
-                <label htmlFor="screen-pot-institution">{l('De qual banco são estes cofrinhos?','Which bank are these savings pots from?','¿De qué banco son estas alcancías?')}</label>
+              <div className="screen-pot-source-confirm">
+                <label htmlFor="screen-pot-institution">{l('Banco ou origem destes cofrinhos','Bank or source of these savings pots','Banco u origen de estas alcancías')}</label>
                 <input
                   id="screen-pot-institution"
                   className="pot-text-input"
@@ -872,22 +1021,94 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   maxLength={120}
                   autoComplete="organization"
                 />
-                <small>{l('Só perguntamos porque o nome do banco não apareceu no print. Isso evita duplicar o mesmo cofrinho quando você enviar outra tela.','We only ask because the bank name did not appear in the screenshot. This prevents duplicates when you send another screen.','Solo preguntamos porque el nombre del banco no apareció en la captura. Esto evita duplicar la misma alcancía cuando envíes otra pantalla.')}</small>
-              </div>}
+                <small>{l('Confira a origem antes de guardar. O campo fica aberto enquanto você digita e pode ser corrigido mesmo quando eu reconhecer o banco sozinho.','Review the source before saving. The field stays open while you type and can be corrected even when I recognize the bank automatically.','Revisa el origen antes de guardar. El campo permanece abierto mientras escribes y puede corregirse incluso cuando reconozco el banco automáticamente.')}</small>
+              </div>
               <div className="screen-pot-review">
-              {screenSnapshot.pots.map((pot,index)=><div className="screen-pot-review-row" key={`${pot.name}-${index}`}>
+              {screenSnapshot.pots.map((pot,index)=><div className="screen-pot-review-row screen-pot-review-editable" key={index}>
                 <div>
-                  <strong>{pot.name}</strong>
+                  <input
+                    className="pot-inline-name"
+                    value={pot.name}
+                    maxLength={120}
+                    aria-label={l('Nome do cofrinho','Savings pot name','Nombre de la alcancía')}
+                    onChange={event=>setScreenSnapshot(current=>current?{...current,pots:current.pots.map((item,itemIndex)=>itemIndex===index?{...item,name:event.target.value}:item)}:current)}
+                  />
                   <span>{screenSnapshot.institution||l('Origem não identificada','Source not identified','Origen no identificado')}</span>
                 </div>
                 <div>
-                  <b>{formatMoney(pot.balanceMinor)}</b>
+                  <label className="screen-money-edit">
+                    <span>{l('Guardado','Saved','Guardado')}</span>
+                    <input
+                      inputMode="decimal"
+                      defaultValue={moneyInputValue(pot.balanceMinor)}
+                      aria-label={l('Valor guardado','Saved amount','Valor guardado')}
+                      onBlur={event=>{
+                        const parsed=readEditedMoney(event.currentTarget.value,true);
+                        if(parsed===null) return;
+                        setScreenSnapshot(current=>current?{...current,pots:current.pots.map((item,itemIndex)=>itemIndex===index?{...item,balanceMinor:parsed}:item)}:current);
+                      }}
+                    />
+                  </label>
                   <small>{pot.goalMinor&&pot.goalMinor>0?l(`Meta ${formatMoney(pot.goalMinor)}`,`Goal ${formatMoney(pot.goalMinor)}`,`Meta ${formatMoney(pot.goalMinor)}`):l('Sem meta encontrada','No goal found','Sin meta encontrada')}</small>
                 </div>
               </div>)}
             </div></>}
+
+            {screenSnapshot.commitments.length>0&&<div className="screen-pot-review screen-commitment-review">
+              {screenSnapshot.commitments.map((commitment,index)=><div className="screen-pot-review-row screen-pot-review-editable" key={index}>
+                <div>
+                  <input
+                    className="pot-inline-name"
+                    value={commitment.description}
+                    maxLength={120}
+                    aria-label={l('Nome da conta','Bill name','Nombre de la cuenta')}
+                    onChange={event=>setScreenSnapshot(current=>current?{...current,commitments:current.commitments.map((item,itemIndex)=>itemIndex===index?{...item,description:event.target.value}:item)}:current)}
+                  />
+                  <span>{commitment.recurring?l('Repete todo mês','Repeats monthly','Se repite cada mes'):l('Conta para pagar','Bill to pay','Cuenta por pagar')}</span>
+                </div>
+                <div className="screen-commitment-value">
+                  <label className="screen-money-edit">
+                    <span>{l('Valor','Amount','Valor')}</span>
+                    <input
+                      inputMode="decimal"
+                      defaultValue={moneyInputValue(commitment.amountMinor)}
+                      aria-label={l('Valor da conta','Bill amount','Valor de la cuenta')}
+                      onBlur={event=>{
+                        const parsed=readEditedMoney(event.currentTarget.value);
+                        if(parsed===null) return;
+                        setScreenSnapshot(current=>current?{...current,commitments:current.commitments.map((item,itemIndex)=>itemIndex===index?{...item,amountMinor:parsed}:item)}:current);
+                      }}
+                    />
+                  </label>
+                  <label>
+                    <span>{l('Dia','Day','Día')}</span>
+                    <input
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={commitment.dueDay??''}
+                      placeholder="—"
+                      aria-label={l('Dia do vencimento','Due day','Día de vencimiento')}
+                      onChange={event=>{
+                        const parsed=Number(event.target.value);
+                        const dueDay=event.target.value===''?null:Number.isInteger(parsed)&&parsed>=1&&parsed<=31?parsed:null;
+                        setScreenSnapshot(current=>current?{...current,commitments:current.commitments.map((item,itemIndex)=>itemIndex===index?{...item,dueDay}:item)}:current);
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>)}
+            </div>}
             <small>{l('Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.','Balance, card limit and saved money do not become expenses. Only movements and bills are counted that way.','El saldo, el límite y el dinero guardado no se convierten en gastos. Solo los movimientos y las cuentas entran en esa categoría.')}</small>
           </div>}
+
+          {localOcrText&&file?.type.startsWith('image/')&&<details className="capture-reclassify capture-reclassify-details">
+            <summary>{l('Entendi o tipo do print errado?','Did I get the screenshot type wrong?','¿Entendí mal el tipo de la captura?')}</summary>
+            <div>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('recurring')}>{l('Contas recorrentes','Recurring bills','Cuentas recurrentes')}</button>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('pots')}>{l('Cofrinhos','Savings pots','Alcancías')}</button>
+              <button type="button" disabled={working} onClick={()=>reprocessLocalAs('balance')}>{l('Saldo da conta','Account balance','Saldo de la cuenta')}</button>
+            </div>
+          </details>}
 
           {matchingPayments&&interpretations.length===1&&<p className="confidence-note" role="status">{l('Conferindo se isso paga alguma conta que já estava na sua lista…','Checking whether this pays a bill already on your list…','Comprobando si esto paga alguna cuenta que ya estaba en tu lista…')}</p>}
 
@@ -961,12 +1182,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setScreenSnapshot(null); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
-            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||Boolean(missingPotInstitution)||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
+            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||Boolean(missingScreenInstitution)||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
               ? (upload?.phase === 'verifying' ? l('Conferindo…','Checking…','Revisando…') : l('Guardando…','Saving…','Guardando…'))
               : unresolvedDirectionCount
                 ? l(`Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`,`${unresolvedDirectionCount} confirmation${unresolvedDirectionCount===1?'':'s'} remaining`,`Falta${unresolvedDirectionCount===1?'':'n'} ${unresolvedDirectionCount} confirmación${unresolvedDirectionCount===1?'':'es'}`)
-                : missingPotInstitution
-                ? l('Informe o banco acima','Enter the bank above','Indica el banco arriba')
+                : missingScreenInstitution
+                ? l('Informe o banco ou origem acima','Enter the bank or source above','Indica el banco u origen arriba')
                 : paymentMatches.length>0&&!paymentMatchDismissed
                   ? l('Escolha a conta acima','Choose the bill above','Elige la cuenta de arriba')
                   : l('Guardar','Save','Guardar')}</button>
