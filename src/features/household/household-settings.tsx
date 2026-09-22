@@ -10,11 +10,13 @@ import {
   revokeHouseholdInvite,
   updateHouseholdLocale,
   updateHouseholdMemberRole,
+  updateProactivityPreferences,
   type HouseholdSettingsPayload
 } from '@/src/lib/repositories/household';
 import { selectHousehold, type HouseholdSessionOption } from '@/src/lib/repositories/session';
 import { localeLabel, type AppLocale } from '@/src/core/locale';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 
 const roleLabel={
   owner:'Dono do Lar',
@@ -45,7 +47,10 @@ export function HouseholdSettings({
   const [workingInvite,setWorkingInvite]=useState('');
   const [locale,setLocale]=useState<AppLocale>('pt-BR');
   const [savingLocale,setSavingLocale]=useState(false);
+  const [proactivity,setProactivity]=useState<ProactivityPreferences>(DEFAULT_PROACTIVITY_PREFERENCES);
+  const [savingProactivity,setSavingProactivity]=useState(false);
   const {t,locale:activeLocale,formatDate}=useI18n();
+  const l=(pt:string,en:string,es:string)=>activeLocale==='en'?en:activeLocale==='es'?es:pt;
 
   async function refresh(){
     setLoading(true);
@@ -55,6 +60,7 @@ export function HouseholdSettings({
       setData(next);
       setName(next.household.name);
       setLocale(next.household.locale);
+      setProactivity(next.proactivityPreferences||DEFAULT_PROACTIVITY_PREFERENCES);
     }catch(err:any){
       setError(String(err?.message||'Não conseguimos abrir as configurações do Lar.'));
     }finally{
@@ -118,6 +124,7 @@ export function HouseholdSettings({
       if(type==='household.member_role_changed') return `changed access for ${target}.`;
       if(type==='household.member_removed') return `removed ${target} from the household.`;
       if(type==='recurrence.confirmed') return 'confirmed a monthly recurring item.';
+      if(type==='member.proactivity_preferences_updated') return 'updated personal attention preferences.';
       if(type.startsWith('capture.')) return scope==='personal'?'added a private financial record.':'added a household financial record.';
       if(type.includes('payment')) return 'updated a payment.';
       if(type.includes('invoice')) return 'updated a card statement.';
@@ -132,6 +139,7 @@ export function HouseholdSettings({
       if(type==='household.member_role_changed') return `cambió el acceso de ${target}.`;
       if(type==='household.member_removed') return `eliminó a ${target} del hogar.`;
       if(type==='recurrence.confirmed') return 'confirmó un gasto mensual recurrente.';
+      if(type==='member.proactivity_preferences_updated') return 'actualizó sus preferencias personales de atención.';
       if(type.startsWith('capture.')) return scope==='personal'?'agregó un registro financiero privado.':'agregó un registro financiero del hogar.';
       if(type.includes('payment')) return 'actualizó un pago.';
       if(type.includes('invoice')) return 'actualizó un resumen de tarjeta.';
@@ -145,11 +153,34 @@ export function HouseholdSettings({
     if(type==='household.member_role_changed') return `alterou o acesso de ${target}.`;
     if(type==='household.member_removed') return `removeu ${target} do Lar.`;
     if(type==='recurrence.confirmed') return 'confirmou um item recorrente mensal.';
+    if(type==='member.proactivity_preferences_updated') return 'atualizou suas preferências pessoais de atenção.';
     if(type.startsWith('capture.')) return scope==='personal'?'adicionou um registro financeiro pessoal.':'adicionou um registro financeiro do Lar.';
     if(type.includes('payment')) return 'atualizou um pagamento.';
     if(type.includes('invoice')) return 'atualizou uma fatura.';
     if(type.includes('account')) return 'atualizou uma conta.';
     return 'fez uma atualização importante no Lar.';
+  }
+
+  async function toggleProactivity(key:keyof ProactivityPreferences){
+    if(savingProactivity) return;
+    const previous=proactivity;
+    const next={...previous,[key]:!previous[key]};
+    setProactivity(next);
+    setSavingProactivity(true);
+    setError('');
+    try{
+      const result=await updateProactivityPreferences({householdId,preferences:next});
+      setProactivity(result.preferences);
+    }catch{
+      setProactivity(previous);
+      setError(l(
+        'Não conseguimos atualizar suas preferências de atenção agora.',
+        'We could not update your attention preferences right now.',
+        'No pudimos actualizar tus preferencias de atención ahora.'
+      ));
+    }finally{
+      setSavingProactivity(false);
+    }
   }
 
   async function makeInvite(){
@@ -260,6 +291,43 @@ export function HouseholdSettings({
           </button>}
         </div>
         <p className="household-helper">{activeLocale==='en'?'Dates, money and the main navigation follow this language. Personal financial privacy does not change.':activeLocale==='es'?'Las fechas, el dinero y la navegación principal siguen este idioma. La privacidad financiera personal no cambia.':'Datas, dinheiro e a navegação principal seguem este idioma. A privacidade financeira pessoal não muda.'}</p>
+      </section>
+
+      <section className="household-panel proactivity-panel">
+        <div className="section-title">
+          <div>
+            <h2>{l('O que merece sua atenção','What deserves your attention','Qué merece tu atención')}</h2>
+            <span>{l('preferências só suas','your personal preferences','tus preferencias personales')}</span>
+          </div>
+        </div>
+        <p className="household-helper">{l(
+          'A Home continua calma: você escolhe quais sinais podem aparecer em destaque. Quando não houver nada importante, o NestBalance fica em silêncio.',
+          'Home stays calm: you choose which signals may appear prominently. When nothing important happens, NestBalance stays quiet.',
+          'La pantalla de inicio sigue tranquila: eliges qué señales pueden aparecer destacadas. Cuando no hay nada importante, NestBalance permanece en silencio.'
+        )}</p>
+        <div className="proactivity-options">
+          {([
+            ['dueBills',l('Contas vencendo','Bills coming due','Cuentas por vencer'),l('Vencidas, hoje e próximos dias.','Overdue, today and the next few days.','Vencidas, hoy y próximos días.')],
+            ['anomalies',l('Valores fora do padrão','Amounts outside the usual pattern','Valores fuera de lo habitual'),l('Possíveis duplicidades e aumentos fortes.','Possible duplicates and strong increases.','Posibles duplicados y aumentos fuertes.')],
+            ['spendingChanges',l('Mudança nos gastos do mês','Monthly spending changes','Cambios en los gastos del mes'),l('Só quando houver comparação suficiente.','Only when there is enough data to compare.','Solo cuando haya datos suficientes para comparar.')],
+            ['installmentEnds',l('Parcelas terminando','Installments ending','Cuotas que terminan'),l('Sinal de baixa prioridade; desligado por padrão.','Low-priority signal; off by default.','Señal de baja prioridad; desactivada por defecto.')]
+          ] as Array<[keyof ProactivityPreferences,string,string]>).map(([key,title,detail])=><button
+            type="button"
+            key={key}
+            className={proactivity[key]?'proactivity-option active':'proactivity-option'}
+            aria-pressed={proactivity[key]}
+            disabled={savingProactivity}
+            onClick={()=>void toggleProactivity(key)}
+          >
+            <span><strong>{title}</strong><small>{detail}</small></span>
+            <b>{proactivity[key]?l('Ativo','On','Activo'):l('Desligado','Off','Desactivado')}</b>
+          </button>)}
+        </div>
+        <small className="proactivity-footnote">{l(
+          'Estas escolhas já controlam os destaques da sua Home. Notificações do aparelho, quando forem ativadas, usarão as mesmas preferências.',
+          'These choices already control highlights on your Home. Device notifications, when enabled, will use the same preferences.',
+          'Estas opciones ya controlan los destacados de tu Inicio. Las notificaciones del dispositivo, cuando se habiliten, usarán las mismas preferencias.'
+        )}</small>
       </section>
 
       <section className="household-panel">
