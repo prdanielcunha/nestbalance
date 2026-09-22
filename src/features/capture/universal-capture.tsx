@@ -6,6 +6,7 @@ import { parseFinancialCsv } from '@/src/core/csv-import';
 import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
 import { detectDocumentSignals } from '@/src/core/document-signals';
+import { parseSavingsPotsFromOcr } from '@/src/core/savings-pot-import';
 import {
   aiAmountChoices,
   aiDirectionNeedsConfirmation,
@@ -313,6 +314,21 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         signals
       });
 
+      const savingsPotsScreen=parseSavingsPotsFromOcr(ocr);
+      if(savingsPotsScreen?.pots.length){
+        setScreenSnapshot(savingsPotsScreen);
+        setInterpretations([]);
+        setAmountChoices([]);
+        setDirectionChoice(false);
+        setPendingAi(null);
+        setNotice(l(
+          `Encontrei ${savingsPotsScreen.pots.length} cofrinho${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' em '+savingsPotsScreen.institution:''}. Confira nomes, saldos e metas antes de guardar.`,
+          `I found ${savingsPotsScreen.pots.length} savings pot${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' at '+savingsPotsScreen.institution:''}. Review names, balances, and goals before saving.`,
+          `Encontré ${savingsPotsScreen.pots.length} alcancía${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' en '+savingsPotsScreen.institution:''}. Revisa nombres, saldos y metas antes de guardar.`
+        ));
+        return true;
+      }
+
       const suggestion=suggestCaptureFromDocument(activeFile.name,signals);
       if(suggestion.state==='suggested'){
         applySourceText(suggestion.sourceText,true);
@@ -607,7 +623,13 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
       let created = 0;
       if(screenSnapshot&&finalEvidenceId){
-        await commitFinancialScreen({householdId,evidenceId:finalEvidenceId,scope});
+        await commitFinancialScreen({
+          householdId,
+          evidenceId:finalEvidenceId,
+          scope,
+          screenSnapshot,
+          analysisSource:geminiUsed?'gemini_text':aiAnalysis?'server_vision':'local_ocr'
+        });
         created++;
       }
       let duplicates = 0;
