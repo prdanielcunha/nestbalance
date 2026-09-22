@@ -20,11 +20,14 @@ export function MonthlyPayments({
   const [workingId,setWorkingId]=useState('');
   const [error,setError]=useState('');
 
-  const items=useMemo(()=>commitments
-    .filter(item=>item.status!=='cancelled'&&item.status!=='paid')
-    .sort((a,b)=>(a.paidThisMonth?1:0)-(b.paidThisMonth?1:0)||(Number(a.dueDay||99)-Number(b.dueDay||99)))
-    .slice(0,8)
-  ,[commitments]);
+  const items=useMemo(()=>{
+    const active=commitments
+      .filter(item=>item.status!=='cancelled'&&item.status!=='paid')
+      .sort((a,b)=>Number(a.dueDay||99)-Number(b.dueDay||99));
+    const pending=active.filter(item=>!item.paidThisMonth);
+    const paid=active.filter(item=>item.paidThisMonth).slice(0,3);
+    return [...pending,...paid];
+  },[commitments]);
 
   async function undoPaid(item:HomeRow){
     if(!canContribute||workingId||!item.paidThisMonth) return;
