@@ -81,3 +81,29 @@ test('interpreta transferência em inglês e espanhol sem virar despesa',()=>{
   assert.equal(spanish.needsReview.includes('direction'),false);
 });
 
+
+
+test('valor inteiro com separador de milhar brasileiro não perde um dígito',()=>{
+  const result=parseFinancialText('paguei R$ 1.250 da escola');
+  assert.equal(result.money.amountMinor,125000);
+  assert.equal(result.description,'da escola');
+});
+
+test('OCR com espaço no milhar continua preservando centavos',()=>{
+  const result=parseFinancialText('paguei R$ 1 250,50 no mercado');
+  assert.equal(result.money.amountMinor,125050);
+});
+
+test('data e hora antes do valor não são confundidas com dinheiro',()=>{
+  const result=parseFinancialText('paguei 05/09 às 14:32 mercado R$ 100,00');
+  assert.equal(result.money.amountMinor,10000);
+  assert.match(result.description,/mercado/i);
+});
+
+test('dia de vencimento sem valor não vira R$ 10 silenciosamente',()=>{
+  const result=parseFinancialText('Internet dia 10 todo mês');
+  assert.equal(result.money.amountMinor,0);
+  assert.equal(result.dueDay,10);
+  assert.ok(result.needsReview.includes('amount'));
+  assert.ok(result.needsReview.includes('amount_positive'));
+});
