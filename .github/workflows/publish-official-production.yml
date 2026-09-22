@@ -28,6 +28,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Require production tree to match main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --depth=1
+          PROD_TREE="$(git rev-parse 'HEAD^{tree}')"
+          MAIN_TREE="$(git rev-parse 'origin/main^{tree}')"
+          if [[ "$PROD_TREE" != "$MAIN_TREE" ]]; then
+            echo "::error::Production tree differs from main. Promote the certified main tree instead of shipping production-only code."
+            exit 1
+          fi
+          echo "NestBalance production tree parity: PASS"
+
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
