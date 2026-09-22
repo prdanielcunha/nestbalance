@@ -216,12 +216,12 @@ export function answerAssistantQuestion(input:{
     if(!spendMinor){
       return {
         intent,
-        title:'Qual valor você quer simular?',
-        summary:'Escreva o valor na própria pergunta, por exemplo: “Dá para gastar R$ 500?”.',
+        title:tr(locale,'Qual valor você quer simular?','What amount do you want to simulate?','¿Qué valor quieres simular?'),
+        summary:tr(locale,'Escreva o valor na própria pergunta, por exemplo: “Dá para gastar R$ 500?”.','Include the amount in your question, for example: “Can I spend R$ 500?”.','Incluye el valor en la pregunta, por ejemplo: “¿Puedo gastar R$ 500?”.'),
         answerMinor:null,
         sources:[],
         cards:[],
-        suggestions:['Dá para gastar R$ 500?','Quanto ainda falta pagar?','Quanto tenho disponível?']
+        suggestions:[prompts.spend,prompts.remaining,prompts.available]
       };
     }
 
@@ -232,7 +232,7 @@ export function answerAssistantQuestion(input:{
         id:account.id,
         label:account.name,
         amountMinor:Number(account.balanceMinor)||0,
-        detail:'Saldo atual conhecido'
+        detail:tr(locale,'Saldo atual conhecido','Known current balance','Saldo actual conocido')
       }));
     const commitmentSources=input.commitments
       .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&positive(item.amountMinor)>0)
@@ -241,16 +241,16 @@ export function answerAssistantQuestion(input:{
         id:item.id,
         label:item.description,
         amountMinor:positive(item.amountMinor),
-        detail:'Compromisso aberto conhecido'
+        detail:tr(locale,'Compromisso aberto conhecido','Known open commitment','Compromiso abierto conocido')
       }));
     const invoiceSources=input.invoices
       .filter(item=>item.paymentStatus!=='paid'&&item.status!=='cancelled')
       .map(item=>({
         kind:'invoice' as const,
         id:item.id,
-        label:`Fatura ${item.invoiceKey}`,
+        label:tr(locale,`Fatura ${item.invoiceKey}`,`Statement ${item.invoiceKey}`,`Resumen ${item.invoiceKey}`),
         amountMinor:Math.max(0,positive(item.confirmedAmountMinor)-positive(item.paidAmountMinor)),
-        detail:item.status==='partial'?'Fatura ainda em revisão':'Fatura aberta confirmada'
+        detail:item.status==='partial'?tr(locale,'Fatura ainda em revisão','Statement still under review','Resumen todavía en revisión'):tr(locale,'Fatura aberta confirmada','Confirmed open statement','Resumen abierto confirmado')
       }))
       .filter(item=>item.amountMinor>0);
 
@@ -261,17 +261,22 @@ export function answerAssistantQuestion(input:{
 
     return {
       intent,
-      title:`Simulação de ${formatMoneyMinor(spendMinor)}`,
-      summary:`Com os saldos e obrigações conhecidos agora, depois desse gasto a projeção ficaria em ${formatMoneyMinor(afterSpendMinor)}.${partialInvoices?` Há ${partialInvoices} fatura${partialInvoices===1?'':'s'} ainda em revisão, então esse valor pode mudar.`:''} Isso é uma simulação, não uma recomendação de gasto.`,
+      title:tr(locale,`Simulação de ${formatMoneyMinor(spendMinor,locale)}`,`Simulation of ${formatMoneyMinor(spendMinor,locale)}`,`Simulación de ${formatMoneyMinor(spendMinor,locale)}`),
+      summary:tr(
+        locale,
+        `Com os saldos e obrigações conhecidos agora, depois desse gasto a projeção ficaria em ${formatMoneyMinor(afterSpendMinor,locale)}.${partialInvoices?` Há ${partialInvoices} fatura${partialInvoices===1?'':'s'} ainda em revisão, então esse valor pode mudar.`:''} Isso é uma simulação, não uma recomendação de gasto.`,
+        `With the balances and obligations known right now, after this expense the projection would be ${formatMoneyMinor(afterSpendMinor,locale)}.${partialInvoices?` ${partialInvoices} statement${partialInvoices===1?' is':'s are'} still under review, so this amount may change.`:''} This is a simulation, not a spending recommendation.`,
+        `Con los saldos y obligaciones conocidos ahora, después de este gasto la proyección quedaría en ${formatMoneyMinor(afterSpendMinor,locale)}.${partialInvoices?` Hay ${partialInvoices} resumen${partialInvoices===1?'':'es'} todavía en revisión, así que este valor puede cambiar.`:''} Es una simulación, no una recomendación de gasto.`
+      ),
       answerMinor:afterSpendMinor,
       sources:[...accountSources,...commitmentSources,...invoiceSources].slice(0,40),
       cards:[
-        {label:'Disponível agora',amountMinor:availableMinor,detail:`${accountSources.length} conta${accountSources.length===1?'':'s'} conhecida${accountSources.length===1?'':'s'}`},
-        {label:'Obrigações conhecidas',amountMinor:obligationsMinor,detail:`${commitmentSources.length+invoiceSources.length} item${commitmentSources.length+invoiceSources.length===1?'':'s'} aberto${commitmentSources.length+invoiceSources.length===1?'':'s'}`},
-        {label:'Gasto simulado',amountMinor:spendMinor,detail:'Valor informado por você'},
-        {label:'Restaria na projeção',amountMinor:afterSpendMinor,detail:afterSpendMinor>=0?'Após obrigações conhecidas e o gasto simulado':'Ficaria abaixo de zero com os dados conhecidos'}
+        {label:tr(locale,'Disponível agora','Available now','Disponible ahora'),amountMinor:availableMinor,detail:tr(locale,`${accountSources.length} conta${accountSources.length===1?'':'s'} conhecida${accountSources.length===1?'':'s'}`,`${accountSources.length} known account${accountSources.length===1?'':'s'}`,`${accountSources.length} cuenta${accountSources.length===1?'':'s'} conocida${accountSources.length===1?'':'s'}`)},
+        {label:tr(locale,'Obrigações conhecidas','Known obligations','Obligaciones conocidas'),amountMinor:obligationsMinor,detail:tr(locale,`${commitmentSources.length+invoiceSources.length} item${commitmentSources.length+invoiceSources.length===1?'':'s'} aberto${commitmentSources.length+invoiceSources.length===1?'':'s'}`,`${commitmentSources.length+invoiceSources.length} open item${commitmentSources.length+invoiceSources.length===1?'':'s'}`,`${commitmentSources.length+invoiceSources.length} elemento${commitmentSources.length+invoiceSources.length===1?'':'s'} abierto${commitmentSources.length+invoiceSources.length===1?'':'s'}`)},
+        {label:tr(locale,'Gasto simulado','Simulated expense','Gasto simulado'),amountMinor:spendMinor,detail:tr(locale,'Valor informado por você','Amount you provided','Valor informado por ti')},
+        {label:tr(locale,'Restaria na projeção','Projected remainder','Quedaría en la proyección'),amountMinor:afterSpendMinor,detail:afterSpendMinor>=0?tr(locale,'Após obrigações conhecidas e o gasto simulado','After known obligations and the simulated expense','Después de las obligaciones conocidas y el gasto simulado'):tr(locale,'Ficaria abaixo de zero com os dados conhecidos','Would fall below zero with the known data','Quedaría por debajo de cero con los datos conocidos')}
       ],
-      suggestions:['Quanto ainda falta pagar?','Quais parcelas terminam logo?','O que já está comprometido nos próximos meses?']
+      suggestions:[prompts.remaining,prompts.ending,prompts.future]
     };
   }
 
