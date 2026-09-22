@@ -5,14 +5,7 @@ import type { HomeCreditCard } from '@/src/lib/repositories/home';
 import { ingestEvidence, analyzeEvidenceText, type UploadProgress } from '@/src/lib/repositories/evidence';
 import { analyzeInvoiceImage, commitInvoice, previewInvoice, reviewInvoice, type InvoicePreviewResponse } from '@/src/lib/repositories/invoices';
 import { InvoiceItemEditor } from '@/src/features/cards/invoice-item-editor';
-
-const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
-const date=new Intl.DateTimeFormat('pt-BR');
-
-function formatDate(value:string|null){
-  if(!value) return 'Data a conferir';
-  return date.format(new Date(value+'T12:00:00'));
-}
+import { useI18n } from '@/src/i18n/locale-provider';
 
 export function InvoiceImportSheet({
   householdId,
@@ -25,6 +18,9 @@ export function InvoiceImportSheet({
   onClose:()=>void;
   onCommitted?:()=>void;
 }){
+  const {locale,formatMoney,formatDate}=useI18n();
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  const dateLabel=(value:string|null)=>value?formatDate(new Date(value+'T12:00:00'),{day:'2-digit',month:'2-digit',year:'numeric'}):l('Data a conferir','Date to review','Fecha por revisar');
   const [file,setFile]=useState<File|null>(null);
   const [working,setWorking]=useState(false);
   const [progress,setProgress]=useState<UploadProgress|null>(null);
@@ -182,7 +178,7 @@ export function InvoiceImportSheet({
           <div>
             <span>ENTENDEMOS</span>
             <strong>{result.preview.items.length} item{result.preview.items.length===1?'':'s'}</strong>
-            <small>Fatura {result.preview.invoiceKey} · vence {formatDate(result.preview.dueOn)}</small>
+            <small>Fatura {result.preview.invoiceKey} · vence {dateLabel(result.preview.dueOn)}</small>
           </div>
           <div>
             <span>CONFIRA</span>
@@ -192,13 +188,13 @@ export function InvoiceImportSheet({
         </div>
 
         <div className="invoice-money-strip">
-          <div><span>Nesta fatura</span><strong>{money.format(result.preview.observedMinor/100)}</strong></div>
-          <div><span>Parcelas futuras</span><strong>{money.format(result.preview.futureInstallmentsMinor/100)}</strong></div>
+          <div><span>Nesta fatura</span><strong>{formatMoney(result.preview.observedMinor)}</strong></div>
+          <div><span>Parcelas futuras</span><strong>{formatMoney(result.preview.futureInstallmentsMinor)}</strong></div>
         </div>
 
         {result.preview.statementTotalMinor!==null&&<div className={result.preview.reconciliationDeltaMinor===0?'invoice-reconciliation ok':'invoice-reconciliation review'}>
-          <div><span>Total visível da fatura</span><strong>{money.format(result.preview.statementTotalMinor/100)}</strong></div>
-          <div><span>Itens reconhecidos</span><strong>{money.format(result.preview.observedMinor/100)}</strong></div>
+          <div><span>Total visível da fatura</span><strong>{formatMoney(result.preview.statementTotalMinor)}</strong></div>
+          <div><span>Itens reconhecidos</span><strong>{formatMoney(result.preview.observedMinor)}</strong></div>
           <small>{result.preview.reconciliationDeltaMinor===0
             ? 'A soma dos itens reconhecidos bate com o total visível.'
             : 'A soma não fecha com o total da fatura. A liquidação ficará bloqueada até a revisão.'}</small>
@@ -228,8 +224,8 @@ export function InvoiceImportSheet({
               <div className="invoice-item-list">
                 {visibleItems.map(item=><article className={item.needsReview.length?'invoice-item review':'invoice-item'} key={item.id}>
                   <div className="invoice-item-main">
-                    <div><strong>{item.description}</strong><span>{formatDate(item.purchaseOn)}{item.kind==='fee'?' · Encargo':''}</span></div>
-                    <b>{money.format(item.amountMinor/100)}</b>
+                    <div><strong>{item.description}</strong><span>{dateLabel(item.purchaseOn)}{item.kind==='fee'?' · Encargo':''}</span></div>
+                    <b>{formatMoney(item.amountMinor)}</b>
                   </div>
                   {item.installment&&<div className="invoice-installment-row">
                     <span>Parcela {item.installment.current} de {item.installment.total}</span>
