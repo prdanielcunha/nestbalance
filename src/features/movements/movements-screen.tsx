@@ -4,11 +4,14 @@ import { AppNav } from '@/src/features/navigation/app-nav';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { categorizeSpending, categoryLabel, deriveRecurringCandidates, recurringPatternKey } from '@/src/core/insights';
+import { confirmRecurringSuggestion, dismissRecurringSuggestion } from '@/src/lib/repositories/recurrences';
 
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const date=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
 
 type Filter='all'|'income'|'cash_expense'|'card'|'transfer';
+type ViewScope='household'|'personal';
 
 function label(row:HomeRow){
   if(row.source==='credit_card_invoice') return 'Compra no cartão';
@@ -28,22 +31,28 @@ function matchesFilter(row:HomeRow,filter:Filter){
 
 export function MovementsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
   const [rows,setRows]=useState<HomeRow[]>([]);
+  const [commitments,setCommitments]=useState<HomeRow[]>([]);
+  const [dismissedRecurrenceKeys,setDismissedRecurrenceKeys]=useState<string[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [filter,setFilter]=useState<Filter>('all');
   const [query,setQuery]=useState('');
   const [view,setView]=useState<FinancialView>('household');
+  const [recurrenceWorking,setRecurrenceWorking]=useState('');
+  const [recurrenceError,setRecurrenceError]=useState('');
 
-  async function load(){
-    setLoading(true);
+  async function load(silent=false){
+    if(!silent) setLoading(true);
     setError('');
     try{
       const data=await loadHomeData(householdId);
       setRows(data.transactions);
+      setCommitments(data.commitments||[]);
+      setDismissedRecurrenceKeys(data.dismissedRecurrenceKeys||[]);
     }catch{
       setError('Não conseguimos carregar seus movimentos agora.');
     }finally{
-      setLoading(false);
+      if(!silent) setLoading(false);
     }
   }
 
@@ -51,6 +60,39 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
 
   const scopedRows=useMemo(()=>rows.filter(row=>inFinancialView(row.scope,view)),[rows,view]);
 
+  const scopedCommitments=useMemo(()=>commitments.filter(row=>inFinancialView(row.scope,view)),[commitments,view]);
+  const recurringCandidates=useMemo(()=>{
+    const scopes:ViewScope[]=view==='all'?['household','personal']:[view];
+    const existing=new Set(
+      scopedCommitments
+        .filter(item=>item.recurring&&item.status!=='cancelled')
+        .map(item=>(item.scope==='personal'?'personal':'household')+'|'+recurringPatternKey(item.description))
+    );
+    return scopes.flatMap(scope=>{
+      const scoped=scopedRows.filter(row=>(row.scope==='personal'?'personal':'household')===scope);
+      return deriveRecurringCandidates(scoped).map(candidate=>({...candidate,scope}));
+    })
+      .filter(candidate=>!dismissedRecurrenceKeys.includes(candidate.key))
+      .filter(candidate=>!existing.has(candidate.scope+'|'+candidate.key))
+      .slice(0,3);
+  },[scopedRows,scopedCommitments,dismissedRecurrenceKeys,view]);
+
+  async function handleRecurrence(referenceTransactionId:string,action:'confirm'|'dismiss'){
+    if(role==='read_only'||recurrenceWorking) return;
+    setRecurrenceWorking(referenceTransactionId);
+    setRecurrenceError('');
+    try{
+      if(action==='confirm') await confirmRecurringSuggestion({householdId,referenceTransactionId});
+      else await dismissRecurringSuggestion({householdId,referenceTransactionId});
+      await load(true);
+    }catch{
+      setRecurrenceError(action==='confirm'
+        ? 'Não conseguimos criar a conta mensal agora. Nada foi alterado.'
+        : 'Não conseguimos guardar sua preferência agora.');
+    }finally{
+      setRecurrenceWorking('');
+    }
+  }
   const summary=useMemo(()=>({
     income:scopedRows.filter(x=>x.direction==='income'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
     cashExpense:scopedRows.filter(x=>x.direction==='expense'&&x.source!=='credit_card_invoice'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
