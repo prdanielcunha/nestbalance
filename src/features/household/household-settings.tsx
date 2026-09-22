@@ -36,6 +36,7 @@ export function HouseholdSettings({
   const [inviteEmail,setInviteEmail]=useState('');
   const [inviteRole,setInviteRole]=useState<'admin'|'member'|'read_only'>('member');
   const [inviteLink,setInviteLink]=useState('');
+  const [inviteCopied,setInviteCopied]=useState(false);
   const [creatingInvite,setCreatingInvite]=useState(false);
   const [workingMember,setWorkingMember]=useState('');
   const [workingInvite,setWorkingInvite]=useState('');
@@ -183,9 +184,20 @@ export function HouseholdSettings({
     }
   }
 
+  async function copyInvite(link=inviteLink){
+    if(!link) return;
+    try{
+      if(!navigator.clipboard?.writeText) throw new Error('CLIPBOARD_UNAVAILABLE');
+      await navigator.clipboard.writeText(link);
+      setInviteCopied(true);
+    }catch{
+      setInviteCopied(false);
+    }
+  }
+
   async function makeInvite(){
     if(!canManage||creatingInvite) return;
-    setCreatingInvite(true); setError(''); setInviteLink('');
+    setCreatingInvite(true); setError(''); setInviteLink(''); setInviteCopied(false);
     try{
       const result=await createHouseholdInvite({
         householdId,
@@ -194,7 +206,7 @@ export function HouseholdSettings({
       });
       const link=`${window.location.origin}/invite?token=${encodeURIComponent(result.token)}`;
       setInviteLink(link);
-      await navigator.clipboard?.writeText(link).catch(()=>undefined);
+      await copyInvite(link);
       await refresh();
     }catch(err:any){
       const code=String(err?.message||'');
@@ -375,12 +387,16 @@ export function HouseholdSettings({
           </select></label>
         </div>
         <button className="primary-button" disabled={creatingInvite} onClick={()=>void makeInvite()}>
-          {creatingInvite?l('Criando convite…','Creating invite…','Creando invitación…'):l('Criar e copiar convite','Create and copy invite','Crear y copiar invitación')}
+          {creatingInvite?l('Criando convite…','Creating invite…','Creando invitación…'):l('Criar convite','Create invite','Crear invitación')}
         </button>
         {inviteLink&&<div className="invite-link-card">
-          <strong>{l('Convite copiado','Invite copied','Invitación copiada')}</strong>
+          <strong>{inviteCopied
+            ? l('Convite copiado','Invite copied','Invitación copiada')
+            : l('Convite pronto para compartilhar','Invite ready to share','Invitación lista para compartir')}</strong>
           <span>{l('Compartilhe este link somente com a pessoa certa.','Share this link only with the intended person.','Comparte este enlace solo con la persona indicada.')}</span>
-          <button className="ghost-button" onClick={()=>void navigator.clipboard?.writeText(inviteLink)}>{l('Copiar novamente','Copy again','Copiar de nuevo')}</button>
+          <button className="ghost-button" onClick={()=>void copyInvite()}>{inviteCopied
+            ? l('Copiar novamente','Copy again','Copiar de nuevo')
+            : l('Copiar convite','Copy invite','Copiar invitación')}</button>
         </div>}
         {data.invites.length>0&&<div className="pending-invites">
           <span>{l('Convites pendentes','Pending invites','Invitaciones pendientes')}</span>
