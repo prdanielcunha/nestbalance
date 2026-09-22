@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows:
       - Deploy NestBalance Production
+      - Publish NestBalance Official Production Site
     types:
       - completed
 
@@ -44,27 +45,39 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Require successful official-site publication for the same SHA
+      - name: Require both production certifications for the same SHA
+        id: certification
         if: steps.version.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "NESTBALANCE_CERTIFIED_DEPLOY_RUN=${{ github.event.workflow_run.id }}"
-          OFFICIAL_RUN_ID=""
-          for i in {1..60}; do
-            OFFICIAL_RUN_ID="$(gh api               -H "Accept: application/vnd.github+json"               "/repos/$GITHUB_REPOSITORY/actions/workflows/publish-official-production.yml/runs?branch=production&event=push&per_page=20"               | jq -r --arg sha "$RELEASE_SHA" '.workflow_runs[] | select(.head_sha==$sha and .conclusion=="success") | .id'               | head -n 1)"
-            if [[ -n "$OFFICIAL_RUN_ID" ]]; then
-              break
-            fi
-            sleep 10
-          done
-          test -n "$OFFICIAL_RUN_ID"
+
+          successful_run() {
+            local workflow_file="$1"
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$GITHUB_REPOSITORY/actions/workflows/$workflow_file/runs?branch=production&event=push&per_page=20" \
+              | jq -r --arg sha "$RELEASE_SHA" '.workflow_runs[] | select(.head_sha==$sha and .conclusion=="success") | .id' \
+              | head -n 1
+          }
+
+          DEPLOY_RUN_ID="$(successful_run deploy-production.yml)"
+          OFFICIAL_RUN_ID="$(successful_run publish-official-production.yml)"
+
+          if [[ -z "$DEPLOY_RUN_ID" || -z "$OFFICIAL_RUN_ID" ]]; then
+            echo "Production SHA $RELEASE_SHA is not fully certified yet; the companion workflow completion will retry certification."
+            echo "certified=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "certified=true" >> "$GITHUB_OUTPUT"
+          echo "NESTBALANCE_CERTIFIED_DEPLOY_RUN=$DEPLOY_RUN_ID"
           echo "NESTBALANCE_CERTIFIED_OFFICIAL_SITE_RUN=$OFFICIAL_RUN_ID"
 
       - name: Create stable tag and GitHub Release
-        if: steps.version.outputs.publish == 'true'
+        if: steps.version.outputs.publish == 'true' && steps.certification.outputs.certified == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
@@ -85,7 +98,7 @@ jobs:
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,url
 
       - name: Verify tag resolves to certified production SHA
-        if: steps.version.outputs.publish == 'true'
+        if: steps.version.outputs.publish == 'true' && steps.certification.outputs.certified == 'true'
         env:
           TAG: ${{ steps.version.outputs.tag }}
         shell: bash
