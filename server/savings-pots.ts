@@ -5,7 +5,8 @@ import { signatureMatchesMime } from '../src/core/evidence.js';
 import { normalizeSavingsPotAutomation, automationContributionMinor, frequencyOccurrenceDates, type SavingsPotAutomation } from '../src/core/savings-pot-automation.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
-import { assertScopedAccess, canAccessScopedRecord, requestedScope } from './privacy.js';
+import { assertScopedAccess, requestedScope } from './privacy.js';
+import { canAccessScopedRecord } from '../src/core/privacy.js';
 import { normalizeSavingsPotName } from '../src/core/savings-pots.js';
 
 const MAX_COVER_BYTES=5*1024*1024;
