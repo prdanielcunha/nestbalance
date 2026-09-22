@@ -41,11 +41,19 @@ function utcDate(value:string){
 }
 function key(date:Date){ return date.toISOString().slice(0,10); }
 
+function addMonthClamped(date:Date,desiredDay:number){
+  const year=date.getUTCFullYear();
+  const month=date.getUTCMonth()+1;
+  const lastDay=new Date(Date.UTC(year,month+1,0)).getUTCDate();
+  return new Date(Date.UTC(year,month,Math.min(desiredDay,lastDay)));
+}
+
 export function frequencyOccurrenceDates(automation:SavingsPotAutomation,throughDate:string,limit=12){
   if(!automation.enabled||automation.kind!=='frequency'||!automation.frequency||!automation.anchorDate) return [];
   if(!/^\d{4}-\d{2}-\d{2}$/.test(throughDate)) return [];
   const through=utcDate(throughDate);
   let current=utcDate(automation.anchorDate);
+  const desiredMonthlyDay=current.getUTCDate();
   const out:string[]=[];
   let guard=0;
   while(current<=through&&guard<5000){
@@ -53,7 +61,7 @@ export function frequencyOccurrenceDates(automation:SavingsPotAutomation,through
     if(out.length>limit) out.shift();
     if(automation.frequency==='weekly') current.setUTCDate(current.getUTCDate()+7);
     else if(automation.frequency==='biweekly') current.setUTCDate(current.getUTCDate()+15);
-    else current.setUTCMonth(current.getUTCMonth()+1);
+    else current=addMonthClamped(current,desiredMonthlyDay);
     guard++;
   }
   return out;
