@@ -1,4 +1,5 @@
 import type { AiFinancialScreenSnapshot } from './ai-financial.js';
+import { cleanSavingsPotDisplayName } from './savings-pots.js';
 
 const POT_SCREEN_HINT=/\b(cofrinhos?|caixinhas?|money\s*boxes?|savings\s*pots?|alcanc[ií]as?)\b/i;
 const MONEY=/R\$\s*\d(?:[\d.\u00a0 ]*\d)?(?:,\d{1,2})?(?=\s|$|[^\d.,])/gi;
@@ -116,10 +117,7 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
       continue;
     }
 
-    const normalizedCandidate=candidate
-      .replace(/^[^\p{L}\p{N}]+/u,'')
-      .replace(/[·•|]+$/,'')
-      .trim();
+    const normalizedCandidate=cleanSavingsPotDisplayName(candidate);
 
     const existingIndex=pots.findIndex(item=>
       item.name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')===
