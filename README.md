@@ -1,5 +1,9 @@
 # NestBalance
 
+## Release candidate
+
+Current candidate: **1.0.0-rc.1**. Blueprint closure is documented in `docs/RELEASE_CANDIDATE_1.0.md`; privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
+
 NestBalance is the personal and family finance product of the MillionsNest ecosystem.
 
 ## Current executable slice

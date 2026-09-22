@@ -64,7 +64,7 @@ export function HouseholdSettings({
       setLocale(next.household.locale);
       setProactivity(next.proactivityPreferences||DEFAULT_PROACTIVITY_PREFERENCES);
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos abrir as configurações do Lar.','We could not open Household settings.','No pudimos abrir la configuración del Hogar.')));
+      setError(l('Não conseguimos abrir as configurações do Lar agora.','We could not open Household settings right now.','No pudimos abrir la configuración del Hogar ahora.'));
     }finally{
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export function HouseholdSettings({
       await selectHousehold(nextId);
       window.location.assign('/household');
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos trocar de Lar.','We could not switch Household.','No pudimos cambiar de Hogar.')));
+      setError(l('Não conseguimos trocar de Lar agora.','We could not switch Household right now.','No pudimos cambiar de Hogar ahora.'));
     }
   }
 
@@ -93,7 +93,7 @@ export function HouseholdSettings({
       await renameHousehold(householdId,name.trim());
       await refresh();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos atualizar o nome.','We could not update the name.','No pudimos actualizar el nombre.')));
+      setError(l('Não conseguimos atualizar o nome agora.','We could not update the name right now.','No pudimos actualizar el nombre ahora.'));
     }finally{setSavingName(false);}
   }
 
@@ -104,7 +104,7 @@ export function HouseholdSettings({
       await updateHouseholdLocale(householdId,locale);
       window.location.reload();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos atualizar o idioma.','We could not update the language.','No pudimos actualizar el idioma.')));
+      setError(l('Não conseguimos atualizar o idioma agora.','We could not update the language right now.','No pudimos actualizar el idioma ahora.'));
       setLocale(data.household.locale);
     }finally{setSavingLocale(false);}
   }
@@ -224,7 +224,7 @@ export function HouseholdSettings({
       await updateHouseholdMemberRole({householdId,uid,role});
       await refresh();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos atualizar esse acesso.','We could not update this access.','No pudimos actualizar este acceso.')));
+      setError(l('Não conseguimos atualizar esse acesso agora.','We could not update this access right now.','No pudimos actualizar este acceso ahora.'));
     }finally{setWorkingMember('');}
   }
 
@@ -235,7 +235,7 @@ export function HouseholdSettings({
       await revokeHouseholdInvite({householdId,inviteId});
       await refresh();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos cancelar esse convite.','We could not cancel this invite.','No pudimos cancelar esta invitación.')));
+      setError(l('Não conseguimos cancelar esse convite agora.','We could not cancel this invite right now.','No pudimos cancelar esta invitación ahora.'));
     }finally{setWorkingInvite('');}
   }
 
@@ -246,7 +246,7 @@ export function HouseholdSettings({
       await removeHouseholdMember({householdId,uid});
       await refresh();
     }catch(err:any){
-      setError(String(err?.message||l('Não conseguimos remover esse membro.','We could not remove this member.','No pudimos eliminar este miembro.')));
+      setError(l('Não conseguimos remover esse membro agora.','We could not remove this member right now.','No pudimos eliminar este miembro ahora.'));
     }finally{setWorkingMember('');}
   }
 
