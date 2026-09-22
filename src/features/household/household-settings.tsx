@@ -9,9 +9,11 @@ import {
   renameHousehold,
   revokeHouseholdInvite,
   updateHouseholdMemberRole,
+  updateHouseholdLocale,
   type HouseholdSettingsPayload
 } from '@/src/lib/repositories/household';
 import { selectHousehold, type HouseholdSessionOption } from '@/src/lib/repositories/session';
+import { localeLabels, supportedLocales, type Locale } from '@/src/i18n/messages';
 
 const roleLabel={
   owner:'Dono do Lar',
@@ -40,6 +42,7 @@ export function HouseholdSettings({
   const [creatingInvite,setCreatingInvite]=useState(false);
   const [workingMember,setWorkingMember]=useState('');
   const [workingInvite,setWorkingInvite]=useState('');
+  const [savingLocale,setSavingLocale]=useState(false);
 
   async function refresh(){
     setLoading(true);
@@ -80,6 +83,37 @@ export function HouseholdSettings({
     }catch(err:any){
       setError(String(err?.message||'Não conseguimos atualizar o nome.'));
     }finally{setSavingName(false);}
+  }
+
+  async function changeLocale(locale:Locale){
+    if(!canManage||savingLocale||locale===data?.household.locale) return;
+    setSavingLocale(true); setError('');
+    try{
+      await updateHouseholdLocale(householdId,locale);
+      window.location.reload();
+    }catch(err:any){
+      setError(String(err?.message||'Não conseguimos alterar o idioma agora.'));
+      setSavingLocale(false);
+    }
+  }
+
+  function activityText(item:HouseholdSettingsPayload['activity'][number]){
+    const actor=item.actorUid===user.uid?'Você':item.actorName||'Alguém do Lar';
+    switch(item.type){
+      case 'household.renamed': return `${actor} alterou o nome do Lar.`;
+      case 'household.locale_changed': return `${actor} alterou o idioma do Lar.`;
+      case 'household.invite_created': return `${actor} criou um convite.`;
+      case 'household.invite_accepted': return `${actor} entrou no Lar por convite.`;
+      case 'household.invite_revoked': return `${actor} cancelou um convite.`;
+      case 'household.member_role_changed': return `${actor} alterou o acesso de ${item.targetName||'um membro'}.`;
+      case 'household.member_removed': return `${actor} removeu ${item.targetName||'um membro'} do Lar.`;
+      case 'account.created': return `${actor} adicionou uma conta financeira.`;
+      case 'commitment.paid': return `${actor} marcou uma conta como paga.`;
+      case 'commitment.payment_reversed': return `${actor} desfez uma marcação de pagamento.`;
+      case 'recurrence.confirmed': return `${actor} confirmou um padrão como conta mensal.`;
+      case 'recurrence.dismissed': return `${actor} escolheu não receber uma sugestão de recorrência.`;
+      default: return `${actor} fez uma alteração no Lar.`;
+    }
   }
 
   async function makeInvite(){
@@ -178,6 +212,23 @@ export function HouseholdSettings({
       </section>
 
       <section className="household-panel">
+        <div className="section-title"><div><h2>Idioma do Lar</h2><span>datas, textos e explicações acompanham esta escolha</span></div></div>
+        <div className="household-language-grid" role="group" aria-label="Idioma do Lar">
+          {supportedLocales.map(locale=><button
+            type="button"
+            key={locale}
+            className={data.household.locale===locale?'household-language active':'household-language'}
+            disabled={!canManage||savingLocale}
+            onClick={()=>void changeLocale(locale)}
+          >
+            <strong>{localeLabels[locale]}</strong>
+            <span>{locale==='pt-BR'?'Brasil':locale==='en'?'English':'Español'}</span>
+          </button>)}
+        </div>
+        {!canManage&&<p className="field-hint">Somente o Dono ou Administrador altera o idioma compartilhado do Lar.</p>}
+      </section>
+
+      <section className="household-panel">
         <div className="section-title"><div><h2>Pessoas</h2><span>{data.members.length} membro{data.members.length===1?'':'s'}</span></div></div>
         <div className="member-list">
           {data.members.map(member=><article className="member-row" key={member.uid}>
@@ -237,6 +288,19 @@ export function HouseholdSettings({
             </button>
           </div>)}
         </div>}
+      </section>}
+
+      {data.activity.length>0&&<section className="household-panel">
+        <div className="section-title"><div><h2>Atividade recente</h2><span>quem fez o quê, sem expor detalhes financeiros</span></div></div>
+        <div className="household-activity-list">
+          {data.activity.slice(0,12).map(item=><article className="household-activity-row" key={item.id}>
+            <div className="activity-dot" aria-hidden="true"/>
+            <div>
+              <strong>{activityText(item)}</strong>
+              <span>{item.createdAtMs?new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium',timeStyle:'short'}).format(new Date(item.createdAtMs)):'Agora há pouco'}</span>
+            </div>
+          </article>)}
+        </div>
       </section>}
 
       <section className="household-panel privacy-entry-card"><div><div className="eyebrow">Privacidade</div><h2>Lar, Pessoal e seus dados</h2><p>Veja o que é compartilhado, exporte seus dados ou controle exclusões.</p></div><Link href="/privacy" className="primary-button privacy-entry-link">Abrir privacidade</Link></section>
