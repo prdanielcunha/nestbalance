@@ -338,7 +338,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
           amountMinor,
           percentBps:null,
           frequency:automationKind==='frequency'?automationFrequency:null,
-          anchorDate:selected.automation?.anchorDate||todayKey()
+          anchorDate:selected.automation?.anchorDate||(automationKind==='frequency'?null:todayKey())
         };
       }else{
         const numeric=Number(automationValue.replace(',','.'));
