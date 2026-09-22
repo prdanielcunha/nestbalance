@@ -126,7 +126,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         kind:'VENCEU',
         title:`${overdue.description} ainda aparece como pendente.`,
         detail:`${money.format(overdue.amountMinor/100)} · venceu dia ${overdue.dueDay}. Se você já pagou, marque como pago para a previsão ficar correta.`,
-        href:'/',
+        href:'#monthly-payments',
         action:'Ver conta'
       });
     }else if(dueSoon){
@@ -135,7 +135,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         kind:Number(dueSoon.dueDay)===today?'VENCE HOJE':'PRÓXIMO PAGAMENTO',
         title:`${dueSoon.description} ${Number(dueSoon.dueDay)===today?'vence hoje':`vence dia ${dueSoon.dueDay}`}.`,
         detail:`${money.format(dueSoon.amountMinor/100)} já está considerado no que ainda vai sair.`,
-        href:'/',
+        href:'#monthly-payments',
         action:'Ver conta'
       });
     }
