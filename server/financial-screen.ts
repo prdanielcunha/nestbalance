@@ -165,6 +165,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
         name:safeName(item.name,'Dinheiro guardado'),
         balanceMinor:item.balanceMinor,
         ...(Number.isSafeInteger(item.goalMinor)&&item.goalMinor!>0?{goalMinor:item.goalMinor}:{}),
+        ...(item.targetDate?{targetDate:item.targetDate}:{}),
         currency:item.currency,
         institutionName:screen.institution||null,
         normalizedName:normalizeSavingsPotName(item.name),
