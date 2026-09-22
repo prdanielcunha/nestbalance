@@ -859,6 +859,18 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               {screenSnapshot.commitments.length>0&&<span><b>{screenSnapshot.commitments.length}</b> {l('conta / parcela','bill / installment','cuenta / cuota')}</span>}
               {interpretations.length>0&&<span><b>{interpretations.length}</b> {l(interpretations.length===1?'movimento':'movimentos',interpretations.length===1?'movement':'movements',interpretations.length===1?'movimiento':'movimientos')}</span>}
             </div>
+            {screenSnapshot.pots.length>0&&<div className="screen-pot-review">
+              {screenSnapshot.pots.map((pot,index)=><div className="screen-pot-review-row" key={`${pot.name}-${index}`}>
+                <div>
+                  <strong>{pot.name}</strong>
+                  <span>{screenSnapshot.institution||l('Origem não identificada','Source not identified','Origen no identificado')}</span>
+                </div>
+                <div>
+                  <b>{formatMoney(pot.balanceMinor)}</b>
+                  <small>{pot.goalMinor&&pot.goalMinor>0?l(`Meta ${formatMoney(pot.goalMinor)}`,`Goal ${formatMoney(pot.goalMinor)}`,`Meta ${formatMoney(pot.goalMinor)}`):l('Sem meta encontrada','No goal found','Sin meta encontrada')}</small>
+                </div>
+              </div>)}
+            </div>}
             <small>{l('Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.','Balance, card limit and saved money do not become expenses. Only movements and bills are counted that way.','El saldo, el límite y el dinero guardado no se convierten en gastos. Solo los movimientos y las cuentas entran en esa categoría.')}</small>
           </div>}
 
@@ -933,7 +945,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           {error && <p className="error-copy" role="alert">{error}</p>}
 
           <div className="sheet-actions">
-            <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
+            <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setScreenSnapshot(null); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
             <button className="primary-button" disabled={working||unresolvedDirectionCount>0||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
               ? (upload?.phase === 'verifying' ? l('Conferindo…','Checking…','Revisando…') : l('Guardando…','Saving…','Guardando…'))
               : unresolvedDirectionCount
