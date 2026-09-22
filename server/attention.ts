@@ -11,7 +11,9 @@ function error(res:Response,status:number,code:string){
 
 function cleanKey(value:unknown){
   const key=String(value||'').normalize('NFKC').trim();
-  return key.length>=3&&key.length<=180&&/^[A-Za-z0-9:_\-.]+$/.test(key)?key:null;
+  if(key.length<3||key.length>180||!/^[A-Za-z0-9:_\-.]+$/.test(key)) return null;
+  if(!['anomaly-','spending-change-','ending-'].some(prefix=>key.startsWith(prefix))) return null;
+  return key;
 }
 
 export async function dismissAttention(req:Request,res:Response){
