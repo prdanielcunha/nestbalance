@@ -4,7 +4,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { normalizeHouseholdRole } from '../src/core/household.js';
-import { normalizeLocale } from '../src/core/locale.js';
+import { normalizeLocale, parseLocale } from '../src/core/locale.js';
+import { touchSecurityDevice } from './security.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -71,10 +72,12 @@ export async function bootstrapSession(req:Request,res:Response){
         ...publicProfile(user),
         lastSeenAt:FieldValue.serverTimestamp()
       },{merge:true});
-      return res.json({ok:true,householdId:selected.id,households,locale:selected.locale,currency:selected.currency,created:false});
+      const deviceState=await touchSecurityDevice(user.uid,req.body?.device);
+      return res.json({ok:true,householdId:selected.id,households,locale:selected.locale,currency:selected.currency,created:false,deviceFirstSeen:deviceState.firstSeen});
     }
 
     const householdId=primaryHouseholdId(user.uid);
+    const preferredLocale=parseLocale(req.body?.preferredLocale)||'pt-BR';
     const householdRef=adminDb.doc(`households/${householdId}`);
     const memberRef=householdRef.collection('members').doc(user.uid);
     const userHouseholdRef=adminDb.doc(`users/${user.uid}/householdRefs/${householdId}`);
@@ -88,11 +91,16 @@ export async function bootstrapSession(req:Request,res:Response){
       ]);
       if(!household.exists){
         const displayName=typeof user.name==='string'&&user.name.trim()?user.name.trim().split(/\s+/)[0]:null;
+        const defaultName=preferredLocale==='en'
+          ? (displayName?`${displayName}'s home`:'My home')
+          : preferredLocale==='es'
+            ? (displayName?`Casa de ${displayName}`:'Mi casa')
+            : (displayName?`Casa de ${displayName}`:'Minha casa');
         tx.create(householdRef,{
           ownerUid:user.uid,
-          name:displayName?`Casa de ${displayName}`:'Minha casa',
+          name:defaultName,
           currency:'BRL',
-          locale:'pt-BR',
+          locale:preferredLocale,
           createdAt:FieldValue.serverTimestamp(),
           schemaVersion:1
         });
@@ -119,7 +127,8 @@ export async function bootstrapSession(req:Request,res:Response){
 
     households=await householdOptions(user.uid);
     const selected=households.find(item=>item.id===householdId)||households[0];
-    return res.status(created?201:200).json({ok:true,householdId,households,locale:selected?.locale||'pt-BR',currency:selected?.currency||'BRL',created});
+    const deviceState=await touchSecurityDevice(user.uid,req.body?.device);
+    return res.status(created?201:200).json({ok:true,householdId,households,locale:selected?.locale||'pt-BR',currency:selected?.currency||'BRL',created,deviceFirstSeen:deviceState.firstSeen});
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD'];
     if(!safe.includes(err?.message)){

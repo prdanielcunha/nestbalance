@@ -1077,3 +1077,23 @@
   .first-use-actions{display:grid;grid-template-columns:1fr}
   .first-use-actions a{width:100%}
 }
+
+
+/* Privacy & security */
+.privacy-security-section{margin:28px 0}
+.security-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.security-grid .privacy-card{min-height:100%;display:flex;flex-direction:column;align-items:flex-start}
+.security-grid .privacy-card h3{margin:6px 0 8px;font-size:18px;letter-spacing:-.025em}
+.security-device-list{width:100%;display:grid;margin-top:10px}
+.security-device-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.security-device-row strong{display:block;font-size:13px;line-height:1.4}
+.security-device-row small{display:block;margin-top:3px;color:var(--muted);font-size:11px;line-height:1.4}
+.security-status{flex:0 0 auto;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.security-device-loading,.security-empty{margin-top:10px;color:var(--muted);font-size:12px}
+.security-session-card>.ghost-button{margin-top:auto}
+.security-confirm{margin-top:auto;width:100%;padding-top:10px;border-top:1px solid var(--line)}
+.security-confirm p{font-size:12px}
+@media (max-width:760px){
+  .security-grid{grid-template-columns:1fr}
+  .security-device-row{align-items:flex-start}
+}
