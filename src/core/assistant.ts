@@ -1,4 +1,5 @@
 import { projectHouseholdFuture, type ProjectionCommitment, type ProjectionInstallmentPlan } from './future-projection.js';
+import { categoryLabel, deriveFinancialAnomalies, deriveSpendingComparison, type InsightTransaction } from './insights.js';
 
 export type AssistantAccount={
   id:string;
@@ -28,8 +29,10 @@ export type AssistantInstallmentPlan=ProjectionInstallmentPlan&{
   description?:string;
 };
 
+export type AssistantTransaction=InsightTransaction;
+
 export type AssistantSource={
-  kind:'account'|'commitment'|'invoice'|'installment_plan'|'projection';
+  kind:'account'|'commitment'|'invoice'|'installment_plan'|'projection'|'transaction';
   id:string;
   label:string;
   amountMinor:number;
@@ -37,7 +40,7 @@ export type AssistantSource={
 };
 
 export type AssistantAnswer={
-  intent:'remaining_to_pay'|'available_now'|'future_months'|'spending_simulation'|'ending_installments'|'unsupported';
+  intent:'remaining_to_pay'|'available_now'|'future_months'|'spending_simulation'|'ending_installments'|'spending_change'|'anomalies'|'unsupported';
   title:string;
   summary:string;
   answerMinor:number|null;
@@ -83,6 +86,21 @@ export function classifyAssistantIntent(question:string):AssistantAnswer['intent
   ) return 'spending_simulation';
 
   if(
+    /por que.*gastei.*mais/.test(q)||
+    /porque.*gastei.*mais/.test(q)||
+    /gastei.*mais.*(?:mes|mês)/.test(q)||
+    /aumentou.*(?:gasto|despesa)/.test(q)
+  ) return 'spending_change';
+
+  if(
+    /o que.*estranh/.test(q)||
+    /algo.*estranh/.test(q)||
+    /cobranca.*(?:diferente|fora)/.test(q)||
+    /cobrança.*(?:diferente|fora)/.test(q)||
+    /duplicad/.test(q)
+  ) return 'anomalies';
+
+  if(
     /parcelas?.*(?:terminam|acabam|finalizam)/.test(q)||
     /parcelamentos?.*(?:terminam|acabam|finalizam)/.test(q)||
     /quais .*parcelas?.*logo/.test(q)
@@ -117,6 +135,7 @@ export function classifyAssistantIntent(question:string):AssistantAnswer['intent
 export function answerAssistantQuestion(input:{
   question:string;
   accounts:AssistantAccount[];
+  transactions:AssistantTransaction[];
   commitments:AssistantCommitment[];
   invoices:AssistantInvoice[];
   installmentPlans:AssistantInstallmentPlan[];
@@ -231,6 +250,101 @@ export function answerAssistantQuestion(input:{
         detail:`${plan.remaining===1?'Falta':'Faltam'} ${plan.remaining} parcela${plan.remaining===1?'':'s'}`
       })),
       suggestions:['Dá para gastar R$ 500?','O que já está comprometido nos próximos meses?','Quanto ainda falta pagar?']
+    };
+  }
+
+  if(intent==='spending_change'){
+    const comparison=deriveSpendingComparison(input.transactions,input.now);
+    const moneyNow=formatMoneyMinor(comparison.currentMinor);
+    const moneyPrevious=formatMoneyMinor(comparison.previousMinor);
+    if(!comparison.hasComparableData){
+      return {
+        intent,
+        title:'Ainda falta um mês anterior para comparar.',
+        summary:'Eu consigo explicar a diferença quando houver gastos registrados no mês atual e no mês anterior. Não vou inventar uma comparação sem base.',
+        answerMinor:null,
+        sources:[],
+        cards:[
+          {label:'Este mês',amountMinor:comparison.currentMinor,detail:`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conhecido${comparison.currentCount===1?'':'s'}`}
+        ],
+        suggestions:['O que está estranho?','Quanto ainda falta pagar?','Dá para gastar R$ 500?']
+      };
+    }
+
+    const increased=comparison.deltaMinor>0;
+    const top=comparison.topIncreases.slice(0,3);
+    const reason=top.length
+      ? ` As maiores altas vieram de ${top.map(item=>categoryLabel(item.category)).join(', ')}.`
+      : '';
+    const currentSources=input.transactions
+      .filter(item=>item.direction==='expense'&&item.status!=='cancelled'&&item.source!=='credit_card_invoice_payment'&&String(item.observedOn||'').startsWith(comparison.currentMonthKey))
+      .sort((a,b)=>b.amountMinor-a.amountMinor)
+      .slice(0,20)
+      .map(item=>({
+        kind:'transaction' as const,
+        id:item.id,
+        label:item.description,
+        amountMinor:item.amountMinor,
+        detail:'Gasto observado neste mês'
+      }));
+
+    return {
+      intent,
+      title:increased
+        ? `Você gastou ${formatMoneyMinor(comparison.deltaMinor)} a mais que no mês anterior.`
+        : comparison.deltaMinor<0
+          ? `Você gastou ${formatMoneyMinor(Math.abs(comparison.deltaMinor))} a menos que no mês anterior.`
+          : 'Seus gastos conhecidos estão no mesmo nível do mês anterior.',
+      summary:`Este mês tem ${moneyNow} em gastos conhecidos; o mês anterior teve ${moneyPrevious}.${reason} A comparação ignora transferências entre suas contas e pagamento de fatura para não contar a mesma despesa duas vezes.`,
+      answerMinor:comparison.deltaMinor,
+      sources:currentSources,
+      cards:[
+        {label:'Este mês',amountMinor:comparison.currentMinor,detail:`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conhecido${comparison.currentCount===1?'':'s'}`},
+        {label:'Mês anterior',amountMinor:comparison.previousMinor,detail:`${comparison.previousCount} gasto${comparison.previousCount===1?'':'s'} conhecido${comparison.previousCount===1?'':'s'}`},
+        ...top.map(item=>({
+          label:categoryLabel(item.category),
+          amountMinor:item.deltaMinor,
+          detail:`Alta na categoria: ${formatMoneyMinor(item.previousMinor)} → ${formatMoneyMinor(item.currentMinor)}`
+        }))
+      ],
+      suggestions:['O que está estranho?','Quanto ainda falta pagar?','Quais parcelas terminam logo?']
+    };
+  }
+
+  if(intent==='anomalies'){
+    const anomalies=deriveFinancialAnomalies(input.transactions,input.now);
+    if(!anomalies.length){
+      return {
+        intent,
+        title:'Nada fora do padrão conhecido chamou atenção.',
+        summary:'Não encontrei duplicidades prováveis nem valores claramente acima do histórico disponível neste mês. Isso não garante que esteja tudo certo; significa apenas que não apareceu um sinal forte nos dados conhecidos.',
+        answerMinor:null,
+        sources:[],
+        cards:[],
+        suggestions:['Por que gastei mais este mês?','Quanto ainda falta pagar?','O que já está comprometido nos próximos meses?']
+      };
+    }
+
+    return {
+      intent,
+      title:`Encontrei ${anomalies.length} ${anomalies.length===1?'item':'itens'} que vale conferir.`,
+      summary:'São sinais, não acusações de erro. Eu marco apenas possíveis duplicidades e valores bem acima do histórico da mesma descrição.',
+      answerMinor:null,
+      sources:anomalies.map(item=>({
+        kind:'transaction' as const,
+        id:item.transactionId,
+        label:item.description,
+        amountMinor:item.amountMinor,
+        detail:item.detail
+      })),
+      cards:anomalies.slice(0,6).map(item=>({
+        label:item.type==='possible_duplicate'?'Possível duplicidade':'Valor diferente do normal',
+        amountMinor:item.amountMinor,
+        detail:item.baselineMinor
+          ? `Histórico típico: ${formatMoneyMinor(item.baselineMinor)} · diferença de ${formatMoneyMinor(item.differenceMinor||0)}`
+          : item.detail
+      })),
+      suggestions:['Por que gastei mais este mês?','Quanto ainda falta pagar?','Quais parcelas terminam logo?']
     };
   }
 
@@ -357,10 +471,10 @@ export function answerAssistantQuestion(input:{
   return {
     intent:'unsupported',
     title:'Posso responder com os dados desta visão.',
-    summary:'Pergunte sobre saldo disponível, quanto falta pagar, próximos meses, simulação de gasto ou parcelas que terminam logo.',
+    summary:'Pergunte sobre saldo disponível, quanto falta pagar, próximos meses, simulação de gasto, parcelas que terminam, por que os gastos mudaram ou o que parece fora do padrão.',
     answerMinor:null,
     sources:[],
     cards:[],
-    suggestions:['Dá para gastar R$ 500?','Quais parcelas terminam logo?','Quanto ainda falta pagar?','Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
+    suggestions:['Por que gastei mais este mês?','O que está estranho?','Dá para gastar R$ 500?','Quais parcelas terminam logo?','Quanto ainda falta pagar?','Quanto tenho disponível?','O que já está comprometido nos próximos meses?']
   };
 }
