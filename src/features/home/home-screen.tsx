@@ -11,7 +11,7 @@ import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { useI18n } from '@/src/i18n/locale-provider';
-import type { HouseholdRole } from '@/src/core/household';
+import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
@@ -23,7 +23,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const {t,locale,intlLocale,formatMoney}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const monthName=useMemo(()=>new Intl.DateTimeFormat(intlLocale,{month:'long'}),[intlLocale]);
-  const canManage = role === 'owner' || role === 'admin';
+  const canManage = canHouseholdRole(role,'manage_finance');
   const canContribute = role !== 'read_only';
   const [transactions, setTransactions] = useState<HomeRow[]>([]);
   const [commitments, setCommitments] = useState<HomeRow[]>([]);

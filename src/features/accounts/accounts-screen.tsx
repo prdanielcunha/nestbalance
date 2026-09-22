@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
-import type { HouseholdRole } from '@/src/core/household';
+import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
@@ -16,7 +16,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
   const {t,locale,intlLocale,currency,formatMoney,formatDate}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const currencySymbol=useMemo(()=>new Intl.NumberFormat(intlLocale,{style:'currency',currency,currencyDisplay:'narrowSymbol',minimumFractionDigits:0,maximumFractionDigits:0}).formatToParts(0).find(part=>part.type==='currency')?.value||currency,[intlLocale,currency]);
-  const canManage=role==='owner'||role==='admin';
+  const canManage=canHouseholdRole(role,'manage_finance');
   const [accounts,setAccounts]=useState<HomeAccount[]>([]);
   const [cards,setCards]=useState<HomeCreditCard[]>([]);
   const [invoiceImports,setInvoiceImports]=useState<HomeInvoiceImport[]>([]);
