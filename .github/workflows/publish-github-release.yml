@@ -3,7 +3,7 @@ name: Publish NestBalance GitHub Release
 on:
   workflow_run:
     workflows:
-      - Publish NestBalance Official Production Site
+      - Deploy NestBalance Production
     types:
       - completed
 
@@ -44,16 +44,24 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Require successful production deployment for the same SHA
+      - name: Require successful official-site publication for the same SHA
         if: steps.version.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          DEPLOY_RUN_ID="$(gh api             -H "Accept: application/vnd.github+json"             "/repos/$GITHUB_REPOSITORY/actions/workflows/deploy-production.yml/runs?branch=production&event=push&head_sha=$RELEASE_SHA&per_page=20"             --jq '.workflow_runs[] | select(.conclusion=="success") | .id' | head -n 1)"
-          test -n "$DEPLOY_RUN_ID"
-          echo "NESTBALANCE_CERTIFIED_DEPLOY_RUN=$DEPLOY_RUN_ID"
+          echo "NESTBALANCE_CERTIFIED_DEPLOY_RUN=${{ github.event.workflow_run.id }}"
+          OFFICIAL_RUN_ID=""
+          for i in {1..60}; do
+            OFFICIAL_RUN_ID="$(gh api               -H "Accept: application/vnd.github+json"               "/repos/$GITHUB_REPOSITORY/actions/workflows/publish-official-production.yml/runs?branch=production&event=push&per_page=20"               --jq --arg sha "$RELEASE_SHA" '.workflow_runs[] | select(.head_sha==$sha and .conclusion=="success") | .id'               | head -n 1)"
+            if [[ -n "$OFFICIAL_RUN_ID" ]]; then
+              break
+            fi
+            sleep 10
+          done
+          test -n "$OFFICIAL_RUN_ID"
+          echo "NESTBALANCE_CERTIFIED_OFFICIAL_SITE_RUN=$OFFICIAL_RUN_ID"
 
       - name: Create stable tag and GitHub Release
         if: steps.version.outputs.publish == 'true'
