@@ -40,3 +40,44 @@ Cadeirinha Davi: Setembro 2026
 test('does not reinterpret arbitrary lists as recurring bills without a recurring heading',()=>{
   assert.equal(parseRecurringCommitmentsFromOcr('Studio Z 5 300\nInternet 20 166'),null);
 });
+
+
+test('recognizes recurring bills when OCR splits each table cell onto its own line',()=>{
+  const screen=parseRecurringCommitmentsFromOcr(`
+Débitos recorrentes
+Débito
+Data
+Valor
+Studio Z
+5
+300
+Cartão MP
+5
+262
+Itaú
+8
+121,32
+Internet vivo
+20
+166
+Carro
+20
+1.300
+Davi
+250
+Vencimentos:
+`);
+  assert.ok(screen);
+  assert.equal(screen.commitments.length,6);
+  assert.deepEqual(
+    screen.commitments.map(item=>[item.description,item.dueDay,item.amountMinor]),
+    [
+      ['Studio Z',5,30000],
+      ['Cartão MP',5,26200],
+      ['Itaú',8,12132],
+      ['Internet vivo',20,16600],
+      ['Carro',20,130000],
+      ['Davi',null,25000]
+    ]
+  );
+});
