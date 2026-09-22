@@ -6,6 +6,14 @@ test('saldo em reais vira centavos sem ponto flutuante persistido',()=>{
   assert.equal(parseMoneyInputToMinor('4.820,35'),482035);
   assert.equal(parseMoneyInputToMinor('4820,35'),482035);
   assert.equal(parseMoneyInputToMinor('-120,50'),-12050);
+  assert.equal(parseMoneyInputToMinor('4.820'),482000);
+});
+
+test('saldo em inglês aceita separadores internacionais sem ambiguidade',()=>{
+  assert.equal(parseMoneyInputToMinor('1,250.50','en'),125050);
+  assert.equal(parseMoneyInputToMinor('1,250','en'),125000);
+  assert.equal(parseMoneyInputToMinor('1250.50','en'),125050);
+  assert.equal(parseMoneyInputToMinor('4.820','en'),null);
 });
 
 test('saldo inválido falha fechado',()=>{

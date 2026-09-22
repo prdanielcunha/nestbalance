@@ -1,3 +1,4 @@
+import type { AppLocale } from './locale.js';
 export const ACCOUNT_TYPES = ['bank','wallet','cash'] as const;
 export type AccountType = typeof ACCOUNT_TYPES[number];
 
@@ -30,13 +31,30 @@ export function validateAccountDraft(input:{name:unknown;type:unknown;balanceMin
   return {ok:true,value:{name,type,balanceMinor,currency:'BRL'},dedupKey:accountDedupKey(name,type)};
 }
 
-export function parseMoneyInputToMinor(input:string):number|null{
-  const cleaned=input.replace(/\s/g,'').replace(/^R\$/i,'').trim();
+export function parseMoneyInputToMinor(input:string,locale:AppLocale='pt-BR'):number|null{
+  const cleaned=input
+    .normalize('NFKC')
+    .replace(/[\s\u00a0]/g,'')
+    .replace(/^(?:R\$|BRL)/i,'')
+    .trim();
   if(!cleaned) return null;
   const negative=cleaned.startsWith('-');
   const raw=negative?cleaned.slice(1):cleaned;
-  if(!/^\d{1,15}(?:[.,]\d{0,2})?$/.test(raw)&&!/^\d{1,3}(?:\.\d{3})+(?:,\d{0,2})?$/.test(raw)) return null;
-  const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.') : raw;
+  if(!/^\d[\d.,]*$/.test(raw)) return null;
+
+  let normalized:string|null=null;
+  if(locale==='en'){
+    if(/^\d{1,3}(?:,\d{3})+\.\d{1,2}$/.test(raw)) normalized=raw.replace(/,/g,'');
+    else if(/^\d{1,3}(?:,\d{3})+$/.test(raw)) normalized=raw.replace(/,/g,'');
+    else if(/^\d{1,15}(?:\.\d{1,2})?$/.test(raw)) normalized=raw;
+  }else{
+    if(/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(raw)) normalized=raw.replace(/\./g,'').replace(',','.');
+    else if(/^\d{1,3}(?:\.\d{3})+$/.test(raw)) normalized=raw.replace(/\./g,'');
+    else if(/^\d{1,15}(?:,\d{1,2})?$/.test(raw)) normalized=raw.replace(',','.');
+    else if(/^\d{1,15}\.\d{1,2}$/.test(raw)) normalized=raw;
+  }
+
+  if(normalized===null) return null;
   const value=Number(normalized);
   if(!Number.isFinite(value)) return null;
   const minor=Math.round(value*100)*(negative?-1:1);
