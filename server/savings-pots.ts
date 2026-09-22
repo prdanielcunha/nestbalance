@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { assertScopedAccess, requestedScope } from './privacy.js';
+import { normalizeSavingsPotName } from '../src/core/savings-pots.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -63,10 +65,27 @@ export async function upsertSavingsPot(req:Request,res:Response){
       scope=existing.scope==='personal'?'personal':'household';
       ownerUid=scope==='personal'?user.uid:null;
     }else{
-      ref=household.collection('savingsPots').doc();
       scope=requestedScope(req.body?.scope);
       ownerUid=scope==='personal'?user.uid:null;
-      created=true;
+      const stableKey=institutionName
+        ? createHash('sha256').update([
+            scope,
+            ownerUid||'',
+            'screen_pot',
+            normalizeSavingsPotName(institutionName),
+            normalizeSavingsPotName(name)
+          ].join('|')).digest('hex').slice(0,40)
+        : null;
+      ref=stableKey?household.collection('savingsPots').doc(stableKey):household.collection('savingsPots').doc();
+      const existing=stableKey?await ref.get():null;
+      if(existing?.exists){
+        const data=existing.data()!;
+        assertScopedAccess(data,user.uid);
+        source=typeof data.source==='string'&&data.source?data.source:'manual';
+        created=false;
+      }else{
+        created=true;
+      }
     }
 
     const payload={
