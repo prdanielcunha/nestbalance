@@ -4,21 +4,22 @@ import { AppNav } from '@/src/features/navigation/app-nav';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
-import { categorizeSpending, categoryLabel, deriveRecurringCandidates, recurringPatternKey } from '@/src/core/insights';
+import { SPENDING_CATEGORIES, categoryLabel, deriveRecurringCandidates, recurringPatternKey, resolvedSpendingCategory, type SpendingCategory } from '@/src/core/insights';
+import { useI18n } from '@/src/i18n/locale-provider';
 import { confirmRecurringSuggestion, dismissRecurringSuggestion } from '@/src/lib/repositories/recurrences';
+import { updateTransactionCategory } from '@/src/lib/repositories/categories';
 
-const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
-const date=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
 
 type Filter='all'|'income'|'cash_expense'|'card'|'transfer';
 type ViewScope='household'|'personal';
 
-function label(row:HomeRow){
-  if(row.source==='credit_card_invoice') return 'Compra no cartão';
-  if(row.source==='credit_card_invoice_payment') return 'Fatura paga';
-  if(row.direction==='income') return row.source==='open_finance'?'Recebido pelo banco':'Dinheiro que entrou';
-  if(row.direction==='transfer') return 'Só mudou de conta';
-  return row.source==='open_finance'?'Pago pelo banco':'Dinheiro que saiu';
+function label(row:HomeRow,locale:'pt-BR'|'en'|'es'){
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  if(row.source==='credit_card_invoice') return l('Compra no cartão','Card purchase','Compra con tarjeta');
+  if(row.source==='credit_card_invoice_payment') return l('Fatura paga','Statement paid','Tarjeta pagada');
+  if(row.direction==='income') return row.source==='open_finance'?l('Recebido pelo banco','Received via bank','Recibido por el banco'):l('Dinheiro que entrou','Money in','Dinero que entró');
+  if(row.direction==='transfer') return l('Só mudou de conta','Moved between your accounts','Solo cambió de cuenta');
+  return row.source==='open_finance'?l('Pago pelo banco','Paid via bank','Pagado por el banco'):l('Dinheiro que saiu','Money out','Dinero que salió');
 }
 
 function matchesFilter(row:HomeRow,filter:Filter){
@@ -30,6 +31,9 @@ function matchesFilter(row:HomeRow,filter:Filter){
 }
 
 export function MovementsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
+  const {t,locale,intlLocale,formatMoney}=useI18n();
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  const date=useMemo(()=>new Intl.DateTimeFormat(intlLocale,{day:'2-digit',month:'short',year:'numeric'}),[intlLocale]);
   const [rows,setRows]=useState<HomeRow[]>([]);
   const [commitments,setCommitments]=useState<HomeRow[]>([]);
   const [dismissedRecurrenceKeys,setDismissedRecurrenceKeys]=useState<string[]>([]);
@@ -40,6 +44,11 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   const [view,setView]=useState<FinancialView>('household');
   const [recurrenceWorking,setRecurrenceWorking]=useState('');
   const [recurrenceError,setRecurrenceError]=useState('');
+  const [categoryEditingId,setCategoryEditingId]=useState('');
+  const [categoryDraft,setCategoryDraft]=useState<SpendingCategory>('other');
+  const [categoryRemember,setCategoryRemember]=useState(false);
+  const [categoryWorking,setCategoryWorking]=useState('');
+  const [categoryError,setCategoryError]=useState('');
 
   async function load(silent=false){
     if(!silent) setLoading(true);
@@ -50,7 +59,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
       setCommitments(data.commitments||[]);
       setDismissedRecurrenceKeys(data.dismissedRecurrenceKeys||[]);
     }catch{
-      setError('Não conseguimos carregar seus movimentos agora.');
+      setError(l('Não conseguimos carregar seus movimentos agora.','We could not load your activity right now.','No pudimos cargar tus movimientos ahora.'));
     }finally{
       if(!silent) setLoading(false);
     }
@@ -87,12 +96,45 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
       await load(true);
     }catch{
       setRecurrenceError(action==='confirm'
-        ? 'Não conseguimos criar a conta mensal agora. Nada foi alterado.'
-        : 'Não conseguimos guardar sua preferência agora.');
+        ? l('Não conseguimos criar a conta mensal agora. Nada foi alterado.','We could not create the monthly bill right now. Nothing changed.','No pudimos crear la cuenta mensual ahora. No se cambió nada.')
+        : l('Não conseguimos guardar sua preferência agora.','We could not save your preference right now.','No pudimos guardar tu preferencia ahora.'));
     }finally{
       setRecurrenceWorking('');
     }
   }
+  function beginCategoryEdit(row:HomeRow){
+    if(role==='read_only') return;
+    setCategoryEditingId(row.id);
+    setCategoryDraft(resolvedSpendingCategory(row));
+    setCategoryRemember(false);
+    setCategoryError('');
+  }
+
+  async function saveCategory(row:HomeRow){
+    if(role==='read_only'||categoryWorking) return;
+    setCategoryWorking(row.id);
+    setCategoryError('');
+    try{
+      await updateTransactionCategory({
+        householdId,
+        transactionId:row.id,
+        category:categoryDraft,
+        rememberForSimilar:categoryRemember
+      });
+      await load(true);
+      setCategoryEditingId('');
+      setCategoryRemember(false);
+    }catch{
+      setCategoryError(l(
+        'Não conseguimos guardar essa categoria agora. Nada foi alterado.',
+        'We could not save this category right now. Nothing changed.',
+        'No pudimos guardar esta categoría ahora. No se cambió nada.'
+      ));
+    }finally{
+      setCategoryWorking('');
+    }
+  }
+
   const summary=useMemo(()=>({
     income:scopedRows.filter(x=>x.direction==='income'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
     cashExpense:scopedRows.filter(x=>x.direction==='expense'&&x.source!=='credit_card_invoice'&&x.status!=='cancelled').reduce((s,x)=>s+x.amountMinor,0),
@@ -101,89 +143,120 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   }),[scopedRows]);
 
   const visible=useMemo(()=>{
-    const q=query.trim().toLocaleLowerCase('pt-BR');
-    return scopedRows.filter(row=>matchesFilter(row,filter)&&(!q||row.description.toLocaleLowerCase('pt-BR').includes(q)));
-  },[scopedRows,filter,query]);
+    const q=query.trim().toLocaleLowerCase(intlLocale);
+    return scopedRows.filter(row=>matchesFilter(row,filter)&&(!q||row.description.toLocaleLowerCase(intlLocale).includes(q)));
+  },[scopedRows,filter,query,intlLocale]);
 
   const filters:{value:Filter;label:string}[]=[
-    {value:'all',label:'Todos'},
-    {value:'income',label:'Recebi'},
-    {value:'cash_expense',label:'Paguei'},
-    {value:'card',label:'Cartão'},
-    {value:'transfer',label:'Entre contas'}
+    {value:'all',label:l('Todos','All','Todos')},
+    {value:'income',label:l('Recebi','Money in','Recibí')},
+    {value:'cash_expense',label:l('Paguei','Paid','Pagué')},
+    {value:'card',label:l('Cartão','Card','Tarjeta')},
+    {value:'transfer',label:l('Entre contas','Between accounts','Entre cuentas')}
   ];
 
   return <main className="app-shell movements-shell">
     <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">Movimentos</span></div>
+      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navMovements}</span></div>
     </header>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="area-hero">
-      <span>Seu histórico</span>
-      <h1>Tudo que aconteceu com seu dinheiro.</h1>
-      <p>O NestBalance separa o que você recebeu, o que pagou, o que foi para o cartão e o que só mudou de uma conta sua para outra.</p>
+      <span>{l('Seu histórico','Your history','Tu historial')}</span>
+      <h1>{t.movementsTitle}</h1>
+      <p>{t.movementsIntro}</p>
     </section>
 
     {recurringCandidates.length>0&&<section className="recurrence-suggestions" aria-labelledby="recurrence-title">
       <div className="section-title">
         <div>
-          <span className="section-kicker">Padrões que percebemos</span>
-          <h2 id="recurrence-title">Isso parece acontecer todo mês?</h2>
+          <span className="section-kicker">{l('Padrões que percebemos','Patterns we noticed','Patrones que notamos')}</span>
+          <h2 id="recurrence-title">{l('Isso parece acontecer todo mês?','Does this happen every month?','¿Esto ocurre todos los meses?')}</h2>
         </div>
-        <small>Nada é criado sem você confirmar.</small>
+        <small>{l('Nada é criado sem você confirmar.','Nothing is created until you confirm it.','Nada se crea hasta que lo confirmes.')}</small>
       </div>
       <div className="recurrence-suggestion-list">
         {recurringCandidates.map(candidate=><article key={candidate.scope+'-'+candidate.key} className="recurrence-suggestion-card">
           <div>
-            <span>{candidate.scope==='personal'?'Só para mim':'Lar'} · apareceu em {candidate.observedMonths} meses</span>
+            <span>{candidate.scope==='personal'?t.scopePersonal:t.scopeHousehold} · {l(`apareceu em ${candidate.observedMonths} meses`,`seen in ${candidate.observedMonths} months`,`apareció en ${candidate.observedMonths} meses`)}</span>
             <strong>{candidate.description}</strong>
-            <p>Cerca de {money.format(candidate.averageMinor/100)} por mês{candidate.suggestedDueDay?' · normalmente perto do dia '+candidate.suggestedDueDay:''}.</p>
+            <p>{l(`Cerca de ${formatMoney(candidate.averageMinor)} por mês${candidate.suggestedDueDay?' · normalmente perto do dia '+candidate.suggestedDueDay:''}.`,`About ${formatMoney(candidate.averageMinor)} per month${candidate.suggestedDueDay?' · usually near day '+candidate.suggestedDueDay:''}.`,`Cerca de ${formatMoney(candidate.averageMinor)} al mes${candidate.suggestedDueDay?' · normalmente cerca del día '+candidate.suggestedDueDay:''}.`)}</p>
           </div>
           {role!=='read_only'
             ? <div className="recurrence-actions">
                 <button type="button" disabled={Boolean(recurrenceWorking)} onClick={()=>void handleRecurrence(candidate.referenceTransactionId,'confirm')}>
-                  {recurrenceWorking===candidate.referenceTransactionId?'Salvando…':'É mensal'}
+                  {recurrenceWorking===candidate.referenceTransactionId?l('Salvando…','Saving…','Guardando…'):l('É mensal','It is monthly','Es mensual')}
                 </button>
                 <button type="button" className="secondary" disabled={Boolean(recurrenceWorking)} onClick={()=>void handleRecurrence(candidate.referenceTransactionId,'dismiss')}>
-                  Não sugerir
+                  {l('Não sugerir','Do not suggest','No sugerir')}
                 </button>
               </div>
-            : <span className="role-pill">Somente leitura</span>}
+            : <span className="role-pill">{t.readOnly}</span>}
         </article>)}
       </div>
       {recurrenceError&&<p className="error-copy" role="alert">{recurrenceError}</p>}
     </section>}
 
     <section className="movement-summary-grid">
-      <article><span>Recebi</span><strong>{money.format(summary.income/100)}</strong></article>
-      <article><span>Paguei</span><strong>{money.format(summary.cashExpense/100)}</strong></article>
-      <article><span>No cartão</span><strong>{money.format(summary.card/100)}</strong></article>
-      <article><span>Entre contas</span><strong>{money.format(summary.transfers/100)}</strong></article>
+      <article><span>{l('Recebi','Money in','Recibí')}</span><strong>{formatMoney(summary.income)}</strong></article>
+      <article><span>{l('Paguei','Paid','Pagué')}</span><strong>{formatMoney(summary.cashExpense)}</strong></article>
+      <article><span>{l('No cartão','On card','En tarjeta')}</span><strong>{formatMoney(summary.card)}</strong></article>
+      <article><span>{l('Entre contas','Between accounts','Entre cuentas')}</span><strong>{formatMoney(summary.transfers)}</strong></article>
     </section>
 
     <section className="movement-controls">
       <div className="movement-filter-row">
         {filters.map(item=><button key={item.value} className={filter===item.value?'active':''} onClick={()=>setFilter(item.value)}>{item.label}</button>)}
       </div>
-      <input className="premium-input movement-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar por descrição"/>
+      <input className="premium-input movement-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder={l('Buscar por descrição','Search by description','Buscar por descripción')}/>
     </section>
 
     {error&&<p className="error-copy" role="alert">{error}</p>}
     {loading
       ? <div className="movement-full-list">{[0,1,2,3].map(i=><div className="movement-full-row skeleton-line" key={i}/>)}</div>
       : visible.length===0
-        ? <section className="empty-state"><h3>Nada por aqui.</h3><p>{query?'Tente outra busca ou filtro.':'Quando você registrar o primeiro movimento, ele aparecerá nesta timeline.'}</p></section>
+        ? <section className="empty-state"><h3>{l('Nada por aqui.','Nothing here.','Nada por aquí.')}</h3><p>{query?l('Tente outra busca ou filtro.','Try another search or filter.','Prueba otra búsqueda o filtro.'):l('Quando você registrar o primeiro movimento, ele aparecerá nesta timeline.','Your first financial movement will appear here as soon as you record it.','Tu primer movimiento financiero aparecerá aquí cuando lo registres.')}</p></section>
         : <section className="movement-full-list">
             {visible.map(row=><article className="movement-full-row" key={row.id}>
               <div className={'movement-dot '+(row.direction==='income'?'in':'')}/>
               <div className="movement-full-copy">
                 <strong>{row.description}</strong>
-                <span>{label(row)}{row.scope==='personal'?' · Só para mim':''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
-                {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<small>{categoryLabel(categorizeSpending(row.description))}</small>}
-                {row.installment&&<small>Parcela {row.installment.current} de {row.installment.total}</small>}
+                <span>{label(row,locale)}{row.scope==='personal'?` · ${t.scopePersonal}`:''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
+                {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<>
+                  {role==='read_only'
+                    ? <small className="movement-category-label">{categoryLabel(resolvedSpendingCategory(row),locale)}</small>
+                    : <button className="movement-category-pill" type="button" onClick={()=>beginCategoryEdit(row)}>
+                        {categoryLabel(resolvedSpendingCategory(row),locale)}
+                      </button>}
+                  {categoryEditingId===row.id&&<div className="movement-category-editor">
+                    <label>
+                      <span>{l('Categoria','Category','Categoría')}</span>
+                      <select className="premium-input" value={categoryDraft} onChange={event=>setCategoryDraft(event.target.value as SpendingCategory)}>
+                        {SPENDING_CATEGORIES.map(category=><option key={category} value={category}>{categoryLabel(category,locale)}</option>)}
+                      </select>
+                    </label>
+                    <label className="movement-category-remember">
+                      <input type="checkbox" checked={categoryRemember} onChange={event=>setCategoryRemember(event.target.checked)}/>
+                      <span>{l(
+                        'Usar também em lançamentos parecidos deste Lar.',
+                        'Also use this for similar entries in this household.',
+                        'Usar también en movimientos parecidos de este Hogar.'
+                      )}</span>
+                    </label>
+                    <div className="movement-category-actions">
+                      <button type="button" disabled={categoryWorking===row.id} onClick={()=>void saveCategory(row)}>
+                        {categoryWorking===row.id?l('Salvando…','Saving…','Guardando…'):l('Salvar','Save','Guardar')}
+                      </button>
+                      <button type="button" className="secondary" disabled={categoryWorking===row.id} onClick={()=>{setCategoryEditingId('');setCategoryError('');}}>
+                        {l('Cancelar','Cancel','Cancelar')}
+                      </button>
+                    </div>
+                    {categoryError&&<p className="error-copy" role="alert">{categoryError}</p>}
+                  </div>}
+                </>}
+                {row.installment&&<small>{l(`Parcela ${row.installment.current} de ${row.installment.total}`,`Installment ${row.installment.current} of ${row.installment.total}`,`Cuota ${row.installment.current} de ${row.installment.total}`)}</small>}
               </div>
-              <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {money.format(row.amountMinor/100)}</b>
+              <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {formatMoney(row.amountMinor)}</b>
             </article>)}
           </section>}
 

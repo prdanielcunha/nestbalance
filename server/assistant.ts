@@ -4,6 +4,8 @@ import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { visibleDocs } from './privacy.js';
 import { normalizeFinancialScope } from '../src/core/privacy.js';
+import { normalizeLocale } from '../src/core/locale.js';
+import { categoryFromRecordAndRules, learnedCategoryRuleFromDoc, type LearnedCategoryRule } from './category-rules.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -19,7 +21,7 @@ function accountDto(doc:any){
   };
 }
 
-function transactionDto(doc:any){
+function transactionDto(doc:any,categoryRules:LearnedCategoryRule[]=[]){
   const data=doc.data();
   return {
     id:doc.id,
@@ -28,7 +30,8 @@ function transactionDto(doc:any){
     direction:data.direction||'expense',
     source:typeof data.source==='string'?data.source:null,
     status:String(data.status||'confirmed'),
-    observedOn:typeof data.observedOn==='string'?data.observedOn:null
+    observedOn:typeof data.observedOn==='string'?data.observedOn:null,
+    category:categoryFromRecordAndRules(data,categoryRules)
   };
 }
 
@@ -87,22 +90,31 @@ export async function answerFinanceAssistant(req:Request,res:Response){
     await requireHouseholdMember(householdId,user.uid);
     const household=adminDb.collection('households').doc(householdId);
 
-    const [accounts,transactions,commitments,invoices,plans]=await Promise.all([
+    const [householdSnap,accounts,transactions,commitments,invoices,plans,categoryRulesSnap]=await Promise.all([
+      household.get(),
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(500).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(150).get(),
       household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get(),
-      household.collection('installmentPlans').where('status','==','active').limit(100).get()
+      household.collection('installmentPlans').where('status','==','active').limit(100).get(),
+      household.collection('categoryRules').limit(200).get()
     ]);
 
     const scoped=(docs:any[])=>visibleDocs(docs,user.uid).filter(doc=>
       requestedView==='all'||normalizeFinancialScope(doc.data()?.scope)===requestedView
     );
 
+    const categoryRules=categoryRulesSnap.docs
+      .map(learnedCategoryRuleFromDoc)
+      .filter((rule):rule is LearnedCategoryRule=>Boolean(rule))
+      .filter(rule=>rule.scope==='household'||rule.ownerUid===user.uid);
+
+    const locale=normalizeLocale(householdSnap.data()?.locale);
     const answer=answerAssistantQuestion({
       question,
+      locale,
       accounts:scoped(accounts.docs).map(accountDto),
-      transactions:scoped(transactions.docs).map(transactionDto),
+      transactions:scoped(transactions.docs).map(doc=>transactionDto(doc,categoryRules)),
       commitments:scoped(commitments.docs).map(commitmentDto),
       invoices:scoped(invoices.docs).map(invoiceDto),
       installmentPlans:scoped(plans.docs).map(planDto),
@@ -114,6 +126,7 @@ export async function answerFinanceAssistant(req:Request,res:Response){
       answer,
       grounded:true,
       view:requestedView,
+      locale,
       asOf:new Date().toISOString()
     });
   }catch(err:any){

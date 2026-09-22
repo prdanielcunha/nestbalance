@@ -31,6 +31,13 @@ test('classifica perguntas humanas suportadas',()=>{
   assert.equal(classifyAssistantIntent('Quais parcelas terminam logo?'),'ending_installments');
   assert.equal(classifyAssistantIntent('Por que gastei mais este mês?'),'spending_change');
   assert.equal(classifyAssistantIntent('O que está estranho?'),'anomalies');
+  assert.equal(classifyAssistantIntent('How much is still left to pay?'),'remaining_to_pay');
+  assert.equal(classifyAssistantIntent('Can I spend R$ 500?'),'spending_simulation');
+  assert.equal(classifyAssistantIntent('Why did I spend more this month?'),'spending_change');
+  assert.equal(classifyAssistantIntent('What looks unusual?'),'anomalies');
+  assert.equal(classifyAssistantIntent('¿Cuánto falta pagar?'),'remaining_to_pay');
+  assert.equal(classifyAssistantIntent('¿Puedo gastar R$ 500?'),'spending_simulation');
+  assert.equal(classifyAssistantIntent('¿Qué cuotas terminan pronto?'),'ending_installments');
 });
 
 test('responde quanto falta pagar sem somar fatura paga',()=>{
@@ -123,4 +130,38 @@ test('aponta anomalias como sinais e não como acusações',()=>{
   assert.equal(answer.intent,'anomalies');
   assert.match(answer.summary,/sinais, não acusações/i);
   assert.equal(answer.sources.some(source=>source.label==='Padaria'),true);
+});
+
+
+test('responde em inglês quando o idioma confiável do Lar é inglês',()=>{
+  const answer=answerAssistantQuestion({...base,locale:'en',question:'Why did I spend more this month?'});
+  assert.equal(answer.intent,'spending_change');
+  assert.match(answer.title,/You spent/);
+  assert.match(answer.summary,/comparison ignores/i);
+  assert.equal(answer.cards.some(card=>card.label==='Food'),true);
+  assert.equal(answer.suggestions.some(value=>/What looks unusual/i.test(value)),true);
+});
+
+test('responde em espanhol quando o idioma confiável do Lar é espanhol',()=>{
+  const answer=answerAssistantQuestion({...base,locale:'es',question:'¿Cuánto falta pagar?'});
+  assert.equal(answer.intent,'remaining_to_pay');
+  assert.equal(answer.answerMinor,71990);
+  assert.match(answer.title,/Todavía hay valores/i);
+  assert.equal(answer.cards.some(card=>card.label==='Resúmenes abiertos'),true);
+});
+
+test('simulação em inglês aceita separadores internacionais sem perder centavos',()=>{
+  const answer=answerAssistantQuestion({...base,locale:'en',question:'Can I spend R$ 1,250.50?'});
+  assert.equal(answer.intent,'spending_simulation');
+  assert.equal(answer.answerMinor,2960);
+  assert.match(answer.summary,/simulation, not a spending recommendation/i);
+});
+
+test('pergunta não suportada mantém transparência no idioma do Lar',()=>{
+  const english=answerAssistantQuestion({...base,locale:'en',question:'Where should I invest?'});
+  const spanish=answerAssistantQuestion({...base,locale:'es',question:'¿Dónde debo invertir?'});
+  assert.equal(english.intent,'unsupported');
+  assert.match(english.title,/I can answer/i);
+  assert.equal(spanish.intent,'unsupported');
+  assert.match(spanish.title,/Puedo responder/i);
 });

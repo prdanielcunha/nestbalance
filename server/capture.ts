@@ -6,6 +6,7 @@ import { parseFinancialText } from '../src/core/text-parser.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { assertScopedAccess, scopeFields } from './privacy.js';
+import { learnedCategoryForDescription } from './category-rules.js';
 
 function error(res: Response, status: number, code: string) { return res.status(status).json({ ok: false, error: code }); }
 
@@ -33,10 +34,14 @@ export async function commitCapture(req: Request, res: Response) {
       evidenceId = data.canonicalEvidenceId || evidenceId;
     }
 
+    const household=adminDb.collection('households').doc(householdId);
+    const learnedCategory=interpretation.kind==='transaction'&&interpretation.direction==='expense'
+      ? await learnedCategoryForDescription(household,privacy.scope,privacy.ownerUid,interpretation.description)
+      : null;
     const fingerprint = fingerprintForInterpretation(interpretation, observedOn);
     const fingerprintId = createHash('sha256').update(privacy.scope+'|'+(privacy.ownerUid||'')+'|'+fingerprint).digest('hex');
     const target = interpretation.kind === 'commitment' ? 'commitments' : 'transactions';
-    const entityRef = adminDb.collection('households').doc(householdId).collection(target).doc();
+    const entityRef = household.collection(target).doc();
     const fingerprintRef = adminDb.doc(`households/${householdId}/captureFingerprints/${fingerprintId}`);
     const auditRef = adminDb.collection('households').doc(householdId).collection('auditEvents').doc();
 
@@ -73,7 +78,9 @@ export async function commitCapture(req: Request, res: Response) {
         dueDay: interpretation.dueDay ?? null,
         recurring: interpretation.recurring,
         recurrence: interpretation.recurrence ?? null,
-        installment: interpretation.installment ?? null
+        installment: interpretation.installment ?? null,
+        category:learnedCategory,
+        categorySource:learnedCategory?'learned':null
       });
       tx.create(fingerprintRef, {
         entityType: interpretation.kind,
