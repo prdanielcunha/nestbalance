@@ -1,11 +1,14 @@
 name: Publish NestBalance GitHub Release
 
 on:
-  push:
-    branches:
-      - production
+  workflow_run:
+    workflows:
+      - Publish NestBalance Official Production Site
+    types:
+      - completed
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -14,12 +17,16 @@ concurrency:
 
 jobs:
   release:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'production'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
-      - name: Checkout
+      - name: Checkout certified production SHA
         uses: actions/checkout@v7
         with:
+          ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0
 
       - name: Resolve stable version
@@ -37,6 +44,17 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Require successful production deployment for the same SHA
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_RUN_ID="$(gh api             -H "Accept: application/vnd.github+json"             "/repos/$GITHUB_REPOSITORY/actions/workflows/deploy-production.yml/runs?branch=production&event=push&head_sha=$RELEASE_SHA&per_page=20"             --jq '.workflow_runs[] | select(.conclusion=="success") | .id' | head -n 1)"
+          test -n "$DEPLOY_RUN_ID"
+          echo "NESTBALANCE_CERTIFIED_DEPLOY_RUN=$DEPLOY_RUN_ID"
+
       - name: Create stable tag and GitHub Release
         if: steps.version.outputs.publish == 'true'
         env:
@@ -52,13 +70,13 @@ jobs:
           fi
           gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
+            --target "$RELEASE_SHA" \
             --title "NestBalance $VERSION" \
             --notes-file docs/RELEASE_1.0.md \
             --latest
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,url
 
-      - name: Verify tag resolves to production SHA
+      - name: Verify tag resolves to certified production SHA
         if: steps.version.outputs.publish == 'true'
         env:
           TAG: ${{ steps.version.outputs.tag }}
@@ -67,6 +85,6 @@ jobs:
           set -euo pipefail
           git fetch --tags --force
           TAG_SHA="$(git rev-list -n 1 "$TAG")"
-          test "$TAG_SHA" = "$GITHUB_SHA"
+          test "$TAG_SHA" = "$RELEASE_SHA"
           echo "NESTBALANCE_RELEASE_TAG=$TAG"
           echo "NESTBALANCE_RELEASE_SHA=$TAG_SHA"
