@@ -29,6 +29,17 @@ function safeDate(value:unknown,allowed:Set<string>){
   const v=str(value,10);
   return v&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&allowed.has(v)?v:null;
 }
+function safeLast4(value:unknown,text:string){
+  const digits=String(value??'').replace(/\D/g,'');
+  if(!/^\d{4}$/.test(digits)) return null;
+  return text.includes(digits)?digits:null;
+}
+function groundedLabel(value:unknown,text:string,max=80){
+  const candidate=str(value,max);
+  if(!candidate) return null;
+  const plain=(input:string)=>input.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return plain(text).includes(plain(candidate))?candidate:null;
+}
 function parseLooseMoney(raw:string){
   let value=raw.replace(/\s/g,'').replace(/^R\$/i,'');
   if(value.includes(',')){
@@ -89,14 +100,14 @@ function array(value:unknown,max:number){
 
 function sanitizeScreen(raw:any,text:string):AiFinancialScreenSnapshot|null{
   if(!raw||typeof raw!=='object') return null;
-  const money=moneyEvidence(text),dateSet=dates(text);
+  const money=moneyEvidence(text),dateSet=dates(text),installmentSet=installments(text);
   const accounts=array(raw.accounts,12).map((item:any)=>({
     name:str(item?.name,80)||'Conta',
     productType:enumValue(item?.productType,['account','wallet','savings','investment'] as const,'account'),
     balanceMinor:groundedMinor(item?.balanceMinor,money)??0,
     currency:enumValue(item?.currency,['BRL','USD','EUR'] as const,'BRL'),
     confidence:conf(item?.confidence),
-    last4:/^\d{4}$/.test(String(item?.last4||''))?String(item.last4):null
+    last4:safeLast4(item?.last4,text)
   })).filter(item=>item.balanceMinor>0);
 
   const pots=array(raw.pots,12).map((item:any)=>({
@@ -109,7 +120,7 @@ function sanitizeScreen(raw:any,text:string):AiFinancialScreenSnapshot|null{
 
   const cards=array(raw.cards,12).map((item:any)=>({
     name:str(item?.name,80)||'Cartão',
-    last4:/^\d{4}$/.test(String(item?.last4||''))?String(item.last4):null,
+    last4:safeLast4(item?.last4,text),
     statementAmountMinor:groundedMinor(item?.statementAmountMinor,money),
     dueOn:safeDate(item?.dueOn,dateSet),
     availableLimitMinor:groundedMinor(item?.availableLimitMinor,money),
@@ -121,7 +132,7 @@ function sanitizeScreen(raw:any,text:string):AiFinancialScreenSnapshot|null{
     description:str(item?.description,120)||'Conta',
     amountMinor:groundedMinor(item?.amountMinor,money)??0,
     dueOn:safeDate(item?.dueOn,dateSet),
-    installment:null,
+    installment:installment(item?.installment,installmentSet),
     confidence:conf(item?.confidence),
     needsReview:Boolean(item?.needsReview)
   })).filter(item=>item.amountMinor>0);
@@ -140,7 +151,7 @@ function sanitizeScreen(raw:any,text:string):AiFinancialScreenSnapshot|null{
   if(!total) return null;
   return {
     screenType:enumValue(raw.screenType,[...screenTypes] as any,'other') as AiFinancialScreenSnapshot['screenType'],
-    institution:str(raw.institution,80),
+    institution:groundedLabel(raw.institution,text,80),
     accounts,pots,cards,commitments,movements,
     summary:str(raw.summary,240)||'Dados financeiros extraídos do texto visível.'
   };
@@ -182,7 +193,7 @@ export function sanitizeGeminiFinancialExtraction(raw:any,text:string):AiFinanci
     merchant:str(raw?.merchant,100),
     payer:null,
     payee:null,
-    institution:str(raw?.institution,80),
+    institution:groundedLabel(raw?.institution,text,80),
     paymentMethod:paymentMethods.has(raw?.paymentMethod)?raw.paymentMethod:null,
     transactionId:null,
     pixE2e:null,
