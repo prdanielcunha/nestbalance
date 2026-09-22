@@ -19,6 +19,7 @@ import { selectHousehold } from './server/session.js';
 import { acceptHouseholdInvite, createHouseholdInvite, getHouseholdSettings, removeHouseholdMember, renameHousehold, revokeHouseholdInvite, updateHouseholdMemberRole } from './server/household.js';
 import { deleteHousehold, deletePersonalData, exportPrivacyData, getPrivacyStatus, recordPrivacyConsent } from './server/data-rights.js';
 import { analyzeRedactedTextWithGemini, getGeminiFallbackStatus } from './server/gemini-fallback.js';
+import { confirmRecurringSuggestion, dismissRecurringSuggestion } from './server/recurrences.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -59,6 +60,8 @@ app.post('/api/commitments/match-payment', findCommitmentPaymentMatches);
 app.post('/api/commitments/match-payments', findCommitmentPaymentMatchesBatch);
 app.post('/api/commitments/pay', payCommitment);
 app.post('/api/commitments/undo-payment', undoCommitmentPayment);
+app.post('/api/recurrences/confirm', confirmRecurringSuggestion);
+app.post('/api/recurrences/dismiss', dismissRecurringSuggestion);
 app.post('/api/open-finance/list', listOpenFinanceConnections);
 app.post('/api/open-finance/start', startOpenFinanceConnection);
 app.post('/api/open-finance/complete', completeOpenFinanceConnection);
