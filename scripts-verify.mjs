@@ -117,6 +117,8 @@ assert.match(deployWorkflow,/GEMINI_SECRET_NAME/);
 assert.match(deployWorkflow,/NESTBALANCE_ENABLE_GEMINI_FREE/);
 assert.match(productionWorkflow,/GEMINI_SECRET_NAME/);
 assert.match(productionWorkflow,/NESTBALANCE_ENABLE_GEMINI_FREE/);
+assert.match(deployWorkflow,/NESTBALANCE_ALLOW_PAID_INTEGRATIONS=false/);
+assert.match(productionWorkflow,/NESTBALANCE_ALLOW_PAID_INTEGRATIONS=false/);
 assert.match(envExample,/NESTBALANCE_ENABLE_GEMINI_FREE=false/);
 assert.match(envExample,/NESTBALANCE_ALLOW_PAID_INTEGRATIONS=false/);
 assert.match(geminiFallback,/GEMINI_FREE_CONSENT_REQUIRED/);
