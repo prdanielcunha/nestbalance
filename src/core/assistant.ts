@@ -333,26 +333,31 @@ export function answerAssistantQuestion(input:{
 
   if(intent==='spending_change'){
     const comparison=deriveSpendingComparison(input.transactions,input.now);
-    const moneyNow=formatMoneyMinor(comparison.currentMinor);
-    const moneyPrevious=formatMoneyMinor(comparison.previousMinor);
+    const moneyNow=formatMoneyMinor(comparison.currentMinor,locale);
+    const moneyPrevious=formatMoneyMinor(comparison.previousMinor,locale);
     if(!comparison.hasComparableData){
       return {
         intent,
-        title:'Ainda falta um mês anterior para comparar.',
-        summary:'Eu consigo explicar a diferença quando houver gastos registrados no mês atual e no mês anterior. Não vou inventar uma comparação sem base.',
+        title:tr(locale,'Ainda falta um mês anterior para comparar.','I still need a previous month to compare.','Todavía falta un mes anterior para comparar.'),
+        summary:tr(locale,'Eu consigo explicar a diferença quando houver gastos registrados no mês atual e no mês anterior. Não vou inventar uma comparação sem base.','I can explain the difference once there is spending recorded in both the current and previous month. I will not invent a comparison without data.','Puedo explicar la diferencia cuando haya gastos registrados en el mes actual y en el anterior. No voy a inventar una comparación sin datos.'),
         answerMinor:null,
         sources:[],
         cards:[
-          {label:'Este mês',amountMinor:comparison.currentMinor,detail:`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conhecido${comparison.currentCount===1?'':'s'}`}
+          {label:tr(locale,'Este mês','This month','Este mes'),amountMinor:comparison.currentMinor,detail:tr(locale,`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conhecido${comparison.currentCount===1?'':'s'}`,`${comparison.currentCount} known expense${comparison.currentCount===1?'':'s'}`,`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conocido${comparison.currentCount===1?'':'s'}`)}
         ],
-        suggestions:['O que está estranho?','Quanto ainda falta pagar?','Dá para gastar R$ 500?']
+        suggestions:[prompts.anomalies,prompts.remaining,prompts.spend]
       };
     }
 
     const increased=comparison.deltaMinor>0;
     const top=comparison.topIncreases.slice(0,3);
     const reason=top.length
-      ? ` As maiores altas vieram de ${top.map(item=>categoryLabel(item.category)).join(', ')}.`
+      ? tr(
+          locale,
+          ` As maiores altas vieram de ${top.map(item=>categoryLabel(item.category,'pt-BR')).join(', ')}.`,
+          ` The biggest increases came from ${top.map(item=>categoryLabel(item.category,'en')).join(', ')}.`,
+          ` Los mayores aumentos vinieron de ${top.map(item=>categoryLabel(item.category,'es')).join(', ')}.`
+        )
       : '';
     const currentSources=input.transactions
       .filter(item=>item.direction==='expense'&&item.status!=='cancelled'&&item.source!=='credit_card_invoice_payment'&&String(item.observedOn||'').startsWith(comparison.currentMonthKey))
@@ -363,29 +368,29 @@ export function answerAssistantQuestion(input:{
         id:item.id,
         label:item.description,
         amountMinor:item.amountMinor,
-        detail:'Gasto observado neste mês'
+        detail:tr(locale,'Gasto observado neste mês','Expense observed this month','Gasto observado este mes')
       }));
 
     return {
       intent,
       title:increased
-        ? `Você gastou ${formatMoneyMinor(comparison.deltaMinor)} a mais que no mês anterior.`
+        ? tr(locale,`Você gastou ${formatMoneyMinor(comparison.deltaMinor,locale)} a mais que no mês anterior.`,`You spent ${formatMoneyMinor(comparison.deltaMinor,locale)} more than last month.`,`Gastaste ${formatMoneyMinor(comparison.deltaMinor,locale)} más que el mes anterior.`)
         : comparison.deltaMinor<0
-          ? `Você gastou ${formatMoneyMinor(Math.abs(comparison.deltaMinor))} a menos que no mês anterior.`
-          : 'Seus gastos conhecidos estão no mesmo nível do mês anterior.',
-      summary:`Este mês tem ${moneyNow} em gastos conhecidos; o mês anterior teve ${moneyPrevious}.${reason} A comparação ignora transferências entre suas contas e pagamento de fatura para não contar a mesma despesa duas vezes.`,
+          ? tr(locale,`Você gastou ${formatMoneyMinor(Math.abs(comparison.deltaMinor),locale)} a menos que no mês anterior.`,`You spent ${formatMoneyMinor(Math.abs(comparison.deltaMinor),locale)} less than last month.`,`Gastaste ${formatMoneyMinor(Math.abs(comparison.deltaMinor),locale)} menos que el mes anterior.`)
+          : tr(locale,'Seus gastos conhecidos estão no mesmo nível do mês anterior.','Your known spending is at the same level as last month.','Tus gastos conocidos están al mismo nivel que el mes anterior.'),
+      summary:tr(locale,`Este mês tem ${moneyNow} em gastos conhecidos; o mês anterior teve ${moneyPrevious}.${reason} A comparação ignora transferências entre suas contas e pagamento de fatura para não contar a mesma despesa duas vezes.`,`This month has ${moneyNow} in known spending; last month had ${moneyPrevious}.${reason} The comparison ignores transfers between your accounts and statement payments so the same expense is not counted twice.`,`Este mes tiene ${moneyNow} en gastos conocidos; el mes anterior tuvo ${moneyPrevious}.${reason} La comparación ignora transferencias entre tus cuentas y pagos de tarjeta para no contar el mismo gasto dos veces.`),
       answerMinor:comparison.deltaMinor,
       sources:currentSources,
       cards:[
-        {label:'Este mês',amountMinor:comparison.currentMinor,detail:`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conhecido${comparison.currentCount===1?'':'s'}`},
-        {label:'Mês anterior',amountMinor:comparison.previousMinor,detail:`${comparison.previousCount} gasto${comparison.previousCount===1?'':'s'} conhecido${comparison.previousCount===1?'':'s'}`},
+        {label:tr(locale,'Este mês','This month','Este mes'),amountMinor:comparison.currentMinor,detail:tr(locale,`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conhecido${comparison.currentCount===1?'':'s'}`,`${comparison.currentCount} known expense${comparison.currentCount===1?'':'s'}`,`${comparison.currentCount} gasto${comparison.currentCount===1?'':'s'} conocido${comparison.currentCount===1?'':'s'}`)},
+        {label:tr(locale,'Mês anterior','Previous month','Mes anterior'),amountMinor:comparison.previousMinor,detail:tr(locale,`${comparison.previousCount} gasto${comparison.previousCount===1?'':'s'} conhecido${comparison.previousCount===1?'':'s'}`,`${comparison.previousCount} known expense${comparison.previousCount===1?'':'s'}`,`${comparison.previousCount} gasto${comparison.previousCount===1?'':'s'} conocido${comparison.previousCount===1?'':'s'}`)},
         ...top.map(item=>({
-          label:categoryLabel(item.category),
+          label:categoryLabel(item.category,locale),
           amountMinor:item.deltaMinor,
-          detail:`Alta na categoria: ${formatMoneyMinor(item.previousMinor)} → ${formatMoneyMinor(item.currentMinor)}`
+          detail:tr(locale,`Alta na categoria: ${formatMoneyMinor(item.previousMinor,locale)} → ${formatMoneyMinor(item.currentMinor,locale)}`,`Category increase: ${formatMoneyMinor(item.previousMinor,locale)} → ${formatMoneyMinor(item.currentMinor,locale)}`,`Aumento en la categoría: ${formatMoneyMinor(item.previousMinor,locale)} → ${formatMoneyMinor(item.currentMinor,locale)}`)
         }))
       ],
-      suggestions:['O que está estranho?','Quanto ainda falta pagar?','Quais parcelas terminam logo?']
+      suggestions:[prompts.anomalies,prompts.remaining,prompts.ending]
     };
   }
 
