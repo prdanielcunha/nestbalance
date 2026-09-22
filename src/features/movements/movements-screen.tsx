@@ -223,11 +223,20 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
                 <strong>{row.description}</strong>
                 <span>{label(row,locale)}{row.scope==='personal'?` · ${t.scopePersonal}`:''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
                 {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<>
-                  {role==='read_only'
-                    ? <small className="movement-category-label">{categoryLabel(resolvedSpendingCategory(row),locale)}</small>
-                    : <button className="movement-category-pill" type="button" onClick={()=>beginCategoryEdit(row)}>
-                        {categoryLabel(resolvedSpendingCategory(row),locale)}
-                      </button>}
+                  <div className="movement-category-stack">
+                    {role==='read_only'
+                      ? <small className="movement-category-label">{categoryLabel(resolvedSpendingCategory(row),locale)}</small>
+                      : <button className="movement-category-pill" type="button" onClick={()=>beginCategoryEdit(row)}>
+                          {categoryLabel(resolvedSpendingCategory(row),locale)}
+                        </button>}
+                    <small className="movement-category-source">
+                      {row.categorySource==='user'
+                        ? l('Você definiu esta categoria.','You set this category.','Tú definiste esta categoría.')
+                        : row.categorySource==='learned'
+                          ? l('Aprendido com um lançamento parecido.','Learned from a similar entry.','Aprendido de un movimiento parecido.')
+                          : l('Sugestão automática pelo texto.','Automatic suggestion from the description.','Sugerencia automática por el texto.')}
+                    </small>
+                  </div>
                   {categoryEditingId===row.id&&<div className="movement-category-editor">
                     <label>
                       <span>{l('Categoria','Category','Categoría')}</span>

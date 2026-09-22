@@ -25,13 +25,12 @@ import {
   type EvidenceTextAnalysis,
   type UploadProgress
 } from '@/src/lib/repositories/evidence';
-import { messages } from '@/src/i18n/messages';
+import { useI18n } from '@/src/i18n/locale-provider';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import type { FinancialScope } from '@/src/core/privacy';
 import { readImageTextLocally } from '@/src/lib/local-image-ocr';
 import { analyzeTextWithGeminiFallback, getGeminiFallbackStatus, type GeminiFallbackStatus } from '@/src/lib/repositories/gemini-fallback';
 
-const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
 type PendingAi={extraction:AiFinancialExtraction;amountMinor:number|null};
 
@@ -45,7 +44,8 @@ function markDocumentDerived(items: FinancialInterpretation[]) {
 }
 
 export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=false, showTrigger=true, onClose }: { householdId: string; uid: string; onCommitted?: () => void; defaultOpen?: boolean; showTrigger?: boolean; onClose?: () => void }) {
-  const t = messages['pt-BR'];
+  const {t,locale,formatMoney,formatDate}=useI18n();
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const [open, setOpen] = useState(defaultOpen);
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -94,7 +94,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       e.preventDefault();
       const extension=(pasted.type.split('/')[1]||'png').replace('jpeg','jpg');
       const fileFromClipboard=new File([pasted],`print-${Date.now()}.${extension}`,{type:pasted.type||'image/png'});
-      selectFile(fileFromClipboard,'Print colado. Já estou organizando.');
+      selectFile(fileFromClipboard,l('Print colado. Já estou organizando.','Screenshot pasted. I am organizing it now.','Captura pegada. Ya la estoy organizando.'));
       void interpret(fileFromClipboard);
     };
     window.addEventListener('keydown', onKey);
@@ -177,7 +177,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setError('');
     setNotice('');
     if(typeof navigator==='undefined'||!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){
-      setError('Este aparelho não liberou gravação direta. Você ainda pode enviar um áudio já gravado.');
+      setError(l('Este aparelho não liberou gravação direta. Você ainda pode enviar um áudio já gravado.','This device did not allow direct recording. You can still upload an audio file.','Este dispositivo no permitió grabar directamente. Aún puedes subir un archivo de audio.'));
       fileInputRef.current?.click();
       return;
     }
@@ -195,16 +195,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         const recorded=new File([blob],`audio-${Date.now()}.${extension}`,{type:mimeType});
         stopRecorderTracks();
         setRecording(false);
-        selectFile(recorded,'Áudio recebido. Já estou organizando.');
+        selectFile(recorded,l('Áudio recebido. Já estou organizando.','Audio received. I am organizing it now.','Audio recibido. Ya lo estoy organizando.'));
         void interpret(recorded);
       };
       recorder.start();
       setRecording(true);
-      setNotice('Pode falar do seu jeito. Quando terminar, toque em “Terminar áudio”.');
+      setNotice(l('Pode falar do seu jeito. Quando terminar, toque em “Terminar áudio”.','Speak naturally. When you finish, tap “Finish audio”.','Habla con naturalidad. Cuando termines, toca “Terminar audio”.'));
     }catch{
       stopRecorderTracks();
       setRecording(false);
-      setError('Não consegui acessar o microfone. Você pode enviar um áudio já gravado.');
+      setError(l('Não consegui acessar o microfone. Você pode enviar um áudio já gravado.','I could not access the microphone. You can upload an audio file instead.','No pude acceder al micrófono. Puedes subir un archivo de audio.'));
     }
   }
 
@@ -263,7 +263,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       setPendingAi({extraction,amountMinor:null});
       setAmountChoices(candidates);
       setDirectionChoice(false);
-      setNotice(candidates.length?'Encontrei mais de um valor possível. Qual representa esta movimentação?':'Li a imagem, mas não encontrei um valor confiável. Você pode escrever o que aconteceu acima.');
+      setNotice(candidates.length
+        ? l('Encontrei mais de um valor possível. Qual representa esta movimentação?','I found more than one possible amount. Which one represents this activity?','Encontré más de un valor posible. ¿Cuál representa este movimiento?')
+        : l('Li a imagem, mas não encontrei um valor confiável. Você pode escrever o que aconteceu acima.','I read the image but could not find a reliable amount. You can describe what happened above.','Leí la imagen, pero no encontré un valor confiable. Puedes describir arriba lo que pasó.'));
       return;
     }
 
@@ -275,17 +277,17 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       setPendingAi({extraction,amountMinor});
       setAmountChoices([]);
       setDirectionChoice(true);
-      setNotice('Encontrei o valor. Só preciso saber como esse dinheiro se moveu.');
+      setNotice(l('Encontrei o valor. Só preciso saber como esse dinheiro se moveu.','I found the amount. I just need to know how this money moved.','Encontré el valor. Solo necesito saber cómo se movió este dinero.'));
       return;
     }
 
     const sourceText=sourceTextFromAiExtraction(extraction,{amountMinor,direction});
     if(!sourceText){
-      setError('Consegui ler a imagem, mas ainda preciso que você descreva esse movimento.');
+      setError(l('Consegui ler a imagem, mas ainda preciso que você descreva esse movimento.','I could read the image, but I still need you to describe this activity.','Pude leer la imagen, pero todavía necesito que describas este movimiento.'));
       return;
     }
     applySourceText(sourceText,true);
-    setNotice('Li a imagem com inteligência visual. Confira antes de guardar.');
+    setNotice(l('Li a imagem com inteligência visual. Confira antes de guardar.','I read the image with visual intelligence. Review it before saving.','Leí la imagen con inteligencia visual. Revísala antes de guardar.'));
   }
 
   async function tryLocalImage(activeFile:File){
@@ -294,7 +296,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       const ocr=await readImageTextLocally(activeFile,progress=>setLocalOcrPercent(progress.percent));
       setLocalOcrText(ocr);
       if(!ocr.trim()){
-        setNotice('Não consegui encontrar texto legível nessa imagem. Você pode tentar outro print ou contar o que aconteceu por texto.');
+        setNotice(l('Não consegui encontrar texto legível nessa imagem. Você pode tentar outro print ou contar o que aconteceu por texto.','I could not find readable text in this image. Try another screenshot or describe what happened in text.','No encontré texto legible en esta imagen. Prueba otra captura o describe por texto lo que pasó.'));
         return true;
       }
 
@@ -314,12 +316,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       const suggestion=suggestCaptureFromDocument(activeFile.name,signals);
       if(suggestion.state==='suggested'){
         applySourceText(suggestion.sourceText,true);
-        setNotice('Li este print no seu aparelho, sem enviar a imagem para uma IA. Confira antes de guardar.');
+        setNotice(l('Li este print no seu aparelho, sem enviar a imagem para uma IA. Confira antes de guardar.','I read this screenshot on your device without sending the image to AI. Review it before saving.','Leí esta captura en tu dispositivo sin enviar la imagen a una IA. Revísala antes de guardar.'));
         return true;
       }
       if(suggestion.state==='choose_amount'){
         setAmountChoices(suggestion.amountsMinor);
-        setNotice('Li o print no seu aparelho e encontrei mais de um valor. Qual deles representa este movimento?');
+        setNotice(l('Li o print no seu aparelho e encontrei mais de um valor. Qual deles representa este movimento?','I read the screenshot on your device and found more than one amount. Which one represents this activity?','Leí la captura en tu dispositivo y encontré más de un valor. ¿Cuál representa este movimiento?'));
         return true;
       }
 
@@ -336,7 +338,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       return true;
     }catch{
       setLocalOcrText('');
-      setNotice('Não consegui ler esse print localmente. Tente outra imagem ou conte o que aconteceu por texto.');
+      setNotice(l('Não consegui ler esse print localmente. Tente outra imagem ou conte o que aconteceu por texto.','I could not read this screenshot locally. Try another image or describe what happened in text.','No pude leer esta captura localmente. Prueba otra imagen o describe por texto lo que pasó.'));
       return true;
     }finally{
       setLocalOcrPercent(0);
@@ -410,7 +412,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     }
 
     if (!activeFile) {
-      setError('Escreva, fale, cole um print ou escolha um arquivo.');
+      setError(l('Escreva, fale, cole um print ou escolha um arquivo.','Write, speak, paste a screenshot, or choose a file.','Escribe, habla, pega una captura o elige un archivo.'));
       return;
     }
 
@@ -668,28 +670,28 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       <section className="capture-sheet" role="dialog" aria-modal="true" aria-label={t.captureTitle}>
         {!interpretations.length&&!screenSnapshot ? <>
           <div className="sheet-handle" />
-          <div className="eyebrow">Jogue aqui. A gente organiza.</div>
-          <h2>O que aconteceu?</h2>
-          <p>Escreva, fale, mande um print ou um arquivo. Você não precisa decidir antes se foi dinheiro que entrou, saiu ou uma conta para pagar.</p>
+          <div className="eyebrow">{l('Jogue aqui. A gente organiza.','Drop it here. We organize it.','Déjalo aquí. Lo organizamos.')}</div>
+          <h2>{l('O que aconteceu?','What happened?','¿Qué pasó?')}</h2>
+          <p>{l('Escreva, fale, mande um print ou um arquivo. Você não precisa decidir antes se foi dinheiro que entrou, saiu ou uma conta para pagar.','Write, speak, send a screenshot or a file. You do not need to decide first whether money came in, went out, or is a bill to pay.','Escribe, habla, envía una captura o un archivo. No necesitas decidir antes si entró dinero, salió o es una cuenta por pagar.')}</p>
 
           <ScopeChoice value={scope} onChange={setScope} disabled={working||Boolean(preparedEvidenceId)}/>
 
-          <div className="capture-quick-actions" aria-label="Como você quer contar">
+          <div className="capture-quick-actions" aria-label={l('Como você quer contar','How you want to add it','Cómo quieres contarlo')}>
             <button type="button" disabled={working} onClick={()=>textRef.current?.focus()}>
-              <strong>Escrever</strong><span>Conte do seu jeito</span>
+              <strong>{l('Escrever','Write','Escribir')}</strong><span>{l('Conte do seu jeito','Use your own words','Cuéntalo a tu manera')}</span>
             </button>
             <button type="button" className={recording?'recording':''} disabled={saving||analyzing} onClick={()=>recording?stopRecording():void startRecording()}>
-              <strong>{recording?'Terminar áudio':'Falar'}</strong><span>{recording?'Estou ouvindo…':'Grave na hora'}</span>
+              <strong>{recording?l('Terminar áudio','Finish audio','Terminar audio'):l('Falar','Speak','Hablar')}</strong><span>{recording?l('Estou ouvindo…','Listening…','Escuchando…'):l('Grave na hora','Record now','Graba ahora')}</span>
             </button>
             <button type="button" disabled={working} onClick={()=>imageInputRef.current?.click()}>
-              <strong>Print ou foto</strong><span>Galeria ou câmera</span>
+              <strong>{l('Print ou foto','Screenshot or photo','Captura o foto')}</strong><span>{l('Galeria ou câmera','Gallery or camera','Galería o cámara')}</span>
             </button>
             <button type="button" disabled={working} onClick={()=>fileInputRef.current?.click()}>
-              <strong>Arquivo</strong><span>PDF, CSV ou áudio</span>
+              <strong>{l('Arquivo','File','Archivo')}</strong><span>{l('PDF, CSV ou áudio','PDF, CSV or audio','PDF, CSV o audio')}</span>
             </button>
           </div>
 
-          <div className="capture-paste-hint">No computador, você também pode <strong>colar um print</strong> direto aqui.</div>
+          <div className="capture-paste-hint">{l('No computador, você também pode colar um print direto aqui.','On a computer, you can also paste a screenshot right here.','En computadora, también puedes pegar una captura directamente aquí.')}</div>
 
           <input
             ref={imageInputRef}
@@ -700,7 +702,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             onChange={e=>{
               const selected=e.target.files?.[0];
               if(!selected) return;
-              selectFile(selected,'Imagem recebida. Já estou organizando.');
+              selectFile(selected,l('Imagem recebida. Já estou organizando.','Image received. I am organizing it now.','Imagen recibida. Ya la estoy organizando.'));
               void interpret(selected);
               e.currentTarget.value='';
             }}
@@ -714,53 +716,53 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             onChange={e=>{
               const selected=e.target.files?.[0];
               if(!selected) return;
-              selectFile(selected,'Arquivo recebido. Já estou organizando.');
+              selectFile(selected,l('Arquivo recebido. Já estou organizando.','File received. I am organizing it now.','Archivo recibido. Ya lo estoy organizando.'));
               void interpret(selected);
               e.currentTarget.value='';
             }}
           />
 
-          <label className="sr-only" htmlFor="universal-capture-text">Conte o que aconteceu</label>
+          <label className="sr-only" htmlFor="universal-capture-text">{l('Conte o que aconteceu','Tell us what happened','Cuéntanos qué pasó')}</label>
           <textarea
             ref={textRef}
             id="universal-capture-text"
             value={text}
             disabled={working}
             onChange={e=>setText(e.target.value)}
-            placeholder={'Ex.: Paguei 119,90 da internet\nRecebi 2.500 do trabalho\nGeladeira em 10x de 189'}
+            placeholder={l('Ex.: Paguei 119,90 da internet\nRecebi 2.500 do trabalho\nGeladeira em 10x de 189','E.g. Paid 119.90 for internet\nReceived 2,500 from work\nFridge in 10 installments of 189','Ej.: Pagué 119,90 de internet\nRecibí 2.500 del trabajo\nHeladera en 10 cuotas de 189')}
           />
 
           {file&&<div className="capture-selected-source">
-            <span>Recebido</span>
+            <span>{l('Recebido','Received','Recibido')}</span>
             <strong>{file.name}</strong>
-            {!working&&<button type="button" onClick={()=>{setFile(null);setPreparedEvidenceId(null);setAnalysis(null);setAiAnalysis(null);setNotice('');}}>Trocar</button>}
+            {!working&&<button type="button" onClick={()=>{setFile(null);setPreparedEvidenceId(null);setAnalysis(null);setAiAnalysis(null);setNotice('');}}>{l('Trocar','Change','Cambiar')}</button>}
           </div>}
 
           {upload && <div className="upload-status" role="status" aria-live="polite">
-            <div><span>{upload.phase === 'uploading' ? 'Guardando original…' : 'Conferindo arquivo…'}</span><b>{upload.percent}%</b></div>
+            <div><span>{upload.phase === 'uploading' ? l('Guardando original…','Saving original…','Guardando original…') : l('Conferindo arquivo…','Checking file…','Revisando archivo…')}</span><b>{upload.percent}%</b></div>
             <progress max="100" value={upload.percent}>{upload.percent}%</progress>
           </div>}
 
           {analyzing && !upload && <p className="confidence-note" role="status">{localOcrPercent>0
-            ? `Lendo no seu aparelho… ${localOcrPercent}%`
+            ? l(`Lendo no seu aparelho… ${localOcrPercent}%`,`Reading on your device… ${localOcrPercent}%`,`Leyendo en tu dispositivo… ${localOcrPercent}%`)
             : analysis?.state==='needs_ai'
-              ? 'Fazendo a leitura inteligente…'
-              : 'Entendendo o documento…'}</p>}
+              ? l('Fazendo a leitura inteligente…','Running intelligent reading…','Realizando lectura inteligente…')
+              : l('Entendendo o documento…','Understanding the document…','Entendiendo el documento…')}</p>}
 
           {amountChoices.length > 0 && <div className="amount-choice-panel">
-            <span>Qual valor devo usar?</span>
-            <div>{amountChoices.map(value => <button key={value} type="button" onClick={()=>chooseAmount(value)}>{money.format(value/100)}</button>)}</div>
-            <small>Nenhum valor é escolhido automaticamente quando o documento é ambíguo.</small>
+            <span>{l('Qual valor devo usar?','Which amount should I use?','¿Qué valor debo usar?')}</span>
+            <div>{amountChoices.map(value => <button key={value} type="button" onClick={()=>chooseAmount(value)}>{formatMoney(value)}</button>)}</div>
+            <small>{l('Nenhum valor é escolhido automaticamente quando o documento é ambíguo.','No amount is selected automatically when the document is ambiguous.','No se elige ningún valor automáticamente cuando el documento es ambiguo.')}</small>
           </div>}
 
           {directionChoice && <div className="direction-choice-panel">
-            <span>O que aconteceu com esse dinheiro?</span>
+            <span>{l('O que aconteceu com esse dinheiro?','What happened to this money?','¿Qué pasó con este dinero?')}</span>
             <div>
-              <button type="button" onClick={()=>chooseDirection('expense')}>Eu paguei</button>
-              <button type="button" onClick={()=>chooseDirection('income')}>Eu recebi</button>
-              <button type="button" onClick={()=>chooseDirection('transfer')}>Só mudou de conta</button>
+              <button type="button" onClick={()=>chooseDirection('expense')}>{l('Eu paguei','I paid','Yo pagué')}</button>
+              <button type="button" onClick={()=>chooseDirection('income')}>{l('Eu recebi','I received','Yo recibí')}</button>
+              <button type="button" onClick={()=>chooseDirection('transfer')}>{l('Só mudou de conta','It only moved accounts','Solo cambió de cuenta')}</button>
             </div>
-            <small>Se só passou de uma conta sua para outra, o NestBalance não trata como dinheiro gasto ou recebido.</small>
+            <small>{l('Se só passou de uma conta sua para outra, o NestBalance não trata como dinheiro gasto ou recebido.','If it only moved between your own accounts, NestBalance does not count it as spent or received money.','Si solo pasó entre tus propias cuentas, NestBalance no lo cuenta como dinero gastado o recibido.')}</small>
           </div>}
 
           {analysis?.state === 'extracted' && !aiAnalysis && !geminiUsed && <p className="native-analysis-note">Texto lido localmente · sem enviar a imagem para IA</p>}
@@ -783,7 +785,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={reset}>{t.cancel}</button>
             <button className="primary-button" disabled={working || (!text.trim() && !file)} onClick={()=>void interpret()}>
-              {analyzing ? 'Organizando…' : 'Organizar'}
+              {analyzing ? l('Organizando…','Organizing…','Organizando…') : l('Organizar','Organize','Organizar')}
             </button>
           </div>
         </> : <>
@@ -793,16 +795,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             ? interpretations[0].description
             : `Encontrei ${totalOrganizedCount} item${totalOrganizedCount===1?'':'s'} nesta tela`}</h2>
 
-          <div className="evidence-stack" aria-label="Como o NestBalance entendeu">
+          <div className="evidence-stack" aria-label={l('Como o NestBalance entendeu','How NestBalance understood it','Cómo lo entendió NestBalance')}>
             <div>
-              <span>VOCÊ MANDOU</span>
-              <strong>{file ? file.name : 'Texto enviado'}</strong>
-              <small>{file ? (preparedEvidenceId ? 'Original já guardado e preservado.' : 'O arquivo será preservado sem alterações.') : text.length > 80 ? `${text.slice(0, 80)}…` : text}</small>
+              <span>{l('VOCÊ MANDOU','YOU SENT','ENVIASTE')}</span>
+              <strong>{file ? file.name : l('Texto enviado','Text sent','Texto enviado')}</strong>
+              <small>{file ? (preparedEvidenceId ? l('Original já guardado e preservado.','Original already saved and preserved.','Original ya guardado y preservado.') : l('O arquivo será preservado sem alterações.','The file will be preserved unchanged.','El archivo se conservará sin cambios.')) : text.length > 80 ? `${text.slice(0, 80)}…` : text}</small>
             </div>
             <div>
-              <span>O NESTBALANCE ENTENDEU</span>
+              <span>{l('O NESTBALANCE ENTENDEU','NESTBALANCE UNDERSTOOD','NESTBALANCE ENTENDIÓ')}</span>
               <strong>{interpretations.length === 1&&screenResourceCount===0
-                ? `${interpretations[0].description} · ${money.format(interpretations[0].money.amountMinor / 100)}`
+                ? `${interpretations[0].description} · ${formatMoney(interpretations[0].money.amountMinor)}`
                 : `${totalOrganizedCount} itens separados por tipo`}</strong>
               <small>{geminiUsed
                 ? 'Gemini sobre OCR sanitizado; imagem não enviada. Confirme antes de guardar.'
@@ -815,9 +817,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                       : 'Os dados principais estão claros.'}</small>
             </div>
             <div>
-              <span>VAI FICAR ASSIM</span>
+              <span>{l('VAI FICAR ASSIM','IT WILL BE SAVED AS','SE GUARDARÁ ASÍ')}</span>
               <strong>{organizedLabel}</strong>
-              <small>{file ? 'Documento e registro ficarão ligados entre si.' : 'Você poderá corrigir isso depois sem perder o original.'}</small>
+              <small>{file ? l('Documento e registro ficarão ligados entre si.','The document and record will stay linked.','El documento y el registro quedarán vinculados.') : l('Você poderá corrigir isso depois sem perder o original.','You can correct this later without losing the original.','Podrás corregirlo después sin perder el original.')}</small>
             </div>
           </div>
 
@@ -852,7 +854,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               >
                 <span>{candidate.commitment.dueDay?'Dia '+candidate.commitment.dueDay:'Na sua lista'}</span>
                 <strong>{candidate.commitment.description}</strong>
-                <b>{money.format(candidate.commitment.amountMinor/100)}</b>
+                <b>{formatMoney(candidate.commitment.amountMinor)}</b>
                 <em>{payingMatchId===candidate.commitment.id?'Marcando…':'Marcar como pago'}</em>
               </button>)}
             </div>
@@ -867,7 +869,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           </div>}
 
           <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
-            <div><strong>{interpretation.description}</strong><b>{money.format(interpretation.money.amountMinor / 100)}</b></div>
+            <div><strong>{interpretation.description}</strong><b>{formatMoney(interpretation.money.amountMinor)}</b></div>
             <span>{interpretation.kind === 'commitment'
               ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta para pagar')
               : interpretation.needsReview.includes('direction')
@@ -877,13 +879,13 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   : interpretation.direction==='transfer'
                     ? 'Só mudou de conta'
                     : 'Dinheiro que saiu'}
-              {interpretation.occurredOn?` · ${new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit'}).format(new Date(interpretation.occurredOn+'T12:00:00'))}`:''}
+              {interpretation.occurredOn?` · ${formatDate(new Date(interpretation.occurredOn+'T12:00:00'),{day:'2-digit',month:'2-digit'})}`:''}
             </span>
             {interpretation.installment && <span>Parcela {interpretation.installment.current} de {interpretation.installment.total}</span>}
             {interpretation.needsReview.includes('direction')
               ? <div className="inline-direction-choice">
-                  <button type="button" onClick={()=>chooseImportedDirection(index,'expense')}>Eu paguei</button>
-                  <button type="button" onClick={()=>chooseImportedDirection(index,'income')}>Eu recebi</button>
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'expense')}>{l('Eu paguei','I paid','Yo pagué')}</button>
+                  <button type="button" onClick={()=>chooseImportedDirection(index,'income')}>{l('Eu recebi','I received','Yo recibí')}</button>
                   <button type="button" onClick={()=>chooseImportedDirection(index,'transfer')}>Mudou de conta</button>
                 </div>
               : interpretation.confidence !== 'high' && <em>Confira este item</em>}
@@ -900,21 +902,21 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             ? `Só ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' precisa':'s precisam'} de uma resposta rápida. O restante já está organizado.`
             : 'O que estava claro já foi organizado. Confira apenas os itens sinalizados.'}</p>}
           {upload && <div className="upload-status" role="status" aria-live="polite">
-            <div><span>{upload.phase === 'uploading' ? 'Guardando original…' : 'Conferindo arquivo…'}</span><b>{upload.percent}%</b></div>
+            <div><span>{upload.phase === 'uploading' ? l('Guardando original…','Saving original…','Guardando original…') : l('Conferindo arquivo…','Checking file…','Revisando archivo…')}</span><b>{upload.percent}%</b></div>
             <progress max="100" value={upload.percent}>{upload.percent}%</progress>
           </div>}
           {notice && <p className="notice-copy" role="status">{notice}</p>}
           {error && <p className="error-copy" role="alert">{error}</p>}
 
           <div className="sheet-actions">
-            <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>Corrigir</button>
+            <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
             <button className="primary-button" disabled={working||unresolvedDirectionCount>0||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
               ? (upload?.phase === 'verifying' ? 'Conferindo…' : 'Guardando…')
               : unresolvedDirectionCount
                 ? `Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`
                 : paymentMatches.length>0&&!paymentMatchDismissed
                   ? 'Escolha a conta acima'
-                  : 'Guardar'}</button>
+                  : l('Guardar','Save','Guardar')}</button>
           </div>
         </>}
       </section>

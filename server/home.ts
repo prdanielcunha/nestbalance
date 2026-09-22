@@ -3,6 +3,8 @@ import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { visibleDocs } from './privacy.js';
 import { categoryFromRecordAndRules, learnedCategoryRuleFromDoc, type LearnedCategoryRule } from './category-rules.js';
+import { normalizeProactivityPreferences } from '../src/core/proactivity.js';
+import { activeAttentionDismissals } from '../src/core/attention.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -108,6 +110,10 @@ function invoiceImportDto(doc:any){
 
 function movementDto(doc:any,categoryRules:LearnedCategoryRule[]=[]){
   const data=doc.data();
+  const category=categoryFromRecordAndRules(data,categoryRules);
+  const categorySource=category
+    ? data.categorySource==='user'?'user':data.categorySource==='learned'||!data.category?'learned':'user'
+    : null;
   return {
     id:doc.id,
     description:String(data.description||'Movimento'),
@@ -127,7 +133,8 @@ function movementDto(doc:any,categoryRules:LearnedCategoryRule[]=[]){
     cardId:typeof data.cardId==='string'?data.cardId:null,
     invoiceKey:typeof data.invoiceKey==='string'?data.invoiceKey:null,
     invoiceImportId:typeof data.invoiceImportId==='string'?data.invoiceImportId:null,
-    category:categoryFromRecordAndRules(data,categoryRules),
+    category,
+    categorySource,
     scope:data.scope==='personal'?'personal':'household'
   };
 }
@@ -137,11 +144,11 @@ export async function getHomeData(req:Request,res:Response){
   try{
     const user=await requireFirebaseUser(req);
     const householdId=String(req.body?.householdId||'');
-    await requireHouseholdMember(householdId,user.uid);
+    const currentMember=await requireHouseholdMember(householdId,user.uid);
 
     const household=adminDb.collection('households').doc(householdId);
     const currentMonthKey=new Date().toISOString().slice(0,7);
-    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments,savingsPots,cardSnapshots,recurrenceDismissals,categoryRulesSnap]=await Promise.all([
+    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments,savingsPots,cardSnapshots,recurrenceDismissals,categoryRulesSnap,attentionDismissalsSnap]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
@@ -152,7 +159,8 @@ export async function getHomeData(req:Request,res:Response){
       household.collection('savingsPots').where('status','==','active').limit(100).get(),
       household.collection('cardSnapshots').limit(50).get(),
       household.collection('recurrenceDismissals').limit(100).get(),
-      household.collection('categoryRules').limit(200).get()
+      household.collection('categoryRules').limit(200).get(),
+      household.collection('attentionDismissals').where('userUid','==',user.uid).limit(100).get()
     ]);
 
     const categoryRules=categoryRulesSnap.docs
@@ -182,6 +190,8 @@ export async function getHomeData(req:Request,res:Response){
       invoiceImports:visibleDocs(invoiceImports.docs,user.uid).map(invoiceImportDto),
       savingsPots:visibleDocs(savingsPots.docs,user.uid).map(savingsPotDto),
       cardSnapshots:visibleDocs(cardSnapshots.docs,user.uid).map(cardSnapshotDto),
+      proactivityPreferences:normalizeProactivityPreferences(currentMember.proactivityPreferences),
+      dismissedAttentionKeys:activeAttentionDismissals(attentionDismissalsSnap.docs.map(doc=>doc.data()),user.uid,Date.now()),
       dismissedRecurrenceKeys:visibleDocs(recurrenceDismissals.docs,user.uid)
         .map(doc=>{
           const data=doc.data();
