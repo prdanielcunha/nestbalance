@@ -114,7 +114,9 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
         institutionName:institution.trim()||null,
         scope:editing?.scope==='personal'?'personal':editing?'household':scope
       });
-      closeEditor();
+      setEditing(null);
+      setCreating(false);
+      setFormError('');
       await load();
     }catch{
       setFormError(l('Não conseguimos guardar essa alteração agora.','We could not save this change right now.','No pudimos guardar este cambio ahora.'));
