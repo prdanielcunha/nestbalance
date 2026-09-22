@@ -35,8 +35,11 @@ const httpRuntime=read('./server/http-runtime.ts');
 const firebaseHosting=read('./firebase.json');
 const productionFirebase=read('./firebase.production.json');
 const productionWorkflow=read('./.github/workflows/deploy-production.yml');
+const officialProductionWorkflow=read('./.github/workflows/publish-official-production.yml');
 const browserWorkflow=read('./.github/workflows/browser-quality.yml');
 const packageSource=read('./package.json');
+const envExample=read('./.env.example');
+const serviceWorker=read('./public/sw.js');
 const localCardReader=read('./src/lib/local-card-reader.ts');
 const localImageOcr=read('./src/lib/local-image-ocr.ts');
 const localCardParser=read('./src/core/card-local-reader.ts');
@@ -110,6 +113,12 @@ assert.ok(!localCardReader.includes('FormData'),'Local card OCR must not constru
 assert.match(localCardParser,/inferCardBrandFromText/);
 assert.match(geminiFree,/gemini-2\.5-flash-lite/);
 assert.match(geminiFree,/NESTBALANCE_GEMINI_FREE_PROJECT_CONFIRMED/);
+assert.match(deployWorkflow,/GEMINI_SECRET_NAME/);
+assert.match(deployWorkflow,/NESTBALANCE_ENABLE_GEMINI_FREE/);
+assert.match(productionWorkflow,/GEMINI_SECRET_NAME/);
+assert.match(productionWorkflow,/NESTBALANCE_ENABLE_GEMINI_FREE/);
+assert.match(envExample,/NESTBALANCE_ENABLE_GEMINI_FREE=false/);
+assert.match(envExample,/NESTBALANCE_ALLOW_PAID_INTEGRATIONS=false/);
 assert.match(geminiFallback,/GEMINI_FREE_CONSENT_REQUIRED/);
 assert.match(geminiFallback,/GEMINI_FREE_DAILY_CAP_REACHED/);
 assert.match(financialRedaction,/CPF_REDACTED/);
@@ -161,7 +170,12 @@ assert.match(productionWorkflow,/npm run test:e2e/);
 assert.ok(!/firebase deploy[^\n]*(firestore|storage)/.test(productionWorkflow));
 assert.match(browserWorkflow,/playwright install --with-deps chromium/);
 assert.match(browserWorkflow,/npm run test:e2e/);
-assert.match(packageSource,/"version": "0\.2\.0-beta\.1"/);
+assert.match(serviceWorker,/url\.pathname\.startsWith\('\/api\/'\)/);
+assert.match(productionWorkflow,/sw\.js/);
+assert.match(productionWorkflow,/cache-control:\.\*no-store/i);
+assert.match(officialProductionWorkflow,/sw\.js/);
+assert.match(officialProductionWorkflow,/cache-control:\.\*no-store/i);
+assert.match(packageSource,/"version": "1\.0\.0-rc\.1"/);
 
 function sourceFiles(root){
   const out=[];
