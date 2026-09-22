@@ -204,7 +204,7 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
 
     const homeAfterPayment=await post('/api/home',owner.token,{householdId});
     assert.equal(homeAfterPayment.json.commitments.some(item=>item.id===commitment.json.id&&item.paidThisMonth===true),true);
-    assert.equal(homeAfterPayment.json.transactions.some(item=>item.source==='commitment_payment'&&item.commitmentId===commitment.json.id),true);
+    assert.equal(homeAfterPayment.json.transactions.some(item=>item.id===paidInternet.json.transactionId&&item.source==='commitment_payment'),true);
 
     const assistantAfterPayment=await post('/api/assistant/answer',owner.token,{
       householdId,
@@ -224,7 +224,7 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
 
     const homeAfterUndo=await post('/api/home',owner.token,{householdId});
     assert.equal(homeAfterUndo.json.commitments.some(item=>item.id===commitment.json.id&&item.paidThisMonth===false),true);
-    assert.equal(homeAfterUndo.json.transactions.some(item=>item.source==='commitment_payment'&&item.commitmentId===commitment.json.id),false);
+    assert.equal(homeAfterUndo.json.transactions.some(item=>item.id===paidInternet.json.transactionId),false);
 
     const assistantAfterUndo=await post('/api/assistant/answer',owner.token,{
       householdId,
