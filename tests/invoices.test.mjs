@@ -105,5 +105,6 @@ test('estorno ou crédito nunca vira nova despesa confirmada sem revisão',()=>{
   assert.deepEqual(preview.items[0].needsReview,[]);
   assert.ok(preview.items[1].needsReview.includes('credit_or_refund'));
   assert.ok(preview.items[2].needsReview.includes('credit_or_refund'));
-  assert.equal(preview.reviewCount,2);
+  assert.ok(preview.globalNeedsReview.includes('credit_or_refund_present'));
+  assert.equal(preview.reviewCount,3);
 });
