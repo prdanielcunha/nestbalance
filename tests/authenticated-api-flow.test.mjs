@@ -225,6 +225,11 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     assert.equal(partnerAccepted.json.role,'admin');
     const partnerRename=await post('/api/household/rename',fullPartner.token,{householdId,name:'Casa compartilhada'});
     assert.equal(partnerRename.json.name,'Casa compartilhada');
+    const partnerCannotDeleteHousehold=await post('/api/privacy/delete-household',fullPartner.token,{
+      householdId,
+      confirmation:'Casa compartilhada'
+    },403);
+    assert.equal(partnerCannotDeleteHousehold.json.error,'HOUSEHOLD_ACCESS_DENIED');
 
     const screenEvidenceId='screenpots001';
     await seedDb.doc(`households/${householdId}/evidenceAssets/${screenEvidenceId}`).set({
