@@ -125,6 +125,36 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
       <p>O NestBalance separa o que você recebeu, o que pagou, o que foi para o cartão e o que só mudou de uma conta sua para outra.</p>
     </section>
 
+    {recurringCandidates.length>0&&<section className="recurrence-suggestions" aria-labelledby="recurrence-title">
+      <div className="section-title">
+        <div>
+          <span className="section-kicker">Padrões que percebemos</span>
+          <h2 id="recurrence-title">Isso parece acontecer todo mês?</h2>
+        </div>
+        <small>Nada é criado sem você confirmar.</small>
+      </div>
+      <div className="recurrence-suggestion-list">
+        {recurringCandidates.map(candidate=><article key={candidate.scope+'-'+candidate.key} className="recurrence-suggestion-card">
+          <div>
+            <span>{candidate.scope==='personal'?'Só para mim':'Lar'} · apareceu em {candidate.observedMonths} meses</span>
+            <strong>{candidate.description}</strong>
+            <p>Cerca de {money.format(candidate.averageMinor/100)} por mês{candidate.suggestedDueDay?' · normalmente perto do dia '+candidate.suggestedDueDay:''}.</p>
+          </div>
+          {role!=='read_only'
+            ? <div className="recurrence-actions">
+                <button type="button" disabled={Boolean(recurrenceWorking)} onClick={()=>void handleRecurrence(candidate.referenceTransactionId,'confirm')}>
+                  {recurrenceWorking===candidate.referenceTransactionId?'Salvando…':'É mensal'}
+                </button>
+                <button type="button" className="secondary" disabled={Boolean(recurrenceWorking)} onClick={()=>void handleRecurrence(candidate.referenceTransactionId,'dismiss')}>
+                  Não sugerir
+                </button>
+              </div>
+            : <span className="role-pill">Somente leitura</span>}
+        </article>)}
+      </div>
+      {recurrenceError&&<p className="error-copy" role="alert">{recurrenceError}</p>}
+    </section>}
+
     <section className="movement-summary-grid">
       <article><span>Recebi</span><strong>{money.format(summary.income/100)}</strong></article>
       <article><span>Paguei</span><strong>{money.format(summary.cashExpense/100)}</strong></article>
@@ -150,6 +180,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
               <div className="movement-full-copy">
                 <strong>{row.description}</strong>
                 <span>{label(row)}{row.scope==='personal'?' · Só para mim':''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
+                {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<small>{categoryLabel(categorizeSpending(row.description))}</small>}
                 {row.installment&&<small>Parcela {row.installment.current} de {row.installment.total}</small>}
               </div>
               <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {money.format(row.amountMinor/100)}</b>
