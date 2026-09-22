@@ -116,6 +116,10 @@ function isPaymentLine(line:string){
   return /\b(pagamento\s+(?:recebido|efetuado|da\s+fatura)|pagto\s+fatura|d[eé]bito\s+autom[aá]tico\s+fatura)\b/i.test(line);
 }
 
+function isCreditOrRefundLine(line:string){
+  return /\b(estorno|cr[eé]dito(?:\s+de\s+compra)?|reembolso|devolu[cç][aã]o|cancelamento)\b/i.test(line);
+}
+
 function itemKind(line:string):InvoicePreviewItemKind{
   return /\b(juros|iof|multa|anuidade|tarifa|encargos?)\b/i.test(line)?'fee':'purchase';
 }
@@ -201,6 +205,7 @@ export function parseInvoiceText(input:{
     const installment=installmentFromLine(line);
     const needsReview:string[]=[];
     if(!purchaseOn) needsReview.push('purchase_date');
+    if(isCreditOrRefundLine(line)) needsReview.push('credit_or_refund');
     if(installment&&dueDateSource!=='document') needsReview.push('invoice_due_date');
 
     const schedule=installment
