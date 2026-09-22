@@ -28,6 +28,22 @@ function cleanDescription(value:string){
     .slice(0,120);
 }
 
+function standaloneDay(line:string){
+  return /^(?:[1-9]|[12]\d|3[01])$/.test(line)?Number(line):null;
+}
+
+function standaloneMoney(line:string){
+  if(!/^(?:R\$\s*)?\d[\d.,]*$/.test(line)) return null;
+  return moneyMinor(line);
+}
+
+function isDescriptionLine(line:string){
+  return /\p{L}/u.test(line)&&
+    !RECURRING_HINT.test(line)&&
+    !STOP_HINT.test(line)&&
+    !/^(?:d[ée]bito|descri[cç][aã]o|data|dia|vence|valor)$/i.test(line);
+}
+
 function rowFromLine(line:string){
   const full=/^(.{2,100}?)\s+([1-9]|[12]\d|3[01])\s+(?:R\$\s*)?(\d[\d.]*?(?:,\d{1,2})?)$/.exec(line);
   if(full){
@@ -56,7 +72,28 @@ export function parseRecurringCommitmentsFromOcr(text:string):AiFinancialScreenS
     if(STOP_HINT.test(line)) break;
     if(/^(?:d[ée]bito|descri[cç][aã]o)\s+(?:data|dia|vence)\s+valor$/i.test(line)) continue;
     if(/^(?:d[ée]bito|descri[cç][aã]o|data|dia|vence|valor)$/i.test(line)) continue;
-    const row=rowFromLine(line);
+
+    let row=rowFromLine(line);
+
+    // Mobile-note screenshots and some OCR engines return table cells as
+    // separate lines instead of keeping a row together: name -> day -> value.
+    if(!row&&isDescriptionLine(line)){
+      const next=lines[i+1]||'';
+      const after=lines[i+2]||'';
+      const dueDay=standaloneDay(next);
+      const amountWithDay=dueDay!==null?standaloneMoney(after):null;
+      if(dueDay!==null&&amountWithDay!==null){
+        row={description:cleanDescription(line),amountMinor:amountWithDay,dueDay,confidence:0.96};
+        i+=2;
+      }else{
+        const amountOnly=standaloneMoney(next);
+        if(amountOnly!==null){
+          row={description:cleanDescription(line),amountMinor:amountOnly,dueDay:null,confidence:0.90};
+          i+=1;
+        }
+      }
+    }
+
     if(!row) continue;
     commitments.push({
       description:row.description,
