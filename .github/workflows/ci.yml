@@ -45,6 +45,9 @@ jobs:
       - name: Firestore Rules emulator
         run: npm run test:rules
 
+      - name: Authenticated API emulator flow
+        run: npm run test:authenticated-api
+
       - name: Typecheck
         run: npm run typecheck
 
