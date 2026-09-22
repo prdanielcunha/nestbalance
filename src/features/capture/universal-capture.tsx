@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
-import { resolveImportedMovementDirection } from '@/src/core/movement-import';
+import { buildImportedMovements, resolveImportedMovementDirection } from '@/src/core/movement-import';
 import { parseFinancialCsv } from '@/src/core/csv-import';
 import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
+import { detectDocumentSignals } from '@/src/core/document-signals';
 import {
   aiAmountChoices,
   aiDirectionNeedsConfirmation,
@@ -27,6 +28,8 @@ import {
 import { messages } from '@/src/i18n/messages';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import type { FinancialScope } from '@/src/core/privacy';
+import { readImageTextLocally } from '@/src/lib/local-image-ocr';
+import { analyzeTextWithGeminiFallback, getGeminiFallbackStatus, type GeminiFallbackStatus } from '@/src/lib/repositories/gemini-fallback';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
@@ -66,6 +69,10 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [payingMatchId,setPayingMatchId]=useState('');
   const [screenSnapshot,setScreenSnapshot]=useState<AiFinancialScreenSnapshot|null>(null);
   const [scope,setScope]=useState<FinancialScope>('household');
+  const [localOcrText,setLocalOcrText]=useState('');
+  const [localOcrPercent,setLocalOcrPercent]=useState(0);
+  const [geminiStatus,setGeminiStatus]=useState<GeminiFallbackStatus|null>(null);
+  const [geminiWorking,setGeminiWorking]=useState(false);
   const imageInputRef=useRef<HTMLInputElement|null>(null);
   const fileInputRef=useRef<HTMLInputElement|null>(null);
   const textRef=useRef<HTMLTextAreaElement|null>(null);
@@ -73,7 +80,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const recorderChunksRef=useRef<BlobPart[]>([]);
   const recorderStreamRef=useRef<MediaStream|null>(null);
 
-  const working = saving || analyzing || recording;
+  const working = saving || analyzing || recording || geminiWorking;
 
   useEffect(() => {
     if (!open) return;
