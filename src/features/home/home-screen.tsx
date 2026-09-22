@@ -9,6 +9,7 @@ import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding'
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { useI18n } from '@/src/i18n/locale-provider';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
@@ -246,7 +247,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
 
 
   return <main className="app-shell">
-    <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><Link href="/household" className="avatar-dot" aria-label={t.householdSettings} /></header>
+    <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><HouseholdLink/></header>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
@@ -340,8 +341,8 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         )}</p>
       </div>
       <div className="first-use-actions">
-        <Link className="primary-button" href="/add">{l('Adicionar meu primeiro gasto','Add my first expense','Agregar mi primer gasto')}</Link>
-        <Link className="ghost-button" href="/accounts">{l('Configurar cartão (opcional)','Set up a card (optional)','Configurar tarjeta (opcional)')}</Link>
+        <Link className="primary-button" href="/add">{l('Enviar print, áudio ou texto','Send screenshot, audio, or text','Enviar captura, audio o texto')}</Link>
+        <Link className="ghost-button" href="/accounts">{l('Organizar contas e cartões','Organize accounts and cards','Organizar cuentas y tarjetas')}</Link>
       </div>
       <small>{l(
         'Não precisa configurar tudo hoje. O NestBalance melhora conforme você usa.',
@@ -393,7 +394,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
 
     <section className="timeline-section">
       <div className="section-title"><h2>{t.movements}</h2><span>{t.timeline}</span></div>
-      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?l('No cartão','On card','En tarjeta'):x.source==='credit_card_invoice_payment'?l('Fatura paga','Statement paid','Tarjeta pagada'):x.source==='open_finance'?l('Sincronizado','Synced','Sincronizado'):x.direction==='income'?t.moneyIn:x.direction==='transfer'?l('Transferência','Transfer','Transferencia'):l('Saiu','Money out','Salió')}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {formatMoney(x.amountMinor)}</b></article>)}</div>}
+      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?l('No cartão','On card','En tarjeta'):x.source==='credit_card_invoice_payment'?l('Fatura paga','Statement paid','Tarjeta pagada'):x.direction==='income'?t.moneyIn:x.direction==='transfer'?l('Transferência','Transfer','Transferencia'):l('Saiu','Money out','Salió')}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {formatMoney(x.amountMinor)}</b></article>)}</div>}
     </section>
 
     <AppNav canContribute={canContribute}/>
