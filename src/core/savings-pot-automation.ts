@@ -1,4 +1,4 @@
-export type SavingsPotAutomationKind='frequency'|'spend'|'income';
+export type SavingsPotAutomationKind='frequency'|'spend'|'income'|'roundup';
 export type SavingsPotFrequency='weekly'|'biweekly'|'monthly';
 export type SavingsPotAutomationMode='fixed'|'percent';
 
@@ -16,7 +16,7 @@ export function normalizeSavingsPotAutomation(value:unknown):SavingsPotAutomatio
   if(!value||typeof value!=='object') return null;
   const raw=value as Record<string,unknown>;
   const enabled=raw.enabled===true;
-  const kind=['frequency','spend','income'].includes(String(raw.kind))?String(raw.kind) as SavingsPotAutomationKind:null;
+  const kind=['frequency','spend','income','roundup'].includes(String(raw.kind))?String(raw.kind) as SavingsPotAutomationKind:null;
   const mode=['fixed','percent'].includes(String(raw.mode))?String(raw.mode) as SavingsPotAutomationMode:'fixed';
   if(!kind) return null;
 
@@ -28,6 +28,7 @@ export function normalizeSavingsPotAutomation(value:unknown):SavingsPotAutomatio
   const anchorDate=/^\d{4}-\d{2}-\d{2}$/.test(String(raw.anchorDate||''))?String(raw.anchorDate):null;
 
   if(kind==='frequency'&&(!frequency||!amountMinor)) return null;
+  if(kind==='roundup') return {enabled,kind,mode:'fixed',amountMinor:null,percentBps:null,frequency:null,anchorDate};
   if(kind!=='frequency'&&mode==='fixed'&&!amountMinor) return null;
   if(kind!=='frequency'&&mode==='percent'&&!percentBps) return null;
 
@@ -59,6 +60,10 @@ export function frequencyOccurrenceDates(automation:SavingsPotAutomation,through
 
 export function automationContributionMinor(automation:SavingsPotAutomation,movementAmountMinor:number){
   if(!automation.enabled) return 0;
+  if(automation.kind==='roundup'){
+    const remainder=movementAmountMinor%100;
+    return remainder===0?0:100-remainder;
+  }
   if(automation.mode==='percent'){
     if(!automation.percentBps) return 0;
     return Math.max(1,Math.round(movementAmountMinor*automation.percentBps/10_000));
