@@ -57,4 +57,6 @@ test('sugere recorrência apenas após padrão mensal estável',()=>{
   assert.equal(candidates.length,1);
   assert.equal(candidates[0].description,'Netflix');
   assert.equal(candidates[0].observedMonths,3);
+  assert.equal(candidates[0].referenceTransactionId,'3');
+  assert.equal(candidates[0].suggestedDueDay,5);
 });
