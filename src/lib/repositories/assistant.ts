@@ -2,11 +2,13 @@
 import { auth } from '@/src/lib/firebase/client';
 import type { AssistantAnswer } from '@/src/core/assistant';
 import type { FinancialView } from '@/src/features/privacy/scope-view-switch';
+import type { AppLocale } from '@/src/core/locale';
 
 export type AssistantAnswerResponse={
   ok:true;
   answer:AssistantAnswer;
   grounded:true;
+  locale:AppLocale;
   asOf:string;
 };
 
