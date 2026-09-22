@@ -76,15 +76,38 @@ export async function upsertSavingsPot(req:Request,res:Response){
             normalizeSavingsPotName(name)
           ].join('|')).digest('hex').slice(0,40)
         : null;
-      ref=stableKey?household.collection('savingsPots').doc(stableKey):household.collection('savingsPots').doc();
-      const existing=stableKey?await ref.get():null;
-      if(existing?.exists){
-        const data=existing.data()!;
+
+      let matchingExisting:FirebaseFirestore.QueryDocumentSnapshot|null=null;
+      if(institutionName){
+        const candidates=await household.collection('savingsPots').where('status','==','active').limit(200).get();
+        matchingExisting=candidates.docs.find(doc=>{
+          const data=doc.data();
+          const existingScope=data.scope==='personal'?'personal':'household';
+          const existingOwner=existingScope==='personal'?String(data.ownerUid||''):'';
+          return existingScope===scope
+            &&(scope!=='personal'||existingOwner===user.uid)
+            &&normalizeSavingsPotName(String(data.institutionName||''))===normalizeSavingsPotName(institutionName)
+            &&normalizeSavingsPotName(String(data.name||''))===normalizeSavingsPotName(name);
+        })??null;
+      }
+
+      if(matchingExisting){
+        ref=matchingExisting.ref;
+        const data=matchingExisting.data();
         assertScopedAccess(data,user.uid);
         source=typeof data.source==='string'&&data.source?data.source:'manual';
         created=false;
       }else{
-        created=true;
+        ref=stableKey?household.collection('savingsPots').doc(stableKey):household.collection('savingsPots').doc();
+        const existing=stableKey?await ref.get():null;
+        if(existing?.exists){
+          const data=existing.data()!;
+          assertScopedAccess(data,user.uid);
+          source=typeof data.source==='string'&&data.source?data.source:'manual';
+          created=false;
+        }else{
+          created=true;
+        }
       }
     }
 
@@ -95,6 +118,8 @@ export async function upsertSavingsPot(req:Request,res:Response){
       goalMinor,
       currency:'BRL',
       institutionName,
+      normalizedName:normalizeSavingsPotName(name),
+      normalizedInstitution:normalizeSavingsPotName(institutionName||''),
       scope,
       ownerUid,
       status:'active',
