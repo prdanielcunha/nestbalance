@@ -1,16 +1,18 @@
 'use client';
+import { useI18n } from '@/src/i18n/locale-provider';
 export type FinancialView='household'|'personal'|'all';
 
 export function ScopeViewSwitch({value,onChange}:{value:FinancialView;onChange:(value:FinancialView)=>void}){
+  const {t}=useI18n();
   return <div className="scope-view-switch" aria-label="O que você quer visualizar">
-    <button type="button" aria-label="Lar: itens compartilhados" className={value==='household'?'active':''} onClick={()=>onChange('household')}>
-      <strong>Lar</strong><span>compartilhado</span>
+    <button type="button" aria-label={`${t.scopeHousehold}: ${t.scopeHouseholdHint}`} className={value==='household'?'active':''} onClick={()=>onChange('household')}>
+      <strong>{t.scopeHousehold}</strong><span>{t.scopeHouseholdHint}</span>
     </button>
-    <button type="button" aria-label="Só eu: itens privados" className={value==='personal'?'active':''} onClick={()=>onChange('personal')}>
-      <strong>Só eu</strong><span>privado</span>
+    <button type="button" aria-label={`${t.scopePersonal}: ${t.scopePersonalHint}`} className={value==='personal'?'active':''} onClick={()=>onChange('personal')}>
+      <strong>{t.scopePersonal}</strong><span>{t.scopePersonalHint}</span>
     </button>
-    <button type="button" aria-label="Tudo: Lar mais os seus itens privados" className={value==='all'?'active':''} onClick={()=>onChange('all')}>
-      <strong>Tudo</strong><span>Lar + meu privado</span>
+    <button type="button" aria-label={`${t.scopeAll}: ${t.scopeAllHint}`} className={value==='all'?'active':''} onClick={()=>onChange('all')}>
+      <strong>{t.scopeAll}</strong><span>{t.scopeAllHint}</span>
     </button>
   </div>;
 }
