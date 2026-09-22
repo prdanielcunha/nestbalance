@@ -302,6 +302,75 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     });
     assert.equal(vaultSearch.json.items[0]?.evidenceId,receiptEvidenceId);
 
+    const card=await post('/api/cards/create',owner.token,{
+      householdId,
+      name:'Nubank',
+      brand:'mastercard',
+      closingDay:7,
+      dueDay:14,
+      last4:'1234',
+      limitMinor:500000,
+      scope:'household'
+    });
+    assert.equal(card.status,201);
+
+    const invoiceEvidenceId='invoiceproof001';
+    await seedDb.doc(`households/${householdId}/evidenceAssets/${invoiceEvidenceId}`).set({
+      status:'accepted',
+      immutable:true,
+      scope:'household',
+      ownerUid:null,
+      originalName:'fatura-setembro.pdf',
+      mimeType:'application/pdf',
+      declaredMimeType:'application/pdf',
+      verifiedSize:512,
+      sha256:'3'.repeat(64),
+      storagePath:'test/fatura-setembro.pdf',
+      createdAt:new Date('2026-09-10T12:00:00Z')
+    });
+    await seedDb.doc(`households/${householdId}/evidenceAssets/${invoiceEvidenceId}/extractions/native-text-v1`).set({
+      state:'extracted',
+      parser:'test-seed',
+      text:[
+        'Vencimento 14/09/2026',
+        '05/09 MERCADO CENTRAL 129,90',
+        '06/09 LOJA XPTO PARC 03/10 89,90',
+        'PAGAMENTO DA FATURA 500,00',
+        'TOTAL DA FATURA 719,80'
+      ].join('\n')
+    });
+
+    const invoicePreview=await post('/api/invoices/preview',owner.token,{
+      householdId,
+      cardId:card.json.id,
+      evidenceId:invoiceEvidenceId,
+      referenceDate:'2026-09-10'
+    });
+    assert.equal(invoicePreview.json.preview.items.length,2);
+    assert.deepEqual(invoicePreview.json.preview.items[1].installment,{current:3,total:10});
+
+    const invoiceCommit=await post('/api/invoices/commit',owner.token,{
+      householdId,
+      cardId:card.json.id,
+      evidenceId:invoiceEvidenceId,
+      referenceDate:'2026-09-10',
+      itemIds:invoicePreview.json.preview.items.map(item=>item.id)
+    });
+    assert.equal(invoiceCommit.status,201);
+    assert.equal(invoiceCommit.json.created,2);
+    assert.equal(invoiceCommit.json.installmentPlans,1);
+
+    const invoiceDuplicate=await post('/api/invoices/commit',owner.token,{
+      householdId,
+      cardId:card.json.id,
+      evidenceId:invoiceEvidenceId,
+      referenceDate:'2026-09-10',
+      itemIds:invoicePreview.json.preview.items.map(item=>item.id)
+    });
+    assert.equal(invoiceDuplicate.status,200);
+    assert.equal(invoiceDuplicate.json.status,'duplicate');
+    assert.equal(invoiceDuplicate.json.created,0);
+
     const matchedPayment=await post('/api/commitments/match-payment',owner.token,{
       householdId,
       amountMinor:11990,
