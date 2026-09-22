@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { deriveCashView } from '@/src/core/cash-view';
 import { projectHouseholdFuture } from '@/src/core/future-projection';
+import { categoryLabel, deriveFinancialAnomalies, deriveSpendingComparison } from '@/src/core/insights';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
@@ -105,6 +106,88 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
   const defaultCreateScope=view==='personal'?'personal':'household';
   const viewLabel=view==='household'?'do Lar':view==='personal'?'Pessoal':'na sua visão completa';
+  const spendingComparison=useMemo(()=>deriveSpendingComparison(viewTransactions,new Date()),[viewTransactions]);
+  const anomalies=useMemo(()=>deriveFinancialAnomalies(viewTransactions,new Date()),[viewTransactions]);
+  const attentionItems=useMemo(()=>{
+    const now=new Date();
+    const today=now.getDate();
+    const items:Array<{key:string;kind:string;title:string;detail:string;href:string;action:string}>=[];
+
+    const overdue=viewCommitments
+      .filter(item=>!item.paidThisMonth&&item.status!=='paid'&&item.status!=='cancelled'&&Number.isInteger(item.dueDay)&&Number(item.dueDay)<today)
+      .sort((a,b)=>Number(a.dueDay)-Number(b.dueDay))[0];
+    const dueSoon=viewCommitments
+      .filter(item=>!item.paidThisMonth&&item.status!=='paid'&&item.status!=='cancelled'&&Number.isInteger(item.dueDay)&&Number(item.dueDay)>=today&&Number(item.dueDay)<=today+3)
+      .sort((a,b)=>Number(a.dueDay)-Number(b.dueDay))[0];
+
+    if(overdue){
+      items.push({
+        key:'overdue-'+overdue.id,
+        kind:'VENCEU',
+        title:`${overdue.description} ainda aparece como pendente.`,
+        detail:`${money.format(overdue.amountMinor/100)} · venceu dia ${overdue.dueDay}. Se você já pagou, marque como pago para a previsão ficar correta.`,
+        href:'/',
+        action:'Ver conta'
+      });
+    }else if(dueSoon){
+      items.push({
+        key:'due-'+dueSoon.id,
+        kind:Number(dueSoon.dueDay)===today?'VENCE HOJE':'PRÓXIMO PAGAMENTO',
+        title:`${dueSoon.description} ${Number(dueSoon.dueDay)===today?'vence hoje':`vence dia ${dueSoon.dueDay}`}.`,
+        detail:`${money.format(dueSoon.amountMinor/100)} já está considerado no que ainda vai sair.`,
+        href:'/',
+        action:'Ver conta'
+      });
+    }
+
+    const anomaly=anomalies[0];
+    if(anomaly){
+      items.push({
+        key:'anomaly-'+anomaly.transactionId,
+        kind:anomaly.type==='possible_duplicate'?'VALE CONFERIR':'FORA DO PADRÃO',
+        title:anomaly.type==='possible_duplicate'
+          ? `${anomaly.description} apareceu mais de uma vez no mesmo dia.`
+          : `${anomaly.description} veio acima do histórico conhecido.`,
+        detail:anomaly.type==='possible_duplicate'
+          ? 'Pode estar certo. O NestBalance só está sinalizando para você não pagar ou contar duas vezes sem querer.'
+          : `${money.format(anomaly.amountMinor/100)} agora · histórico típico de ${money.format((anomaly.baselineMinor||0)/100)}.`,
+        href:'/assistant',
+        action:'Entender'
+      });
+    }
+
+    if(spendingComparison.hasComparableData&&spendingComparison.deltaMinor>0){
+      const top=spendingComparison.topIncreases[0];
+      items.push({
+        key:'spending-change',
+        kind:'SEU MÊS MUDOU',
+        title:`Os gastos conhecidos estão ${money.format(spendingComparison.deltaMinor/100)} acima do mês anterior.`,
+        detail:top
+          ? `${categoryLabel(top.category)} foi a maior alta até agora, com ${money.format(top.deltaMinor/100)} a mais.`
+          : 'A comparação usa somente gastos conhecidos e evita contar transferências e pagamento de fatura como nova despesa.',
+        href:'/assistant',
+        action:'Ver por quê'
+      });
+    }
+
+    const ending=viewInstallmentPlans
+      .map(plan=>({...plan,remaining:Math.max(0,plan.totalInstallments-plan.lastObservedInstallment)}))
+      .filter(plan=>plan.remaining===1&&plan.amountMinor>0)
+      .sort((a,b)=>b.amountMinor-a.amountMinor)[0];
+    if(ending){
+      items.push({
+        key:'ending-'+ending.id,
+        kind:'TERMINA LOGO',
+        title:`${ending.description} está na última parcela conhecida.`,
+        detail:`Depois dela, ${money.format(ending.amountMinor/100)} por mês deixam de estar comprometidos nessa projeção.`,
+        href:'/assistant',
+        action:'Ver parcelas'
+      });
+    }
+
+    return items.slice(0,3);
+  },[viewCommitments,viewInstallmentPlans,anomalies,spendingComparison]);
+
 
   return <main className="app-shell">
     <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><Link href="/household" className="avatar-dot" aria-label="Lar e acessos" /></header>
@@ -117,6 +200,24 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       <strong>{viewAccounts.length ? money.format(snapshot.availableMinor/100) : '—'}</strong>
       <p>{viewAccounts.length ? (snapshot.futureCommitmentsMinor > 0 ? `${money.format(snapshot.futureCommitmentsMinor/100)} ainda estão comprometidos ${viewLabel}.` : `Sem contas pendentes ${viewLabel}.`) : `Ainda não há saldo ${viewLabel}.`}</p>
     </section>
+
+    {attentionItems.length>0&&<section className="attention-section" aria-labelledby="attention-title">
+      <div className="section-title">
+        <div>
+          <span className="section-kicker">O que importa agora</span>
+          <h2 id="attention-title">Só o que merece sua atenção.</h2>
+        </div>
+        <small>Sem alertar por tudo.</small>
+      </div>
+      <div className="attention-grid">
+        {attentionItems.map(item=><article className="attention-card" key={item.key}>
+          <span>{item.kind}</span>
+          <h3>{item.title}</h3>
+          <p>{item.detail}</p>
+          <Link href={item.href}>{item.action}</Link>
+        </article>)}
+      </div>
+    </section>}
 
     {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
     <MonthlyPayments householdId={householdId} commitments={viewCommitments} canContribute={canContribute} onChanged={()=>void refreshHome(true)} />
