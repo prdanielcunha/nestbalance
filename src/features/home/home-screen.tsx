@@ -88,9 +88,25 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     invoices:viewInvoiceImports
   }),[monthTransactions,currentMonthCommitments,viewInvoiceImports]);
 
+  const cashAccounts=useMemo(
+    ()=>viewAccounts.filter(account=>account.connectedProductType!=='investment'),
+    [viewAccounts]
+  );
+  const investmentAccounts=useMemo(
+    ()=>viewAccounts.filter(account=>account.connectedProductType==='investment'),
+    [viewAccounts]
+  );
+  const excludedInvestmentMinor=useMemo(
+    ()=>investmentAccounts.reduce((sum,account)=>sum+Number(account.balanceMinor??0),0),
+    [investmentAccounts]
+  );
+  const partialInvoiceCount=useMemo(
+    ()=>viewInvoiceImports.filter(invoice=>invoice.status==='partial'&&invoice.paymentStatus!=='paid').length,
+    [viewInvoiceImports]
+  );
+
   const snapshot = useMemo(() => {
-    const availableMinor = viewAccounts
-      .filter(account=>account.connectedProductType!=='investment')
+    const availableMinor = cashAccounts
       .reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
     return deriveHomeSnapshot({
       availableMinor,
@@ -99,7 +115,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       futureCommitmentsMinor:cashView.futureCommitmentsMinor,
       dueSoonMinor:cashView.futureCommitmentsMinor
     });
-  }, [viewAccounts, cashView]);
+  }, [cashAccounts, cashView]);
 
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
@@ -199,6 +215,48 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       <span>{viewAccounts.length ? `${t.availableNow} ${viewLabel}` : l(`saldo ${viewLabel}`,`balance ${viewLabel}`,`saldo ${viewLabel}`)}</span>
       <strong>{viewAccounts.length ? formatMoney(snapshot.availableMinor) : '—'}</strong>
       <p>{viewAccounts.length ? (snapshot.futureCommitmentsMinor > 0 ? l(`${formatMoney(snapshot.futureCommitmentsMinor)} ainda estão comprometidos ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} is still committed ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} todavía está comprometido ${viewLabel}.`) : l(`Sem contas pendentes ${viewLabel}.`,`No pending bills ${viewLabel}.`,`Sin cuentas pendientes ${viewLabel}.`)) : l(`Ainda não há saldo ${viewLabel}.`,`There is no balance yet ${viewLabel}.`,`Todavía no hay saldo ${viewLabel}.`)}</p>
+      {viewAccounts.length>0&&<details className="balance-explanation">
+        <summary>{l('Como calculamos','How this is calculated','Cómo lo calculamos')}</summary>
+        <div className="balance-explanation-grid">
+          <div>
+            <span>{l('SALDOS INCLUÍDOS','BALANCES INCLUDED','SALDOS INCLUIDOS')}</span>
+            <strong>{formatMoney(snapshot.availableMinor)}</strong>
+            <small>{l(
+              `${cashAccounts.length} conta${cashAccounts.length===1?'':'s'} com saldo disponível nesta visão.`,
+              `${cashAccounts.length} account${cashAccounts.length===1?'':'s'} with available balance in this view.`,
+              `${cashAccounts.length} cuenta${cashAccounts.length===1?'':'s'} con saldo disponible en esta vista.`
+            )}</small>
+          </div>
+          <div>
+            <span>{l('AINDA COMPROMETIDO','STILL COMMITTED','TODAVÍA COMPROMETIDO')}</span>
+            <strong>{formatMoney(snapshot.futureCommitmentsMinor)}</strong>
+            <small>{l(
+              `${formatMoney(cashView.knownCommitmentsMinor)} em contas + ${formatMoney(cashView.openCardInvoicesMinor)} em faturas abertas.`,
+              `${formatMoney(cashView.knownCommitmentsMinor)} in bills + ${formatMoney(cashView.openCardInvoicesMinor)} in open statements.`,
+              `${formatMoney(cashView.knownCommitmentsMinor)} en cuentas + ${formatMoney(cashView.openCardInvoicesMinor)} en resúmenes abiertos.`
+            )}</small>
+          </div>
+          <div className="projected">
+            <span>{l('DEVE SOBRAR','PROJECTED LEFT','DEBERÍA QUEDAR')}</span>
+            <strong>{formatMoney(snapshot.projectedRemainderMinor)}</strong>
+            <small>{l(
+              'Saldo disponível menos compromissos conhecidos. É uma estimativa, não uma garantia.',
+              'Available balance minus known commitments. This is an estimate, not a guarantee.',
+              'Saldo disponible menos compromisos conocidos. Es una estimación, no una garantía.'
+            )}</small>
+          </div>
+        </div>
+        {investmentAccounts.length>0&&<p>{l(
+          `Não contamos ${formatMoney(excludedInvestmentMinor)} em ${investmentAccounts.length} investimento${investmentAccounts.length===1?'':'s'} como dinheiro disponível para gastar.`,
+          `We do not count ${formatMoney(excludedInvestmentMinor)} across ${investmentAccounts.length} investment account${investmentAccounts.length===1?'':'s'} as money available to spend.`,
+          `No contamos ${formatMoney(excludedInvestmentMinor)} en ${investmentAccounts.length} inversión${investmentAccounts.length===1?'':'es'} como dinero disponible para gastar.`
+        )}</p>}
+        {partialInvoiceCount>0&&<p>{l(
+          `${partialInvoiceCount} fatura${partialInvoiceCount===1?' ainda está':'s ainda estão'} em revisão. O valor comprometido pode mudar quando a revisão terminar.`,
+          `${partialInvoiceCount} statement${partialInvoiceCount===1?' is':'s are'} still under review. The committed amount may change when review finishes.`,
+          `${partialInvoiceCount} resumen${partialInvoiceCount===1?' sigue':'es siguen'} en revisión. El valor comprometido puede cambiar cuando termine la revisión.`
+        )}</p>}
+      </details>}
     </section>
 
     {attentionItems.length>0&&<section className="attention-section" aria-labelledby="attention-title">
