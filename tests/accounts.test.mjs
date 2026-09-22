@@ -13,7 +13,7 @@ test('saldo em inglês aceita separadores internacionais sem ambiguidade',()=>{
   assert.equal(parseMoneyInputToMinor('1,250.50','en'),125050);
   assert.equal(parseMoneyInputToMinor('1,250','en'),125000);
   assert.equal(parseMoneyInputToMinor('1250.50','en'),125050);
-  assert.equal(parseMoneyInputToMinor('4.820','en'),482);
+  assert.equal(parseMoneyInputToMinor('4.820','en'),null);
 });
 
 test('saldo inválido falha fechado',()=>{
