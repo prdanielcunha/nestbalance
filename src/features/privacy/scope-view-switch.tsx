@@ -1,16 +1,41 @@
 'use client';
+import { useAppLocale } from '@/src/i18n/locale-provider';
+
 export type FinancialView='household'|'personal'|'all';
 
+const copy={
+  'pt-BR':{
+    aria:'O que você quer visualizar',
+    household:'Lar',householdHint:'compartilhado',householdAria:'Lar: itens compartilhados',
+    personal:'Só eu',personalHint:'privado',personalAria:'Só eu: itens privados',
+    all:'Tudo',allHint:'Lar + meu privado',allAria:'Tudo: Lar mais os seus itens privados'
+  },
+  en:{
+    aria:'What do you want to view',
+    household:'Household',householdHint:'shared',householdAria:'Household: shared items',
+    personal:'Just me',personalHint:'private',personalAria:'Just me: private items',
+    all:'Everything',allHint:'Household + my private',allAria:'Everything: Household plus your private items'
+  },
+  es:{
+    aria:'Qué quieres ver',
+    household:'Hogar',householdHint:'compartido',householdAria:'Hogar: elementos compartidos',
+    personal:'Solo yo',personalHint:'privado',personalAria:'Solo yo: elementos privados',
+    all:'Todo',allHint:'Hogar + mi privado',allAria:'Todo: Hogar más tus elementos privados'
+  }
+} as const;
+
 export function ScopeViewSwitch({value,onChange}:{value:FinancialView;onChange:(value:FinancialView)=>void}){
-  return <div className="scope-view-switch" aria-label="O que você quer visualizar">
-    <button type="button" aria-label="Lar: itens compartilhados" className={value==='household'?'active':''} onClick={()=>onChange('household')}>
-      <strong>Lar</strong><span>compartilhado</span>
+  const {locale}=useAppLocale();
+  const c=copy[locale];
+  return <div className="scope-view-switch" aria-label={c.aria}>
+    <button type="button" aria-label={c.householdAria} className={value==='household'?'active':''} onClick={()=>onChange('household')}>
+      <strong>{c.household}</strong><span>{c.householdHint}</span>
     </button>
-    <button type="button" aria-label="Só eu: itens privados" className={value==='personal'?'active':''} onClick={()=>onChange('personal')}>
-      <strong>Só eu</strong><span>privado</span>
+    <button type="button" aria-label={c.personalAria} className={value==='personal'?'active':''} onClick={()=>onChange('personal')}>
+      <strong>{c.personal}</strong><span>{c.personalHint}</span>
     </button>
-    <button type="button" aria-label="Tudo: Lar mais os seus itens privados" className={value==='all'?'active':''} onClick={()=>onChange('all')}>
-      <strong>Tudo</strong><span>Lar + meu privado</span>
+    <button type="button" aria-label={c.allAria} className={value==='all'?'active':''} onClick={()=>onChange('all')}>
+      <strong>{c.all}</strong><span>{c.allHint}</span>
     </button>
   </div>;
 }
