@@ -68,22 +68,22 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
 
   for(const line of lines){
     const meta=/\bmeta\s*:?\s*(R\$\s*\d[\d.]*?(?:,\d{1,2})?)/i.exec(line);
-    if(meta){
-      const goalMinor=parseMoneyMinor(meta[1]);
-      if(goalMinor!==null&&lastPotIndex>=0){
-        pots[lastPotIndex]={...pots[lastPotIndex],goalMinor};
+    const metaGoalMinor=meta?parseMoneyMinor(meta[1]):null;
+    const valueLine=meta?cleanLine(line.replace(meta[0],'')):line;
+    const moneyMatches=[...valueLine.matchAll(MONEY)];
+
+    if(!moneyMatches.length){
+      if(metaGoalMinor!==null&&lastPotIndex>=0){
+        pots[lastPotIndex]={...pots[lastPotIndex],goalMinor:metaGoalMinor};
+      }else if(isCandidateName(valueLine)){
+        pendingName=valueLine;
+      }else if(POT_SCREEN_HINT.test(valueLine)){
+        pendingName=null;
       }
       continue;
     }
 
-    const moneyMatches=[...line.matchAll(MONEY)];
-    if(!moneyMatches.length){
-      if(isCandidateName(line)) pendingName=line;
-      else if(POT_SCREEN_HINT.test(line)) pendingName=null;
-      continue;
-    }
-
-    if(/\b(cdi|rendimento|rendimentos)\b/i.test(line)||/%/.test(line)){
+    if(/\b(cdi|rendimento|rendimentos)\b/i.test(valueLine)||/%/.test(valueLine)){
       continue;
     }
 
@@ -91,7 +91,7 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
     const balanceMinor=parseMoneyMinor(first[0]);
     if(balanceMinor===null) continue;
 
-    let candidate=nameBeforeMoney(line,first.index||0);
+    let candidate=nameBeforeMoney(valueLine,first.index||0);
     if(!isCandidateName(candidate)) candidate=pendingName||'';
     if(!candidate||!isCandidateName(candidate)){
       continue;
@@ -110,13 +110,17 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
     const pot={
       name:normalizedCandidate.slice(0,80),
       balanceMinor,
-      goalMinor:null,
+      goalMinor:metaGoalMinor,
       currency:'BRL' as const,
       confidence:0.94
     };
 
     if(existingIndex>=0){
-      pots[existingIndex]={...pots[existingIndex],balanceMinor};
+      pots[existingIndex]={
+        ...pots[existingIndex],
+        balanceMinor,
+        goalMinor:metaGoalMinor??pots[existingIndex].goalMinor
+      };
       lastPotIndex=existingIndex;
     }else{
       pots.push(pot);
@@ -124,7 +128,6 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
     }
     pendingName=null;
   }
-
   if(!pots.length) return null;
 
   return {
