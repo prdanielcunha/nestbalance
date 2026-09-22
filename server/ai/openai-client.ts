@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 let client:OpenAI|null=null;
 
 export function isOpenAiConfigured(){
-  return Boolean(process.env.OPENAI_API_KEY?.trim());
+  return process.env.NESTBALANCE_ALLOW_PAID_AI==='true'&&Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
 export function getOpenAi(){
