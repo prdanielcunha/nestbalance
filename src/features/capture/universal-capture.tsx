@@ -776,7 +776,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               <span>{l('Envio somente o texto OCR sanitizado para Gemini 2.5 Flash-Lite. A imagem não sai do seu aparelho neste passo, e números sensíveis são removidos antes da chamada.','Only sanitized OCR text is sent to Gemini 2.5 Flash-Lite. The image does not leave your device in this step, and sensitive numbers are removed before the call.','Solo se envía texto OCR sanitizado a Gemini 2.5 Flash-Lite. La imagen no sale de tu dispositivo en este paso y los números sensibles se eliminan antes de la llamada.')}</span>
             </div>
             <button type="button" disabled={geminiWorking} onClick={()=>void runGeminiFallback()}>
-              {geminiWorking?'Analisando texto protegido…':'Tentar leitura protegida com Gemini'}
+              {geminiWorking?l('Analisando texto protegido…','Analyzing protected text…','Analizando texto protegido…'):l('Tentar leitura protegida com Gemini','Try protected reading with Gemini','Intentar lectura protegida con Gemini')}
             </button>
             <small>O Free Tier do Gemini pode usar o conteúdo enviado para melhorar produtos do Google. Por isso este fallback é opcional e exige este toque.</small>
           </div>}
