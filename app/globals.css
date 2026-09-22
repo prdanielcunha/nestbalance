@@ -2174,3 +2174,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .pot-automation-summary.active{background:rgba(15,159,143,.08)}
   .savings-pot-automation-pill{color:#8eddd1}
 }
+
+.pot-goal-quick-action{
+  width:max-content;
+  max-width:100%;
+  min-height:38px;
+  margin-top:8px;
+  padding:0 12px;
+  border:1px solid rgba(94,106,210,.2);
+  border-radius:12px;
+  background:rgba(94,106,210,.075);
+  color:var(--ink);
+  font:inherit;
+  font-size:10px;
+  font-weight:850;
+  cursor:pointer;
+}
+.pot-goal-quick-action:hover{background:rgba(94,106,210,.12)}
