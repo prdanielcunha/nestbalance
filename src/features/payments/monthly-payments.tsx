@@ -61,7 +61,7 @@ export function MonthlyPayments({
   if(!items.length) return null;
   const pending=items.filter(item=>!item.paidThisMonth).length;
 
-  return <section className="monthly-payments-section">
+  return <section id="monthly-payments" className="monthly-payments-section">
     <div className="section-title">
       <div><h2>Para pagar este mês</h2><span>{pending ? pending + ' ainda ' + (pending===1?'falta':'faltam') : 'Tudo certo por aqui'}</span></div>
     </div>

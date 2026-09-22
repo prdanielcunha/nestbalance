@@ -4,6 +4,14 @@ import { answerAssistantQuestion, classifyAssistantIntent } from '../.core-dist/
 
 const base={
   accounts:[{id:'a1',name:'Conta principal',balanceMinor:200000,status:'active'}],
+  transactions:[
+    {id:'aug-market',description:'Supermercado',amountMinor:30000,direction:'expense',observedOn:'2026-08-10'},
+    {id:'aug-energy',description:'Energia',amountMinor:10000,direction:'expense',observedOn:'2026-08-12'},
+    {id:'jul-energy',description:'Energia',amountMinor:9500,direction:'expense',observedOn:'2026-07-12'},
+    {id:'jun-energy',description:'Energia',amountMinor:10500,direction:'expense',observedOn:'2026-06-12'},
+    {id:'sep-market',description:'Supermercado',amountMinor:52000,direction:'expense',observedOn:'2026-09-10'},
+    {id:'sep-energy',description:'Energia',amountMinor:18000,direction:'expense',observedOn:'2026-09-12'}
+  ],
   commitments:[{id:'c1',description:'Internet',amountMinor:11990,status:'pending',recurring:true,recurrence:'monthly'}],
   invoices:[
     {id:'i1',cardId:'card-1',invoiceKey:'2026-09',dueOn:'2026-09-25',status:'confirmed',confirmedAmountMinor:50000,paidAmountMinor:0,paymentStatus:'unpaid'},
@@ -21,6 +29,8 @@ test('classifica perguntas humanas suportadas',()=>{
   assert.equal(classifyAssistantIntent('Dá para gastar R$ 500?'),'spending_simulation');
   assert.equal(classifyAssistantIntent('Se eu gastar 350 reais, como fica?'),'spending_simulation');
   assert.equal(classifyAssistantIntent('Quais parcelas terminam logo?'),'ending_installments');
+  assert.equal(classifyAssistantIntent('Por que gastei mais este mês?'),'spending_change');
+  assert.equal(classifyAssistantIntent('O que está estranho?'),'anomalies');
 });
 
 test('responde quanto falta pagar sem somar fatura paga',()=>{
@@ -88,4 +98,29 @@ test('pergunta fora da camada atual não inventa resposta',()=>{
   assert.equal(answer.intent,'unsupported');
   assert.equal(answer.answerMinor,null);
   assert.equal(answer.sources.length,0);
+});
+
+
+test('explica por que o gasto mudou usando comparação real entre meses',()=>{
+  const answer=answerAssistantQuestion({...base,question:'Por que gastei mais este mês?'});
+  assert.equal(answer.intent,'spending_change');
+  assert.equal(answer.answerMinor,30000);
+  assert.match(answer.title,/a mais/);
+  assert.match(answer.summary,/ignora transferências/);
+  assert.equal(answer.cards.some(card=>card.label==='Alimentação'),true);
+});
+
+test('aponta anomalias como sinais e não como acusações',()=>{
+  const answer=answerAssistantQuestion({
+    ...base,
+    question:'O que está estranho?',
+    transactions:[
+      ...base.transactions,
+      {id:'dup1',description:'Padaria',amountMinor:5000,direction:'expense',observedOn:'2026-09-18'},
+      {id:'dup2',description:'Padaria',amountMinor:5000,direction:'expense',observedOn:'2026-09-18'}
+    ]
+  });
+  assert.equal(answer.intent,'anomalies');
+  assert.match(answer.summary,/sinais, não acusações/i);
+  assert.equal(answer.sources.some(source=>source.label==='Padaria'),true);
 });
