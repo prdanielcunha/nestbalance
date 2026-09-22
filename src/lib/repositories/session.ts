@@ -1,11 +1,13 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { HouseholdRole } from '@/src/core/household';
+import type { Locale } from '@/src/i18n/messages';
 
 export type HouseholdSessionOption={
   id:string;
   name:string;
   role:HouseholdRole;
+  locale:Locale;
 };
 
 async function token(){
