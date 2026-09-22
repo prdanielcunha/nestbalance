@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { normalizeHouseholdRole } from '../src/core/household.js';
+import { normalizeLocale } from '../src/core/locale.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -34,10 +35,12 @@ async function householdOptions(uid:string){
       return {
         id:doc.id,
         name:String(household.name||'Meu Lar'),
-        role:normalizeHouseholdRole(doc.data()?.role)
+        role:normalizeHouseholdRole(doc.data()?.role),
+        locale:normalizeLocale(household.locale),
+        currency:String(household.currency||'BRL')
       };
     })
-    .filter((value): value is {id:string;name:string;role:ReturnType<typeof normalizeHouseholdRole>}=>Boolean(value));
+    .filter((value): value is {id:string;name:string;role:ReturnType<typeof normalizeHouseholdRole>;locale:ReturnType<typeof normalizeLocale>;currency:string}=>Boolean(value));
 }
 
 async function touchMemberProfile(householdId:string,uid:string,user:any){
@@ -68,7 +71,7 @@ export async function bootstrapSession(req:Request,res:Response){
         ...publicProfile(user),
         lastSeenAt:FieldValue.serverTimestamp()
       },{merge:true});
-      return res.json({ok:true,householdId:selected.id,households,created:false});
+      return res.json({ok:true,householdId:selected.id,households,locale:selected.locale,currency:selected.currency,created:false});
     }
 
     const householdId=primaryHouseholdId(user.uid);
@@ -115,7 +118,8 @@ export async function bootstrapSession(req:Request,res:Response){
     });
 
     households=await householdOptions(user.uid);
-    return res.status(created?201:200).json({ok:true,householdId,households,created});
+    const selected=households.find(item=>item.id===householdId)||households[0];
+    return res.status(created?201:200).json({ok:true,householdId,households,locale:selected?.locale||'pt-BR',currency:selected?.currency||'BRL',created});
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD'];
     if(!safe.includes(err?.message)){
@@ -139,7 +143,8 @@ export async function selectHousehold(req:Request,res:Response){
       lastSeenAt:FieldValue.serverTimestamp()
     },{merge:true});
     const households=await householdOptions(user.uid);
-    return res.json({ok:true,householdId,households});
+    const selected=households.find(item=>item.id===householdId);
+    return res.json({ok:true,householdId,households,locale:selected?.locale||'pt-BR',currency:selected?.currency||'BRL'});
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD','HOUSEHOLD_ACCESS_DENIED'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'HOUSEHOLD_SELECT_FAILED');
