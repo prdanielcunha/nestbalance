@@ -16,5 +16,5 @@ export function activeAttentionDismissals(
 }
 
 export function isDismissibleAttentionKind(kind:string){
-  return kind!=='overdue'&&kind!=='due_today';
+  return !['overdue','due_today','due_soon'].includes(kind);
 }
