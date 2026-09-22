@@ -42,35 +42,65 @@ test('primary sign-in action has a 44px touch target on mobile',async({page},tes
   expect(box!.height).toBeGreaterThanOrEqual(44);
 });
 
-test('dark color scheme is intentional and accessible on mobile and desktop',async({browser},testInfo)=>{
-  test.skip(testInfo.project.name!=='desktop-chromium','Run the dark matrix once; it creates both target viewports explicitly.');
-  for(const viewport of [{width:390,height:844},{width:1440,height:1000}]){
-    const context=await browser.newContext({colorScheme:'dark',viewport});
-    const page=await context.newPage();
-    await page.goto('http://127.0.0.1:4173/');
-    await expect(page.getByRole('heading',{name:'NestBalance'})).toBeVisible();
-    await expect(page.getByRole('button',{name:/Entrar com Google|Continue with Google|Entrar con Google/i})).toBeVisible();
+test('dark is the official default regardless of device color preference',async({browser},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','Run the theme matrix once; it creates target contexts explicitly.');
+  for(const colorScheme of ['light','dark'] as const){
+    for(const viewport of [{width:390,height:844},{width:1440,height:1000}]){
+      const context=await browser.newContext({colorScheme,viewport});
+      const page=await context.newPage();
+      await page.goto('http://127.0.0.1:4173/');
+      await expect(page.getByRole('heading',{name:'NestBalance'})).toBeVisible();
 
-    const tokens=await page.evaluate(()=>{
-      const style=getComputedStyle(document.documentElement);
-      return {
-        paper:style.getPropertyValue('--paper').trim().toLowerCase(),
-        ink:style.getPropertyValue('--ink').trim().toLowerCase(),
-        surface:style.getPropertyValue('--surface-strong').trim().toLowerCase()
-      };
-    });
-    expect(tokens.paper).toBe('#090d18');
-    expect(tokens.ink).toBe('#edf0f6');
-    expect(tokens.surface).toBe('#121725');
+      const tokens=await page.evaluate(()=>{
+        const style=getComputedStyle(document.documentElement);
+        return {
+          theme:document.documentElement.dataset.theme,
+          paper:style.getPropertyValue('--paper').trim().toLowerCase(),
+          ink:style.getPropertyValue('--ink').trim().toLowerCase(),
+          surface:style.getPropertyValue('--surface-strong').trim().toLowerCase()
+        };
+      });
+      expect(tokens.theme).toBe('dark');
+      expect(tokens.paper).toBe('#090d18');
+      expect(tokens.ink).toBe('#edf0f6');
+      expect(tokens.surface).toBe('#121725');
 
-    const results=await new AxeBuilder({page}).analyze();
-    const severe=results.violations.filter(item=>item.impact==='serious'||item.impact==='critical');
-    expect(severe,severe.map(item=>item.id+': '+item.help).join('\n')).toEqual([]);
+      const results=await new AxeBuilder({page}).analyze();
+      const severe=results.violations.filter(item=>item.impact==='serious'||item.impact==='critical');
+      expect(severe,severe.map(item=>item.id+': '+item.help).join('\n')).toEqual([]);
 
-    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
-    expect(overflow).toBeLessThanOrEqual(1);
-    await context.close();
+      const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+      expect(overflow).toBeLessThanOrEqual(1);
+      await context.close();
+    }
   }
+});
+
+test('explicit light preference persists and overrides the dark default',async({browser},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','Run the persisted light preference once.');
+  const context=await browser.newContext({colorScheme:'dark',viewport:{width:390,height:844}});
+  await context.addInitScript(()=>localStorage.setItem('nestbalance-theme','light'));
+  const page=await context.newPage();
+  await page.goto('http://127.0.0.1:4173/');
+  await expect(page.getByRole('heading',{name:'NestBalance'})).toBeVisible();
+
+  const first=await page.evaluate(()=>{
+    const style=getComputedStyle(document.documentElement);
+    return {
+      theme:document.documentElement.dataset.theme,
+      paper:style.getPropertyValue('--paper').trim().toLowerCase(),
+      ink:style.getPropertyValue('--ink').trim().toLowerCase(),
+      surface:style.getPropertyValue('--surface-strong').trim().toLowerCase()
+    };
+  });
+  expect(first.theme).toBe('light');
+  expect(first.paper).toBe('#f6f7f9');
+  expect(first.ink).toBe('#202635');
+  expect(first.surface).toBe('#fff');
+
+  await page.reload();
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.dataset.theme)).toBe('light');
+  await context.close();
 });
 
 
