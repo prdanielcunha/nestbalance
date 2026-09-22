@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { visibleDocs } from './privacy.js';
 import { normalizeFinancialScope } from '../src/core/privacy.js';
+import { normalizeLocale } from '../src/i18n/messages.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -86,6 +87,8 @@ export async function answerFinanceAssistant(req:Request,res:Response){
 
     await requireHouseholdMember(householdId,user.uid);
     const household=adminDb.collection('households').doc(householdId);
+    const householdSnap=await household.get();
+    const locale=normalizeLocale(req.body?.locale||householdSnap.data()?.locale);
 
     const [accounts,transactions,commitments,invoices,plans]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
@@ -106,7 +109,8 @@ export async function answerFinanceAssistant(req:Request,res:Response){
       commitments:scoped(commitments.docs).map(commitmentDto),
       invoices:scoped(invoices.docs).map(invoiceDto),
       installmentPlans:scoped(plans.docs).map(planDto),
-      now:new Date()
+      now:new Date(),
+      locale
     });
 
     return res.json({
@@ -114,6 +118,7 @@ export async function answerFinanceAssistant(req:Request,res:Response){
       answer,
       grounded:true,
       view:requestedView,
+      locale,
       asOf:new Date().toISOString()
     });
   }catch(err:any){
