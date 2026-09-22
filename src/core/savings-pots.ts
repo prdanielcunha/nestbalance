@@ -35,8 +35,25 @@ export type SavingsPotGroup<T extends SavingsPotLike=SavingsPotLike>={
   sources:T[];
 };
 
+const OCR_ICON_PREFIXES=new Set(['t','v','vv','w','ww','i','ii','l','ll']);
+
+export function cleanSavingsPotDisplayName(value:string){
+  let clean=String(value||'')
+    .normalize('NFKC')
+    .replace(/^[^\p{L}\p{N}]+/u,'')
+    .replace(/[|•·]+$/g,'')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  const parts=clean.split(' ').filter(Boolean);
+  if(parts.length>=2&&OCR_ICON_PREFIXES.has(parts[0].toLocaleLowerCase('pt-BR'))){
+    clean=parts.slice(1).join(' ');
+  }
+  return clean.slice(0,120);
+}
+
 export function normalizeSavingsPotName(value:string){
-  return value
+  return cleanSavingsPotDisplayName(value)
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g,'')
     .toLocaleLowerCase('pt-BR')
@@ -77,7 +94,7 @@ export function groupSavingsPots<T extends SavingsPotLike>(items:T[]):SavingsPot
 
     return {
       key,
-      name:preferred?.name||'Cofrinho',
+      name:cleanSavingsPotDisplayName(preferred?.name||'Cofrinho'),
       balanceMinor,
       goalMinor,
       targetDate:preferred?.targetDate||null,
