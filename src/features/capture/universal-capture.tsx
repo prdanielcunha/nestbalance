@@ -407,7 +407,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
     if (!overrideFile&&text.trim()) {
       try { applySourceText(text); }
-      catch { setError('Conte o que aconteceu e, se souber, o valor.'); }
+      catch { setError(l('Conte o que aconteceu e, se souber, o valor.','Tell me what happened and, if you know it, the amount.','Cuéntame qué pasó y, si sabes, el valor.')); }
       return;
     }
 
@@ -422,7 +422,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       try{
         if(!localOcrText) await tryLocalImage(activeFile);
         else setNotice(geminiStatus?.configured
-          ? 'A leitura local já terminou. Use o fallback protegido abaixo se quiser uma segunda interpretação.'
+          ? l('A leitura local já terminou. Use o fallback protegido abaixo se quiser uma segunda interpretação.','Local reading is complete. Use the protected fallback below if you want a second interpretation.','La lectura local ya terminó. Usa el fallback protegido de abajo si quieres una segunda interpretación.')
           : l('A leitura local já terminou. Você pode ajustar manualmente sem enviar a imagem para uma IA.','Local reading is complete. You can adjust it manually without sending the image to AI.','La lectura local ya terminó. Puedes ajustarla manualmente sin enviar la imagen a una IA.'));
       }finally{
         setAnalyzing(false);
@@ -767,13 +767,13 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <small>{l('Se só passou de uma conta sua para outra, o NestBalance não trata como dinheiro gasto ou recebido.','If it only moved between your own accounts, NestBalance does not count it as spent or received money.','Si solo pasó entre tus propias cuentas, NestBalance no lo cuenta como dinero gastado o recibido.')}</small>
           </div>}
 
-          {analysis?.state === 'extracted' && !aiAnalysis && !geminiUsed && <p className="native-analysis-note">Texto lido localmente · sem enviar a imagem para IA</p>}
-          {geminiUsed && <p className="native-analysis-note">Gemini analisou apenas OCR sanitizado · imagem não enviada · confirmação humana antes de guardar</p>}
-          {aiAnalysis && <p className="native-analysis-note">{aiAnalysis.kind==='audio'?'Áudio transcrito com IA':'Imagem lida com IA'} · confirmação humana antes de guardar</p>}
+          {analysis?.state === 'extracted' && !aiAnalysis && !geminiUsed && <p className="native-analysis-note">{l('Texto lido localmente · sem enviar a imagem para IA','Text read locally · image not sent to AI','Texto leído localmente · imagen no enviada a IA')}</p>}
+          {geminiUsed && <p className="native-analysis-note">{l('Gemini analisou apenas OCR sanitizado · imagem não enviada · confirmação humana antes de guardar','Gemini analyzed only sanitized OCR · image not sent · human confirmation before saving','Gemini analizó solo OCR sanitizado · imagen no enviada · confirmación humana antes de guardar')}</p>}
+          {aiAnalysis && <p className="native-analysis-note">{aiAnalysis.kind==='audio'?l('Áudio transcrito com IA','Audio transcribed with AI','Audio transcrito con IA'):l('Imagem lida com IA','Image read with AI','Imagen leída con IA')} · {l('confirmação humana antes de guardar','human confirmation before saving','confirmación humana antes de guardar')}</p>}
           {localOcrText&&geminiStatus?.configured&&!interpretations.length&&!screenSnapshot&&<div className="gemini-fallback-card">
             <div>
-              <strong>Quer uma segunda leitura?</strong>
-              <span>Envio somente o texto OCR sanitizado para Gemini 2.5 Flash-Lite. A imagem não sai do seu aparelho neste passo, e números sensíveis são removidos antes da chamada.</span>
+              <strong>{l('Quer uma segunda leitura?','Want a second reading?','¿Quieres una segunda lectura?')}</strong>
+              <span>{l('Envio somente o texto OCR sanitizado para Gemini 2.5 Flash-Lite. A imagem não sai do seu aparelho neste passo, e números sensíveis são removidos antes da chamada.','Only sanitized OCR text is sent to Gemini 2.5 Flash-Lite. The image does not leave your device in this step, and sensitive numbers are removed before the call.','Solo se envía texto OCR sanitizado a Gemini 2.5 Flash-Lite. La imagen no sale de tu dispositivo en este paso y los números sensibles se eliminan antes de la llamada.')}</span>
             </div>
             <button type="button" disabled={geminiWorking} onClick={()=>void runGeminiFallback()}>
               {geminiWorking?'Analisando texto protegido…':'Tentar leitura protegida com Gemini'}
@@ -873,17 +873,17 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
             <div><strong>{interpretation.description}</strong><b>{formatMoney(interpretation.money.amountMinor)}</b></div>
             <span>{interpretation.kind === 'commitment'
-              ? (interpretation.recurring ? `Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}` : 'Conta para pagar')
+              ? (interpretation.recurring ? l(`Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}`,`Every month${interpretation.dueDay ? ` · day ${interpretation.dueDay}` : ''}`,`Cada mes${interpretation.dueDay ? ` · día ${interpretation.dueDay}` : ''}`) : l('Conta para pagar','Bill to pay','Cuenta por pagar'))
               : interpretation.needsReview.includes('direction')
-                ? 'Só falta dizer se entrou ou saiu'
+                ? l('Só falta dizer se entrou ou saiu','Just tell me whether it came in or went out','Solo falta decir si entró o salió')
                 : interpretation.direction==='income'
-                  ? 'Dinheiro que entrou'
+                  ? l('Dinheiro que entrou','Money received','Dinero que entró')
                   : interpretation.direction==='transfer'
-                    ? 'Só mudou de conta'
-                    : 'Dinheiro que saiu'}
+                    ? l('Só mudou de conta','It only moved accounts','Solo cambió de cuenta')
+                    : l('Dinheiro que saiu','Money spent','Dinero que salió')}
               {interpretation.occurredOn?` · ${formatDate(new Date(interpretation.occurredOn+'T12:00:00'),{day:'2-digit',month:'2-digit'})}`:''}
             </span>
-            {interpretation.installment && <span>Parcela {interpretation.installment.current} de {interpretation.installment.total}</span>}
+            {interpretation.installment && <span>{l(`Parcela ${interpretation.installment.current} de ${interpretation.installment.total}`,`Installment ${interpretation.installment.current} of ${interpretation.installment.total}`,`Cuota ${interpretation.installment.current} de ${interpretation.installment.total}`)}</span>}
             {interpretation.needsReview.includes('direction')
               ? <div className="inline-direction-choice">
                   <button type="button" onClick={()=>chooseImportedDirection(index,'expense')}>{l('Eu paguei','I paid','Yo pagué')}</button>
@@ -894,15 +894,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           </div>)}</div>
 
           {hiddenReadyCount>0&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(true)}>
-            Ver {hiddenReadyCount} item{hiddenReadyCount===1?'':'s'} já organizado{hiddenReadyCount===1?'':'s'}
+            {l(`Ver ${hiddenReadyCount} item${hiddenReadyCount===1?'':'s'} já organizado${hiddenReadyCount===1?'':'s'}`,`View ${hiddenReadyCount} already organized item${hiddenReadyCount===1?'':'s'}`,`Ver ${hiddenReadyCount} elemento${hiddenReadyCount===1?'':'s'} ya organizado${hiddenReadyCount===1?'':'s'}`)}
           </button>}
           {showAllReview&&interpretations.length>3&&<button type="button" className="capture-show-all" onClick={()=>setShowAllReview(false)}>
             {l('Mostrar só o que importa','Show only what matters','Mostrar solo lo que importa')}
           </button>}
 
           {reviewCount > 0 && <p className="confidence-note">{unresolvedDirectionCount
-            ? `Só ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' precisa':'s precisam'} de uma resposta rápida. O restante já está organizado.`
-            : 'O que estava claro já foi organizado. Confira apenas os itens sinalizados.'}</p>}
+            ? l(`Só ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' precisa':'s precisam'} de uma resposta rápida. O restante já está organizado.`,`Only ${unresolvedDirectionCount} item${unresolvedDirectionCount===1?' needs':'s need'} a quick answer. The rest is already organized.`,`Solo ${unresolvedDirectionCount} elemento${unresolvedDirectionCount===1?' necesita':'s necesitan'} una respuesta rápida. El resto ya está organizado.`)
+            : l('O que estava claro já foi organizado. Confira apenas os itens sinalizados.','What was clear is already organized. Review only the flagged items.','Lo que estaba claro ya está organizado. Revisa solo los elementos señalados.')}</p>}
           {upload && <div className="upload-status" role="status" aria-live="polite">
             <div><span>{upload.phase === 'uploading' ? l('Guardando original…','Saving original…','Guardando original…') : l('Conferindo arquivo…','Checking file…','Revisando archivo…')}</span><b>{upload.percent}%</b></div>
             <progress max="100" value={upload.percent}>{upload.percent}%</progress>
@@ -913,11 +913,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
             <button className="primary-button" disabled={working||unresolvedDirectionCount>0||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
-              ? (upload?.phase === 'verifying' ? 'Conferindo…' : 'Guardando…')
+              ? (upload?.phase === 'verifying' ? l('Conferindo…','Checking…','Revisando…') : l('Guardando…','Saving…','Guardando…'))
               : unresolvedDirectionCount
-                ? `Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`
+                ? l(`Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`,`${unresolvedDirectionCount} confirmation${unresolvedDirectionCount===1?'':'s'} remaining`,`Falta${unresolvedDirectionCount===1?'':'n'} ${unresolvedDirectionCount} confirmación${unresolvedDirectionCount===1?'':'es'}`)
                 : paymentMatches.length>0&&!paymentMatchDismissed
-                  ? 'Escolha a conta acima'
+                  ? l('Escolha a conta acima','Choose the bill above','Elige la cuenta de arriba')
                   : l('Guardar','Save','Guardar')}</button>
           </div>
         </>}
