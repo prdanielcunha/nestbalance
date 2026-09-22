@@ -2,7 +2,7 @@
 
 ## Stable release
 
-Current stable version: **1.2.0**. The current product/release closure is documented in `docs/RELEASE_1.2.md`; the 1.1 and 1.0 certification history remains in the prior release notes. Privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
+The stable production version is the GitHub Release certified from the `production` branch. The current **1.2.x** release line and its production-hardening criteria are documented in `docs/RELEASE_1.2.md`; prior certification history remains in the changelog. Privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
 
 NestBalance is the personal and family finance product of the MillionsNest ecosystem.
 

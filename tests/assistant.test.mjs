@@ -52,6 +52,22 @@ test('responde quanto falta pagar sem somar fatura paga',()=>{
   assert.match(answer.summary,/pode aumentar/);
 });
 
+test('conta recorrente paga no mês sai das obrigações atuais sem desaparecer da projeção futura',()=>{
+  const paidCommitments=base.commitments.map(item=>({...item,paidThisMonth:true}));
+
+  const remaining=answerAssistantQuestion({...base,commitments:paidCommitments,question:'Quanto ainda falta pagar?'});
+  assert.equal(remaining.answerMinor,60000);
+  assert.equal(remaining.sources.some(source=>source.id==='c1'),false);
+
+  const simulation=answerAssistantQuestion({...base,commitments:paidCommitments,question:'Dá para gastar R$ 500?'});
+  assert.equal(simulation.answerMinor,90000);
+  assert.equal(simulation.sources.some(source=>source.id==='c1'),false);
+
+  const future=answerAssistantQuestion({...base,commitments:paidCommitments,question:'O que já está comprometido nos próximos meses?'});
+  assert.deepEqual(future.cards.map(card=>card.amountMinor),[41990,41990,41990]);
+  assert.equal(future.sources.some(source=>source.id==='c1'),true);
+});
+
 test('saldo disponível vem só das contas conhecidas',()=>{
   const answer=answerAssistantQuestion({...base,question:'Quanto tenho disponível?'});
   assert.equal(answer.intent,'available_now');

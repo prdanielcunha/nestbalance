@@ -35,7 +35,7 @@ function transactionDto(doc:any,categoryRules:LearnedCategoryRule[]=[]){
   };
 }
 
-function commitmentDto(doc:any){
+function commitmentDto(doc:any,paidThisMonth=false){
   const data=doc.data();
   return {
     id:doc.id,
@@ -47,7 +47,8 @@ function commitmentDto(doc:any){
     installment:data.installment&&Number.isInteger(data.installment.current)&&Number.isInteger(data.installment.total)
       ? {current:data.installment.current,total:data.installment.total}
       : null,
-    installmentPlanId:typeof data.installmentPlanId==='string'?data.installmentPlanId:null
+    installmentPlanId:typeof data.installmentPlanId==='string'?data.installmentPlanId:null,
+    paidThisMonth
   };
 }
 
@@ -89,15 +90,17 @@ export async function answerFinanceAssistant(req:Request,res:Response){
 
     await requireHouseholdMember(householdId,user.uid);
     const household=adminDb.collection('households').doc(householdId);
+    const currentMonthKey=new Date().toISOString().slice(0,7);
 
-    const [householdSnap,accounts,transactions,commitments,invoices,plans,categoryRulesSnap]=await Promise.all([
+    const [householdSnap,accounts,transactions,commitments,invoices,plans,categoryRulesSnap,commitmentPayments]=await Promise.all([
       household.get(),
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(500).get(),
       household.collection('commitments').orderBy('createdAt','desc').limit(150).get(),
       household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get(),
       household.collection('installmentPlans').where('status','==','active').limit(100).get(),
-      household.collection('categoryRules').limit(200).get()
+      household.collection('categoryRules').limit(200).get(),
+      household.collection('commitmentPayments').where('periodKey','==',currentMonthKey).limit(200).get()
     ]);
 
     const scoped=(docs:any[])=>visibleDocs(docs,user.uid).filter(doc=>
@@ -109,13 +112,20 @@ export async function answerFinanceAssistant(req:Request,res:Response){
       .filter((rule):rule is LearnedCategoryRule=>Boolean(rule))
       .filter(rule=>rule.scope==='household'||rule.ownerUid===user.uid);
 
+    const paidThisMonth=new Set(
+      visibleDocs(commitmentPayments.docs,user.uid)
+        .filter(doc=>String(doc.data().status||'paid')!=='reversed')
+        .map(doc=>String(doc.data().commitmentId||''))
+        .filter(Boolean)
+    );
+
     const locale=normalizeLocale(householdSnap.data()?.locale);
     const answer=answerAssistantQuestion({
       question,
       locale,
       accounts:scoped(accounts.docs).map(accountDto),
       transactions:scoped(transactions.docs).map(doc=>transactionDto(doc,categoryRules)),
-      commitments:scoped(commitments.docs).map(commitmentDto),
+      commitments:scoped(commitments.docs).map(doc=>commitmentDto(doc,paidThisMonth.has(doc.id))),
       invoices:scoped(invoices.docs).map(invoiceDto),
       installmentPlans:scoped(plans.docs).map(planDto),
       now:new Date()
