@@ -836,3 +836,85 @@
   line-height:1.4;
   color:var(--muted);
 }
+
+
+/* Editable categories: explicit correction, optional learning, low visual noise. */
+.movement-category-label{
+  display:inline-flex;
+  width:max-content;
+}
+.movement-category-pill{
+  display:inline-flex;
+  width:max-content;
+  align-items:center;
+  min-height:28px;
+  padding:5px 9px;
+  border:1px solid color-mix(in srgb,var(--line,#e7eaf0) 88%,transparent);
+  border-radius:999px;
+  background:transparent;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:750;
+}
+.movement-category-pill:hover{
+  border-color:rgba(94,106,210,.34);
+  color:var(--ink);
+}
+.movement-category-editor{
+  display:grid;
+  gap:10px;
+  width:min(420px,100%);
+  margin-top:8px;
+  padding:12px;
+  border:1px solid color-mix(in srgb,var(--line,#e7eaf0) 82%,transparent);
+  border-radius:16px;
+  background:color-mix(in srgb,var(--surface-strong,#fff) 96%,transparent);
+}
+.movement-category-editor>label:first-child{
+  display:grid;
+  gap:6px;
+}
+.movement-category-editor>label:first-child>span{
+  font-size:10px;
+  font-weight:800;
+  color:var(--muted);
+}
+.movement-category-editor select{
+  min-height:44px;
+}
+.movement-category-remember{
+  display:grid;
+  grid-template-columns:20px minmax(0,1fr);
+  gap:8px;
+  align-items:start;
+  font-size:11px;
+  line-height:1.45;
+  color:var(--muted);
+}
+.movement-category-remember input{
+  width:16px;
+  height:16px;
+  margin-top:1px;
+}
+.movement-category-actions{
+  display:flex;
+  gap:8px;
+}
+.movement-category-actions button{
+  min-height:40px;
+  padding:0 13px;
+  border:0;
+  border-radius:12px;
+  background:var(--ink);
+  color:var(--paper);
+  font-weight:800;
+}
+.movement-category-actions button.secondary{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink);
+}
+.movement-category-actions button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:560px){
+  .movement-category-actions{display:grid;grid-template-columns:1fr 1fr}
+}
