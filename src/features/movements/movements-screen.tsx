@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
@@ -17,9 +19,9 @@ function label(row:HomeRow,locale:'pt-BR'|'en'|'es'){
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   if(row.source==='credit_card_invoice') return l('Compra no cartão','Card purchase','Compra con tarjeta');
   if(row.source==='credit_card_invoice_payment') return l('Fatura paga','Statement paid','Tarjeta pagada');
-  if(row.direction==='income') return row.source==='open_finance'?l('Recebido pelo banco','Received via bank','Recibido por el banco'):l('Dinheiro que entrou','Money in','Dinero que entró');
+  if(row.direction==='income') return l('Dinheiro que entrou','Money in','Dinero que entró');
   if(row.direction==='transfer') return l('Só mudou de conta','Moved between your accounts','Solo cambió de cuenta');
-  return row.source==='open_finance'?l('Pago pelo banco','Paid via bank','Pagado por el banco'):l('Dinheiro que saiu','Money out','Dinero que salió');
+  return l('Dinheiro que saiu','Money out','Dinero que salió');
 }
 
 function matchesFilter(row:HomeRow,filter:Filter){
@@ -65,7 +67,14 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     }
   }
 
-  useEffect(()=>{void load();},[householdId]);
+  useEffect(()=>{
+    void load();
+    const onFocus=()=>void load(true);
+    const onVisibility=()=>{if(document.visibilityState==='visible') void load(true);};
+    window.addEventListener('focus',onFocus);
+    document.addEventListener('visibilitychange',onVisibility);
+    return ()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisibility);};
+  },[householdId]);
 
   const scopedRows=useMemo(()=>rows.filter(row=>inFinancialView(row.scope,view)),[rows,view]);
 
@@ -158,6 +167,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   return <main className="app-shell movements-shell">
     <header className="topbar">
       <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navMovements}</span></div>
+      <HouseholdLink/>
     </header>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
@@ -215,7 +225,13 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     {loading
       ? <div className="movement-full-list">{[0,1,2,3].map(i=><div className="movement-full-row skeleton-line" key={i}/>)}</div>
       : visible.length===0
-        ? <section className="empty-state"><h3>{l('Nada por aqui.','Nothing here.','Nada por aquí.')}</h3><p>{query?l('Tente outra busca ou filtro.','Try another search or filter.','Prueba otra búsqueda o filtro.'):l('Quando você registrar o primeiro movimento, ele aparecerá nesta timeline.','Your first financial movement will appear here as soon as you record it.','Tu primer movimiento financiero aparecerá aquí cuando lo registres.')}</p></section>
+        ? <section className="empty-state empty-state-action">
+            <div>
+              <h3>{l('Nada por aqui.','Nothing here.','Nada por aquí.')}</h3>
+              <p>{query?l('Tente outra busca ou filtro.','Try another search or filter.','Prueba otra búsqueda o filtro.'):l('Conte o que aconteceu do seu jeito. Texto, áudio, print ou arquivo entram pelo mesmo lugar.','Tell us what happened in your own way. Text, audio, screenshot, or file all use the same entry point.','Cuenta lo que pasó a tu manera. Texto, audio, captura o archivo entran por el mismo lugar.')}</p>
+            </div>
+            {!query&&role!=='read_only'&&<Link className="primary-button" href="/add?return=/movements">{l('Adicionar movimento','Add activity','Agregar movimiento')}</Link>}
+          </section>
         : <section className="movement-full-list">
             {visible.map(row=><article className="movement-full-row" key={row.id}>
               <div className={'movement-dot '+(row.direction==='income'?'in':'')}/>

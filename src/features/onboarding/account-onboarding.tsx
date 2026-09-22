@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { parseMoneyInputToMinor, type AccountType } from '@/src/core/accounts';
 import { createHouseholdAccount } from '@/src/lib/repositories/accounts';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
@@ -58,7 +59,10 @@ export function AccountOnboarding({householdId,onCreated,variant='onboarding',de
               'Agrega una cuenta o efectivo. Después, Inicio podrá mostrar cuánto tienes realmente disponible.'
             )}</p>
           </div>
-          <button className="primary-button" onClick={()=>setOpen(true)}>{l('Adicionar meu saldo','Add my balance','Agregar mi saldo')}</button>
+          <div className="first-money-actions">
+            <button className="primary-button" onClick={()=>setOpen(true)}>{l('Informar meu saldo','Enter my balance','Informar mi saldo')}</button>
+            <Link className="ghost-button" href="/add">{l('Enviar print ou arquivo','Send screenshot or file','Enviar captura o archivo')}</Link>
+          </div>
         </section>
       : <button className="section-action account-compact-add" type="button" onClick={()=>setOpen(true)}>{l('Adicionar conta','Add account','Agregar cuenta')}</button>}
 

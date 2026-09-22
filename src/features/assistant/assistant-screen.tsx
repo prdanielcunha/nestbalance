@@ -1,8 +1,8 @@
 'use client';
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
@@ -66,7 +66,7 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
         <div className="eyebrow">NestBalance</div>
         <span className="topbar-subtitle">{t.navAssistant}</span>
       </div>
-      <Link href="/household" className="avatar-dot" aria-label={t.householdSettings}/>
+      <HouseholdLink/>
     </header>
     <ScopeViewSwitch value={view} onChange={next=>{setView(next);setResult(null);setError('');}}/>
 

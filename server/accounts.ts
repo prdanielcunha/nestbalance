@@ -96,7 +96,7 @@ export async function updateAccountBalance(req:Request,res:Response){
       const data=snap.data()!;
       assertScopedAccess(data,user.uid);
       if(data.status!=='active') throw Object.assign(new Error('ACCOUNT_NOT_ACTIVE'),{statusCode:409});
-      if(data.readOnlySync===true||data.source==='open_finance') throw Object.assign(new Error('ACCOUNT_SYNC_READ_ONLY'),{statusCode:409});
+      const wasLegacySync=data.readOnlySync===true||data.source==='open_finance';
       previousBalanceMinor=Number(data.balanceMinor??data.amountMinor??0);
 
       tx.update(accountRef,{
@@ -104,7 +104,14 @@ export async function updateAccountBalance(req:Request,res:Response){
         amountMinor:balanceMinor,
         balanceAsOf:FieldValue.serverTimestamp(),
         updatedAt:FieldValue.serverTimestamp(),
-        lastBalanceUpdatedBy:user.uid
+        lastBalanceUpdatedBy:user.uid,
+        ...(wasLegacySync?{
+          source:'manual',
+          readOnlySync:false,
+          connectionId:FieldValue.delete(),
+          externalAccountId:FieldValue.delete(),
+          provider:FieldValue.delete()
+        }: {})
       });
       tx.create(auditRef,{
         type:'account.balance_updated',
@@ -115,13 +122,14 @@ export async function updateAccountBalance(req:Request,res:Response){
         entityId:accountId,
         previousBalanceMinor,
         balanceMinor,
+        convertedFromLegacySync:data.readOnlySync===true||data.source==='open_finance',
         createdAt:FieldValue.serverTimestamp()
       });
     });
 
     return res.json({ok:true,accountId,previousBalanceMinor,balanceMinor});
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE','ACCOUNT_SYNC_READ_ONLY'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'ACCOUNT_BALANCE_UPDATE_FAILED');
   }
 }

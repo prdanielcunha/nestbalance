@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AppNav } from '@/src/features/navigation/app-nav';
+import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { groupSavingsPots } from '@/src/core/savings-pots';
@@ -31,8 +32,8 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   const [saving,setSaving]=useState(false);
   const [formError,setFormError]=useState('');
 
-  async function load(){
-    setLoading(true);
+  async function load(silent=false){
+    if(!silent) setLoading(true);
     setError('');
     try{
       const data=await loadHomeData(householdId);
@@ -40,11 +41,18 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     }catch{
       setError(l('Não conseguimos carregar seus cofrinhos agora.','We could not load your savings pots right now.','No pudimos cargar tus alcancías ahora.'));
     }finally{
-      setLoading(false);
+      if(!silent) setLoading(false);
     }
   }
 
-  useEffect(()=>{void load();},[householdId]);
+  useEffect(()=>{
+    void load();
+    const onFocus=()=>void load(true);
+    const onVisibility=()=>{if(document.visibilityState==='visible') void load(true);};
+    window.addEventListener('focus',onFocus);
+    document.addEventListener('visibilitychange',onVisibility);
+    return ()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisibility);};
+  },[householdId]);
 
   const visible=useMemo(()=>pots.filter(item=>inFinancialView(item.scope,view)),[pots,view]);
   const groups=useMemo(()=>groupSavingsPots(visible),[visible]);
@@ -133,7 +141,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       </div>
       <div className="topbar-actions">
         <Link href="/documents" className="ghost-button">{l('Documentos','Documents','Documentos')}</Link>
-        <Link href="/household" className="avatar-dot" aria-label={l('Lar e acessos','Household & access','Hogar y accesos')}/>
+        <HouseholdLink/>
       </div>
     </header>
 

@@ -2,7 +2,7 @@
 
 ## Stable release
 
-Current stable version: **1.0.0**. Blueprint closure and production certification are documented in `docs/RELEASE_1.0.md`; the historical release-candidate audit remains in `docs/RELEASE_CANDIDATE_1.0.md`. Privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
+Current stable version: **1.1.0**. The current product/release closure is documented in `docs/RELEASE_1.1.md`; the 1.0 certification history remains in `docs/RELEASE_1.0.md` and `docs/RELEASE_CANDIDATE_1.0.md`. Privacy-safe measurement is documented in `docs/PRODUCT_METRICS.md`.
 
 NestBalance is the personal and family finance product of the MillionsNest ecosystem.
 
@@ -20,14 +20,19 @@ The application now includes:
 - audio transcription followed by the deterministic finance parser
 - transfer semantics so transfers between own accounts do not become income/expense
 - immutable evidence, SHA-256 deduplication and race-safe capture deduplication
-- premium Vault with server-mediated detail and original preview
+- premium Documents memory with contextual search, server-mediated detail and original preview
+- consolidated Cofrinhos with screenshot-first import, goals, cross-bank grouping and transfer-safe semantics
 - virtual future projections for recurring commitments and installments
 - PT-BR / EN / ES runtime localization across the primary financial, family, assistant and privacy flows
 - editable and learned spending categories, explainable anomalies and quiet per-member attention preferences
 - household invitations, roles, authorship/activity and Personal vs Household privacy scopes
 - app-scoped session revocation and privacy-safe recent-device visibility
 - installable PWA shell with strict API network-only caching boundary
-- responsive light/dark design foundation
+- premium responsive light/dark design system with mobile-first layouts, explicit focus states and 44px+ touch targets
+
+## Current product boundary
+
+Only features that are usable now are exposed in the product. Open Finance remains future/dormant implementation material and is not present in navigation, screens, callback/terms routes, or the current API surface. Accounts are usable manually and through the Universal Capture/import flows.
 
 ## Browser security boundary
 

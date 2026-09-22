@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent'
   }
 };
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', colorScheme: 'light dark' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', colorScheme: 'light dark', themeColor:[{media:'(prefers-color-scheme: light)',color:'#F3F5F9'},{media:'(prefers-color-scheme: dark)',color:'#080B14'}] };
 
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
   return <html lang="pt-BR"><body><PwaRuntime/>{children}</body></html>;
