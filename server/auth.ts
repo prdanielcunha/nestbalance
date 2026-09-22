@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import { adminAuth, adminDb } from './firebase-admin.js';
+import { isNestBalanceSessionRevoked } from '../src/core/security.js';
 import {
   canHouseholdRole,
   normalizeHouseholdRole,
@@ -8,6 +9,22 @@ import {
 } from '../src/core/household.js';
 
 const checkRevokedTokens = process.env.FIREBASE_CHECK_REVOKED_TOKENS === 'true';
+const appRevocationCache=new Map<string,{value:number;expiresAt:number}>();
+const APP_REVOCATION_CACHE_MS=20_000;
+
+async function nestBalanceRevokedBefore(uid:string){
+  const cached=appRevocationCache.get(uid);
+  if(cached&&cached.expiresAt>Date.now()) return cached.value;
+  const user=await adminDb.doc(`users/${uid}`).get();
+  const value=Number(user.data()?.nestBalanceRevokedBeforeSeconds||0);
+  const normalized=Number.isFinite(value)&&value>0?value:0;
+  appRevocationCache.set(uid,{value:normalized,expiresAt:Date.now()+APP_REVOCATION_CACHE_MS});
+  return normalized;
+}
+
+export function invalidateNestBalanceSessionCache(uid:string){
+  appRevocationCache.delete(uid);
+}
 
 export async function requireFirebaseUser(req: Request) {
   const header = req.header('authorization') || '';
@@ -17,8 +34,14 @@ export async function requireFirebaseUser(req: Request) {
     // Signature, audience, issuer and expiration are always verified.
     // Revocation lookup is opt-in because it requires privileged Firebase Auth
     // user-read IAM that the dedicated NestBalance runtime does not assume.
-    return await adminAuth.verifyIdToken(match[1], checkRevokedTokens);
+    const decoded=await adminAuth.verifyIdToken(match[1], checkRevokedTokens);
+    const revokedBefore=await nestBalanceRevokedBefore(decoded.uid);
+    if(isNestBalanceSessionRevoked(decoded.auth_time,revokedBefore)){
+      throw Object.assign(new Error('INVALID_SESSION'),{statusCode:401});
+    }
+    return decoded;
   } catch (err: any) {
+    if(err?.message==='INVALID_SESSION') throw err;
     console.warn('NestBalance token verification rejected', {
       code: typeof err?.code === 'string' ? err.code : 'unknown',
       revocationCheck: checkRevokedTokens
