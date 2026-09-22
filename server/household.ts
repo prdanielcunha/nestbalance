@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { isAssignableHouseholdRole, normalizeHouseholdRole } from '../src/core/household.js';
+import { normalizeLocale, parseLocale } from '../src/core/locale.js';
 
 const INVITE_TTL_MS=7*24*60*60*1000;
 
@@ -44,9 +45,10 @@ export async function getHouseholdSettings(req:Request,res:Response){
     const householdId=String(req.body?.householdId||'');
     const current=await requireHouseholdMember(householdId,user.uid,'read');
     const householdRef=adminDb.doc(`households/${householdId}`);
-    const [household,members]=await Promise.all([
+    const [household,members,activitySnap]=await Promise.all([
       householdRef.get(),
-      householdRef.collection('members').limit(50).get()
+      householdRef.collection('members').limit(50).get(),
+      householdRef.collection('auditEvents').orderBy('createdAt','desc').limit(40).get()
     ]);
     if(!household.exists) return error(res,404,'HOUSEHOLD_NOT_FOUND');
 
@@ -66,6 +68,19 @@ export async function getHouseholdSettings(req:Request,res:Response){
       });
     }
 
+    const activity=activitySnap.docs
+      .map(doc=>({id:doc.id,data:doc.data()||{}}))
+      .filter(item=>item.data.scope!=='personal'||item.data.actorUid===user.uid)
+      .slice(0,20)
+      .map(item=>({
+        id:item.id,
+        type:String(item.data.type||'activity.updated'),
+        actorUid:typeof item.data.actorUid==='string'?item.data.actorUid:null,
+        targetUid:typeof item.data.targetUid==='string'?item.data.targetUid:null,
+        scope:item.data.scope==='personal'?'personal':'household',
+        createdAtMs:item.data.createdAt?.toMillis?.()??null
+      }));
+
     const data=household.data()||{};
     return res.json({
       ok:true,
@@ -73,12 +88,13 @@ export async function getHouseholdSettings(req:Request,res:Response){
         id:household.id,
         name:String(data.name||'Meu Lar'),
         currency:String(data.currency||'BRL'),
-        locale:String(data.locale||'pt-BR'),
+        locale:normalizeLocale(data.locale),
         ownerUid:String(data.ownerUid||'')
       },
       currentRole:current.role,
       members:members.docs.map(publicMember),
-      invites
+      invites,
+      activity
     });
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD','HOUSEHOLD_ACCESS_DENIED'];
@@ -107,6 +123,36 @@ export async function renameHousehold(req:Request,res:Response){
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD','HOUSEHOLD_ACCESS_DENIED','HOUSEHOLD_NOT_FOUND'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'HOUSEHOLD_RENAME_FAILED');
+  }
+}
+
+export async function updateHouseholdLocale(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    await requireHouseholdMember(householdId,user.uid,'manage_household');
+    const locale=parseLocale(req.body?.locale);
+    if(!locale) return error(res,400,'INVALID_LOCALE');
+    const householdRef=adminDb.doc(`households/${householdId}`);
+    await adminDb.runTransaction(async tx=>{
+      const household=await tx.get(householdRef);
+      if(!household.exists) fail('HOUSEHOLD_NOT_FOUND',404);
+      const previous=normalizeLocale(household.data()?.locale);
+      if(previous===locale) return;
+      tx.update(householdRef,{locale,updatedBy:user.uid,updatedAt:FieldValue.serverTimestamp()});
+      tx.create(householdRef.collection('auditEvents').doc(),{
+        type:'household.locale_changed',
+        actorUid:user.uid,
+        locale,
+        previousLocale:previous,
+        createdAt:FieldValue.serverTimestamp()
+      });
+    });
+    return res.json({ok:true,locale});
+  }catch(err:any){
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD','HOUSEHOLD_ACCESS_DENIED','HOUSEHOLD_NOT_FOUND'];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'HOUSEHOLD_LOCALE_UPDATE_FAILED');
   }
 }
 
