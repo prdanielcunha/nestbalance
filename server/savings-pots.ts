@@ -49,6 +49,15 @@ function dayKey(value=new Date()){
   return value.toISOString().slice(0,10);
 }
 
+function nextFrequencyAnchor(frequency:string|null){
+  const date=new Date();
+  date.setUTCHours(12,0,0,0);
+  if(frequency==='weekly') date.setUTCDate(date.getUTCDate()+7);
+  else if(frequency==='biweekly') date.setUTCDate(date.getUTCDate()+15);
+  else date.setUTCMonth(date.getUTCMonth()+1);
+  return dayKey(date);
+}
+
 function hash(value:string){
   return createHash('sha256').update(value).digest('hex');
 }
@@ -324,7 +333,7 @@ export async function updateSavingsPotAutomation(req:Request,res:Response){
 
     const normalized=automation?{
       ...automation,
-      anchorDate:automation.anchorDate||dayKey()
+      anchorDate:automation.anchorDate||(automation.kind==='frequency'?nextFrequencyAnchor(automation.frequency):dayKey())
     }:null;
     await ref.set({automation:normalized,updatedAt:FieldValue.serverTimestamp()},{merge:true});
     await household.collection('auditEvents').add({
