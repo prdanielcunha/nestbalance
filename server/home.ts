@@ -139,7 +139,7 @@ export async function getHomeData(req:Request,res:Response){
 
     const household=adminDb.collection('households').doc(householdId);
     const currentMonthKey=new Date().toISOString().slice(0,7);
-    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments,savingsPots,cardSnapshots]=await Promise.all([
+    const [accounts,cards,transactions,commitments,installmentPlans,invoiceImports,commitmentPayments,savingsPots,cardSnapshots,recurrenceDismissals]=await Promise.all([
       household.collection('accounts').where('status','==','active').limit(50).get(),
       household.collection('creditCards').where('status','==','active').limit(25).get(),
       household.collection('transactions').orderBy('createdAt','desc').limit(100).get(),
@@ -148,7 +148,8 @@ export async function getHomeData(req:Request,res:Response){
       household.collection('invoiceImports').orderBy('updatedAt','desc').limit(100).get(),
       household.collection('commitmentPayments').where('periodKey','==',currentMonthKey).limit(200).get(),
       household.collection('savingsPots').where('status','==','active').limit(100).get(),
-      household.collection('cardSnapshots').limit(50).get()
+      household.collection('cardSnapshots').limit(50).get(),
+      household.collection('recurrenceDismissals').limit(100).get()
     ]);
 
     const paidThisMonth=new Set(
@@ -173,6 +174,9 @@ export async function getHomeData(req:Request,res:Response){
       invoiceImports:visibleDocs(invoiceImports.docs,user.uid).map(invoiceImportDto),
       savingsPots:visibleDocs(savingsPots.docs,user.uid).map(savingsPotDto),
       cardSnapshots:visibleDocs(cardSnapshots.docs,user.uid).map(cardSnapshotDto),
+      dismissedRecurrenceKeys:visibleDocs(recurrenceDismissals.docs,user.uid)
+        .map(doc=>String(doc.data().patternKey||''))
+        .filter(Boolean),
       refreshedAt:new Date().toISOString()
     });
   }catch(err:any){
