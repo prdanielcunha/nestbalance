@@ -10,6 +10,8 @@ const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 const time=new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
 const starters=[
+  'Por que gastei mais este mês?',
+  'O que está estranho?',
   'Dá para gastar R$ 500?',
   'Quais parcelas terminam logo?',
   'Quanto ainda falta pagar?',
@@ -94,9 +96,13 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
             ?'AINDA NÃO SEI RESPONDER'
             :result.answer.intent==='spending_simulation'
               ?'SIMULAÇÃO COM PREMISSAS'
-              :result.answer.intent==='future_months'||result.answer.intent==='ending_installments'
-                ?'PROJEÇÃO COM DADOS'
-                :'RESPOSTA COMPROVADA'}</span>
+              :result.answer.intent==='spending_change'
+                ?'COMPARAÇÃO EXPLICADA'
+                :result.answer.intent==='anomalies'
+                  ?'SINAIS PARA CONFERIR'
+                  :result.answer.intent==='future_months'||result.answer.intent==='ending_installments'
+                    ?'PROJEÇÃO COM DADOS'
+                    :'RESPOSTA COMPROVADA'}</span>
           <h2>{result.answer.title}</h2>
           <p>{result.answer.summary}</p>
         </div>
@@ -145,7 +151,7 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
 
     <section className="assistant-trust-note">
       <strong>Sem chute financeiro.</strong>
-      <p>Essa primeira camada não usa opinião nem aconselhamento de investimento. Ela calcula e explica o que já existe nos seus dados.</p>
+      <p>Essa camada calcula com os seus próprios registros. Comparações e alertas usam regras locais e explicáveis; um sinal de valor diferente ou duplicidade é convite para conferir, não acusação.</p>
     </section>
 
     <AppNav canContribute={role!=='read_only'}/>
