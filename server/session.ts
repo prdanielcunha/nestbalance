@@ -5,6 +5,7 @@ import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { normalizeHouseholdRole } from '../src/core/household.js';
 import { normalizeLocale } from '../src/core/locale.js';
+import { touchSecurityDevice } from './security.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -71,7 +72,8 @@ export async function bootstrapSession(req:Request,res:Response){
         ...publicProfile(user),
         lastSeenAt:FieldValue.serverTimestamp()
       },{merge:true});
-      return res.json({ok:true,householdId:selected.id,households,locale:selected.locale,currency:selected.currency,created:false});
+      const deviceState=await touchSecurityDevice(user.uid,req.body?.device);
+      return res.json({ok:true,householdId:selected.id,households,locale:selected.locale,currency:selected.currency,created:false,deviceFirstSeen:deviceState.firstSeen});
     }
 
     const householdId=primaryHouseholdId(user.uid);
@@ -119,7 +121,8 @@ export async function bootstrapSession(req:Request,res:Response){
 
     households=await householdOptions(user.uid);
     const selected=households.find(item=>item.id===householdId)||households[0];
-    return res.status(created?201:200).json({ok:true,householdId,households,locale:selected?.locale||'pt-BR',currency:selected?.currency||'BRL',created});
+    const deviceState=await touchSecurityDevice(user.uid,req.body?.device);
+    return res.status(created?201:200).json({ok:true,householdId,households,locale:selected?.locale||'pt-BR',currency:selected?.currency||'BRL',created,deviceFirstSeen:deviceState.firstSeen});
   }catch(err:any){
     const safe=['AUTH_REQUIRED','INVALID_SESSION','INVALID_HOUSEHOLD'];
     if(!safe.includes(err?.message)){
