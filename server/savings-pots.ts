@@ -50,11 +50,17 @@ function dayKey(value=new Date()){
 }
 
 function nextFrequencyAnchor(frequency:string|null){
-  const date=new Date();
+  let date=new Date();
   date.setUTCHours(12,0,0,0);
   if(frequency==='weekly') date.setUTCDate(date.getUTCDate()+7);
   else if(frequency==='biweekly') date.setUTCDate(date.getUTCDate()+15);
-  else date.setUTCMonth(date.getUTCMonth()+1);
+  else {
+    const desiredDay=date.getUTCDate();
+    const year=date.getUTCFullYear();
+    const month=date.getUTCMonth()+1;
+    const lastDay=new Date(Date.UTC(year,month+1,0)).getUTCDate();
+    date=new Date(Date.UTC(year,month,Math.min(desiredDay,lastDay),12));
+  }
   return dayKey(date);
 }
 
