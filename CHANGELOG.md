@@ -2,6 +2,20 @@
 
 All notable NestBalance product releases are documented here.
 
+## 1.2.1 — 2026-09-22
+
+Production-hardening patch focused on preserving the financial truth of a Household across payment, recovery and release operations.
+
+### Reliability
+- Extends the authenticated Firebase-emulator flow to verify payment matching, marking a recurring commitment as paid, Home persistence and grounded Assistant answers.
+- Verifies that undo restores the previous financial state and removes the generated payment transaction.
+- Adds a month-rollover safety contract: an older payment cannot be reversed while a later payment for the same recurring commitment still exists.
+- Keeps the existing two-person Household, Personal-vs-Household privacy and NestBalance-only session-revocation checks in the same authenticated gate.
+
+### Release safety
+- Production and official-domain workflows now refuse to publish a production tree that differs from the certified `main` tree.
+- Static security/runtime verification locks that production-parity invariant so it cannot be removed silently.
+
 ## 1.2.0 — 2026-09-22
 
 Cofrinhos become a complete savings-goal experience while preserving NestBalance's usable-only product rule.

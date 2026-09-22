@@ -12,6 +12,7 @@ export type AssistantAccount={
 export type AssistantCommitment=ProjectionCommitment&{
   id:string;
   description:string;
+  paidThisMonth?:boolean;
 };
 
 export type AssistantInvoice={
@@ -235,7 +236,7 @@ export function answerAssistantQuestion(input:{
         detail:tr(locale,'Saldo atual conhecido','Known current balance','Saldo actual conocido')
       }));
     const commitmentSources=input.commitments
-      .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&positive(item.amountMinor)>0)
+      .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&item.paidThisMonth!==true&&positive(item.amountMinor)>0)
       .map(item=>({
         kind:'commitment' as const,
         id:item.id,
@@ -472,7 +473,7 @@ export function answerAssistantQuestion(input:{
 
   if(intent==='remaining_to_pay'){
     const commitmentSources=input.commitments
-      .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&positive(item.amountMinor)>0)
+      .filter(item=>item.status!=='paid'&&item.status!=='cancelled'&&item.paidThisMonth!==true&&positive(item.amountMinor)>0)
       .map(item=>({
         kind:'commitment' as const,
         id:item.id,
