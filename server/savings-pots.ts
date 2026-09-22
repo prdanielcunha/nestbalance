@@ -433,6 +433,8 @@ export async function syncSavingsPotAutomations(req:Request,res:Response){
       if(pot.source==='screen_import') continue;
       const automation=normalizeSavingsPotAutomation(pot.automation);
       if(!automation?.enabled) continue;
+      const potScope=pot.scope==='personal'?'personal':'household';
+      const potOwner=potScope==='personal'?String(pot.ownerUid||''):'';
 
       if(automation.kind==='frequency'){
         for(const occurrence of frequencyOccurrenceDates(automation,today,24)){
@@ -447,6 +449,9 @@ export async function syncSavingsPotAutomations(req:Request,res:Response){
 
       const anchor=automation.anchorDate||today;
       for(const movement of transactions){
+        const movementScope=movement.scope==='personal'?'personal':'household';
+        const movementOwner=movementScope==='personal'?String(movement.ownerUid||''):'';
+        if(movementScope!==potScope||(potScope==='personal'&&movementOwner!==potOwner)) continue;
         const observedOn=String(movement.observedOn||'');
         if(observedOn&&observedOn<anchor) continue;
         if(String(movement.status||'confirmed')==='cancelled') continue;
