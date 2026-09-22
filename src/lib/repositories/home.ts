@@ -123,6 +123,7 @@ export async function loadHomeData(householdId:string){
     invoiceImports:HomeInvoiceImport[];
     savingsPots:HomeSavingsPot[];
     cardSnapshots:HomeCardSnapshot[];
+    dismissedRecurrenceKeys:string[];
     refreshedAt:string;
   };
 }
