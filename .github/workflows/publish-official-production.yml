@@ -28,18 +28,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Require production tree to match main
+      - name: Require certified main promotion
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin main --depth=1
-          PROD_TREE="$(git rev-parse 'HEAD^{tree}')"
-          MAIN_TREE="$(git rev-parse 'origin/main^{tree}')"
-          if [[ "$PROD_TREE" != "$MAIN_TREE" ]]; then
-            echo "::error::Production tree differs from main. Promote the certified main tree instead of shipping production-only code."
+          git fetch origin main --depth=100
+
+          read -r -a COMMIT_PARTS <<< "$(git rev-list --parents -n 1 HEAD)"
+          if (( ${#COMMIT_PARTS[@]} < 3 )); then
+            echo "::error::Production must be promoted through a merge from main; direct production commits are not deployable."
             exit 1
           fi
-          echo "NestBalance production tree parity: PASS"
+
+          PROMOTED_MAIN_SHA="${COMMIT_PARTS[2]}"
+          if ! git merge-base --is-ancestor "$PROMOTED_MAIN_SHA" origin/main; then
+            echo "::error::The promoted production parent is not part of main."
+            exit 1
+          fi
+
+          PROD_TREE="$(git rev-parse 'HEAD^{tree}')"
+          PROMOTED_TREE="$(git rev-parse "$PROMOTED_MAIN_SHA^{tree}")"
+          if [[ "$PROD_TREE" != "$PROMOTED_TREE" ]]; then
+            echo "::error::Production contains code beyond the promoted main tree."
+            exit 1
+          fi
+          echo "NestBalance certified main promotion: PASS"
 
       - name: Setup Node
         uses: actions/setup-node@v7
