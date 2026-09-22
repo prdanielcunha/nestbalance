@@ -2,6 +2,7 @@
 import { auth } from '@/src/lib/firebase/client';
 import type { HouseholdRole } from '@/src/core/household';
 import type { AppLocale } from '@/src/core/locale';
+import { getNestBalanceDeviceContext } from '@/src/lib/device-context';
 
 export type HouseholdSessionOption={
   id:string;
@@ -33,13 +34,15 @@ async function post(path:string,body?:Record<string,unknown>){
 }
 
 export async function bootstrapSession(householdId?:string){
-  return await post('/api/session/bootstrap',householdId?{householdId}:{}) as {
+  const device=getNestBalanceDeviceContext();
+  return await post('/api/session/bootstrap',{...(householdId?{householdId}:{}),...(device?{device}:{})}) as {
     ok:true;
     householdId:string;
     households:HouseholdSessionOption[];
     locale:AppLocale;
     currency:string;
     created:boolean;
+    deviceFirstSeen?:boolean;
   };
 }
 
