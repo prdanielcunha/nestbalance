@@ -72,7 +72,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
       const scoped=scopedRows.filter(row=>(row.scope==='personal'?'personal':'household')===scope);
       return deriveRecurringCandidates(scoped).map(candidate=>({...candidate,scope}));
     })
-      .filter(candidate=>!dismissedRecurrenceKeys.includes(candidate.key))
+      .filter(candidate=>!dismissedRecurrenceKeys.includes(candidate.scope+'|'+candidate.key))
       .filter(candidate=>!existing.has(candidate.scope+'|'+candidate.key))
       .slice(0,3);
   },[scopedRows,scopedCommitments,dismissedRecurrenceKeys,view]);
