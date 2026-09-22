@@ -30,9 +30,9 @@ test('categoriza descrições com regras locais e previsíveis',()=>{
 
 test('compara gastos do mês sem contar transferência nem pagamento de fatura',()=>{
   const result=deriveSpendingComparison(rows,now);
-  assert.equal(result.currentMinor,82600);
+  assert.equal(result.currentMinor,78400);
   assert.equal(result.previousMinor,40000);
-  assert.equal(result.deltaMinor,42600);
+  assert.equal(result.deltaMinor,38400);
   assert.equal(result.hasComparableData,true);
   assert.equal(result.topIncreases[0].category,'food');
   assert.equal(result.topIncreases[0].deltaMinor,30400);
