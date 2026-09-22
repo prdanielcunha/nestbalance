@@ -1195,3 +1195,25 @@
 .screen-pot-review-row>div:last-child{text-align:right;white-space:nowrap}
 .screen-pot-review-row b{font-size:13px;font-variant-numeric:tabular-nums}
 .screen-pot-review-row small{margin-top:2px;color:var(--muted);font-size:9px}
+
+.screen-pot-source-confirm{
+  margin:14px 0 10px;
+  padding:14px;
+  border:1px solid rgba(94,106,210,.22);
+  border-radius:16px;
+  background:rgba(94,106,210,.055);
+}
+.screen-pot-source-confirm label{
+  display:block;
+  margin-bottom:8px;
+  font-size:11px;
+  font-weight:850;
+  color:var(--ink);
+}
+.screen-pot-source-confirm small{
+  display:block;
+  margin-top:7px;
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.45;
+}
