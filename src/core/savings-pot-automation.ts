@@ -1,5 +1,5 @@
 export type SavingsPotAutomationKind='frequency'|'spend'|'income'|'roundup';
-export type SavingsPotFrequency='weekly'|'biweekly'|'monthly';
+export type SavingsPotFrequency='daily'|'weekly'|'biweekly'|'monthly';
 export type SavingsPotAutomationMode='fixed'|'percent';
 
 export type SavingsPotAutomation={
@@ -32,7 +32,7 @@ export function normalizeSavingsPotAutomation(value:unknown):SavingsPotAutomatio
   const amountMinor=Number.isSafeInteger(amount)&&amount>0&&amount<=1_000_000_000_000?amount:null;
   const percent=Number(raw.percentBps);
   const percentBps=Number.isInteger(percent)&&percent>=1&&percent<=10_000?percent:null;
-  const frequency=['weekly','biweekly','monthly'].includes(String(raw.frequency))?String(raw.frequency) as SavingsPotFrequency:null;
+  const frequency=['daily','weekly','biweekly','monthly'].includes(String(raw.frequency))?String(raw.frequency) as SavingsPotFrequency:null;
   const anchorDate=validIsoDate(raw.anchorDate);
 
   if(kind==='frequency'&&(!frequency||!amountMinor)) return null;
@@ -67,7 +67,8 @@ export function frequencyOccurrenceDates(automation:SavingsPotAutomation,through
   while(current<=through&&guard<5000){
     out.push(key(current));
     if(out.length>limit) out.shift();
-    if(automation.frequency==='weekly') current.setUTCDate(current.getUTCDate()+7);
+    if(automation.frequency==='daily') current.setUTCDate(current.getUTCDate()+1);
+    else if(automation.frequency==='weekly') current.setUTCDate(current.getUTCDate()+7);
     else if(automation.frequency==='biweekly') current.setUTCDate(current.getUTCDate()+15);
     else current=addMonthClamped(current,desiredMonthlyDay);
     guard++;
