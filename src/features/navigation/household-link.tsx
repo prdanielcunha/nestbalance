@@ -4,7 +4,7 @@ import { useI18n } from '@/src/i18n/locale-provider';
 
 export function HouseholdLink(){
   const {locale}=useI18n();
-  const label=locale==='en'?'Household':locale==='es'?'Hogar':'Lar';
-  const aria=locale==='en'?'Household and access':locale==='es'?'Hogar y accesos':'Lar e acessos';
+  const label=locale==='en'?'Access':locale==='es'?'Accesos':'Acessos';
+  const aria=locale==='en'?'Sharing and access':locale==='es'?'Compartir y accesos':'Compartilhar e acessos';
   return <Link href="/household" className="household-pill" aria-label={aria}>{label}</Link>;
 }

@@ -189,6 +189,48 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     },403);
     assert.equal(memberCannotManageFinance.json.error,'HOUSEHOLD_ACCESS_DENIED');
 
+    const managerInvite=await post('/api/household/invite',owner.token,{
+      householdId,
+      role:'manager',
+      email:'manager@nestbalance.test'
+    });
+    assert.equal(managerInvite.status,201);
+    const manager=await createEmulatorUser('manager@nestbalance.test','ManagerPass123!');
+    const managerAccepted=await post('/api/household/invite/accept',manager.token,{token:managerInvite.json.token});
+    assert.equal(managerAccepted.json.role,'manager');
+
+    const managerAccount=await post('/api/accounts/create',manager.token,{
+      householdId,
+      name:'Conta do gestor',
+      type:'bank',
+      balanceMinor:50000,
+      scope:'household'
+    });
+    assert.equal(managerAccount.status,201);
+    const managerCannotInvite=await post('/api/household/invite',manager.token,{
+      householdId,
+      role:'read_only',
+      email:'viewer@nestbalance.test'
+    },403);
+    assert.equal(managerCannotInvite.json.error,'HOUSEHOLD_ACCESS_DENIED');
+
+    const partnerInvite=await post('/api/household/invite',owner.token,{
+      householdId,
+      role:'admin',
+      email:'socio@nestbalance.test'
+    });
+    assert.equal(partnerInvite.status,201);
+    const fullPartner=await createEmulatorUser('socio@nestbalance.test','SocioPass123!');
+    const partnerAccepted=await post('/api/household/invite/accept',fullPartner.token,{token:partnerInvite.json.token});
+    assert.equal(partnerAccepted.json.role,'admin');
+    const partnerRename=await post('/api/household/rename',fullPartner.token,{householdId,name:'Casa compartilhada'});
+    assert.equal(partnerRename.json.name,'Casa compartilhada');
+    const partnerCannotDeleteHousehold=await post('/api/privacy/delete-household',fullPartner.token,{
+      householdId,
+      confirmation:'Casa compartilhada'
+    },403);
+    assert.equal(partnerCannotDeleteHousehold.json.error,'HOUSEHOLD_ACCESS_DENIED');
+
     const screenEvidenceId='screenpots001';
     await seedDb.doc(`households/${householdId}/evidenceAssets/${screenEvidenceId}`).set({
       status:'accepted',

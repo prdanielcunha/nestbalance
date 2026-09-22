@@ -63,13 +63,13 @@ export function renameHousehold(householdId:string,name:string){
 export function updateHouseholdLocale(householdId:string,locale:AppLocale){
   return post<{ok:true;locale:AppLocale}>('/api/household/locale',{householdId,locale});
 }
-export function createHouseholdInvite(input:{householdId:string;role:'admin'|'member'|'read_only';email?:string}){
+export function createHouseholdInvite(input:{householdId:string;role:Exclude<HouseholdRole,'owner'>;email?:string}){
   return post<{ok:true;token:string;role:HouseholdRole;email:string|null;expiresAtMs:number}>('/api/household/invite',input);
 }
 export function acceptHouseholdInvite(token:string){
   return post<{ok:true;householdId:string;role:HouseholdRole}>('/api/household/invite/accept',{token});
 }
-export function updateHouseholdMemberRole(input:{householdId:string;uid:string;role:'admin'|'member'|'read_only'}){
+export function updateHouseholdMemberRole(input:{householdId:string;uid:string;role:Exclude<HouseholdRole,'owner'>}){
   return post<{ok:true;uid:string;role:HouseholdRole}>('/api/household/member/role',input);
 }
 export function removeHouseholdMember(input:{householdId:string;uid:string}){
