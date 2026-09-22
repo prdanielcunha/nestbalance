@@ -1169,3 +1169,29 @@
   .pots-shell .topbar-actions{gap:8px}
   .pots-shell .topbar-actions .ghost-button{padding-inline:8px}
 }
+
+.screen-pot-review{
+  display:grid;
+  gap:8px;
+  margin:14px 0 12px;
+}
+.screen-pot-review-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 13px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:var(--paper);
+}
+.screen-pot-review-row>div:first-child{min-width:0}
+.screen-pot-review-row strong,
+.screen-pot-review-row span,
+.screen-pot-review-row b,
+.screen-pot-review-row small{display:block}
+.screen-pot-review-row strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.screen-pot-review-row span{margin-top:2px;color:var(--muted);font-size:9px}
+.screen-pot-review-row>div:last-child{text-align:right;white-space:nowrap}
+.screen-pot-review-row b{font-size:13px;font-variant-numeric:tabular-nums}
+.screen-pot-review-row small{margin-top:2px;color:var(--muted);font-size:9px}
