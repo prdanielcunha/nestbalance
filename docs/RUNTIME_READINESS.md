@@ -49,13 +49,23 @@ The workflow:
 
 A manual `workflow_dispatch` remains available for an explicit redeploy of `main`.
 
-## AI
+## AI and zero-cost fallback
 
-OpenAI remains optional at deployment time.
+Deterministic parsers remain the first path. Images can be read locally in the browser, and the protected Gemini Free fallback receives only sanitized OCR text after explicit product gating; the original image is not sent through that fallback. Paid/provider-backed AI remains optional at deployment time.
 
-When `OPENAI_SECRET_NAME` is configured, the runtime service account receives Secret Manager accessor only for that secret and Cloud Run receives it as `OPENAI_API_KEY`.
+When `OPENAI_SECRET_NAME` is configured, the runtime service account receives Secret Manager accessor only for that secret and Cloud Run receives it as `OPENAI_API_KEY`. Without paid AI, deterministic text/PDF parsing, local image OCR, accounts, Home, commitments, Vault and the rest of the core product continue to work. Any unavailable intelligence path fails closed with review/manual entry instead of inventing financial facts or silently creating a charge.
 
-Without the secret, deterministic text/PDF parsing, accounts, Home, commitments, Vault and the rest of the non-AI product continue to work. Image/audio intelligence fails closed with a human message instead of exposing a key or inventing data.
+## Browser PWA privacy boundary
+
+The service worker may cache only the exported application shell and same-origin static assets. Requests under `/api/**` are always network-only and are never written to Cache Storage. Evidence previews, financial responses, account data, assistant answers and other private API payloads therefore remain outside the offline cache.
+
+`sw.js` is served with `no-cache, no-store, must-revalidate` so a security update is not pinned behind a stale service worker.
+
+## NestBalance-only session security
+
+Recent-device visibility uses a random browser-generated device id. The backend stores only a SHA-256-derived document id plus a coarse device label and timestamps; it does not store location or an IP fingerprint for this feature.
+
+The “end all NestBalance sessions” control uses an app-scoped revocation timestamp checked by the NestBalance API. It deliberately does not call global Firebase refresh-token revocation because Authentication is shared by the MillionsNest ecosystem. Other MillionsNest products are not signed out by this NestBalance control.
 
 ## Expected homologation URL
 
