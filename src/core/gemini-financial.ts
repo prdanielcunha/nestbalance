@@ -114,6 +114,7 @@ function sanitizeScreen(raw:any,text:string):AiFinancialScreenSnapshot|null{
     name:str(item?.name,80)||'Dinheiro guardado',
     balanceMinor:groundedMinor(item?.balanceMinor,money)??0,
     goalMinor:groundedMinor(item?.goalMinor,money),
+    targetDate:safeDate(item?.targetDate,dateSet),
     currency:enumValue(item?.currency,['BRL','USD','EUR'] as const,'BRL'),
     confidence:conf(item?.confidence)
   })).filter(item=>item.balanceMinor>0);

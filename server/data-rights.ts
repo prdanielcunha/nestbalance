@@ -8,11 +8,11 @@ import { deleteBelvoLink } from './open-finance/belvo.js';
 const PRIVACY_VERSION='nestbalance-privacy-v1';
 const EXPORT_COLLECTIONS=[
   'accounts','creditCards','transactions','commitments','installmentPlans','invoiceImports',
-  'commitmentPayments','savingsPots','cardSnapshots','evidenceAssets','bankConnections'
+  'commitmentPayments','savingsPots','savingsPotActivities','savingsPotAutomationEvents','cardSnapshots','evidenceAssets','bankConnections'
 ] as const;
 const PERSONAL_DELETE_COLLECTIONS=[
   'transactions','commitments','commitmentPayments','installmentPlans','invoiceImports',
-  'accounts','creditCards','savingsPots','cardSnapshots','evidenceAssets'
+  'accounts','creditCards','savingsPots','savingsPotActivities','savingsPotAutomationEvents','cardSnapshots','evidenceAssets'
 ] as const;
 
 function error(res:Response,status:number,code:string){ return res.status(status).json({ok:false,error:code}); }
@@ -31,6 +31,7 @@ function asJson(value:any):any{
 function sanitize(collection:string,data:any){
   const copy={...asJson(data)};
   if(collection==='evidenceAssets'){ delete copy.storagePath; delete copy.uploadPath; }
+  if(collection==='savingsPots'){ delete copy.coverStoragePath; }
   if(collection==='bankConnections'){ delete copy.linkId; delete copy.externalId; }
   return copy;
 }
@@ -172,6 +173,10 @@ export async function deletePersonalData(req:Request,res:Response){
         deletedIds.add(doc.id);
         if(collection==='evidenceAssets'){
           const path=String(doc.data().storagePath||doc.data().uploadPath||'');
+          if(path) evidencePaths.push(path);
+        }
+        if(collection==='savingsPots'){
+          const path=String(doc.data().coverStoragePath||'');
           if(path) evidencePaths.push(path);
         }
       }

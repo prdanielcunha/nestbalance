@@ -2,6 +2,7 @@ import type { AiFinancialScreenSnapshot } from './ai-financial.js';
 
 const POT_SCREEN_HINT=/\b(cofrinhos?|caixinhas?|money\s*boxes?|savings\s*pots?|alcanc[ií]as?)\b/i;
 const MONEY=/R\$\s*\d[\d.]*?(?:,\d{1,2})?(?=\s|$|[^\d.,])/gi;
+const EXPLICIT_DATE=/\b(?:prazo|ate|até|objetivo|data)\s*:?\s*(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})\b/i;
 
 function cleanLine(value:string){
   return value
@@ -56,25 +57,43 @@ function nameBeforeMoney(line:string,matchIndex:number){
   return cleanLine(line.slice(0,matchIndex).replace(/[·•|]+$/,''));
 }
 
+function parseTargetDate(line:string){
+  const match=EXPLICIT_DATE.exec(line);
+  if(!match) return null;
+  const day=Number(match[1]);
+  const month=Number(match[2]);
+  const year=Number(match[3]);
+  const date=new Date(Date.UTC(year,month-1,day));
+  if(date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||date.getUTCDate()!==day) return null;
+  return `${year.toString().padStart(4,'0')}-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}`;
+}
+
 export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|null{
   const normalizedText=String(text||'').normalize('NFKC');
   if(!POT_SCREEN_HINT.test(normalizedText)) return null;
 
   const lines=normalizedText.split(/\n+/).map(cleanLine).filter(Boolean);
   const institution=institutionFromText(normalizedText);
-  const pots:Array<{name:string;balanceMinor:number;goalMinor:number|null;currency:'BRL';confidence:number}>=[];
+  const pots:Array<{name:string;balanceMinor:number;goalMinor:number|null;targetDate:string|null;currency:'BRL';confidence:number}>=[];
   let pendingName:string|null=null;
   let lastPotIndex=-1;
 
   for(const line of lines){
     const meta=/\bmeta\s*:?\s*(R\$\s*\d[\d.]*?(?:,\d{1,2})?(?=\s|$|[^\d.,]))/i.exec(line);
     const metaGoalMinor=meta?parseMoneyMinor(meta[1]):null;
-    const valueLine=meta?cleanLine(line.replace(meta[0],'')):line;
+    const targetDate=parseTargetDate(line);
+    let valueLine=meta?cleanLine(line.replace(meta[0],'')):line;
+    const explicitDate=EXPLICIT_DATE.exec(valueLine);
+    if(explicitDate) valueLine=cleanLine(valueLine.replace(explicitDate[0],''));
     const moneyMatches=[...valueLine.matchAll(MONEY)];
 
     if(!moneyMatches.length){
-      if(metaGoalMinor!==null&&lastPotIndex>=0){
-        pots[lastPotIndex]={...pots[lastPotIndex],goalMinor:metaGoalMinor};
+      if((metaGoalMinor!==null||targetDate)&&lastPotIndex>=0){
+        pots[lastPotIndex]={
+          ...pots[lastPotIndex],
+          goalMinor:metaGoalMinor??pots[lastPotIndex].goalMinor,
+          targetDate:targetDate??pots[lastPotIndex].targetDate
+        };
       }else if(isCandidateName(valueLine)){
         pendingName=valueLine;
       }else if(POT_SCREEN_HINT.test(valueLine)){
@@ -111,6 +130,7 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
       name:normalizedCandidate.slice(0,80),
       balanceMinor,
       goalMinor:metaGoalMinor,
+      targetDate,
       currency:'BRL' as const,
       confidence:0.94
     };
@@ -119,7 +139,8 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
       pots[existingIndex]={
         ...pots[existingIndex],
         balanceMinor,
-        goalMinor:metaGoalMinor??pots[existingIndex].goalMinor
+        goalMinor:metaGoalMinor??pots[existingIndex].goalMinor,
+        targetDate:targetDate??pots[existingIndex].targetDate
       };
       lastPotIndex=existingIndex;
     }else{

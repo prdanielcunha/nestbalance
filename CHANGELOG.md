@@ -2,6 +2,28 @@
 
 All notable NestBalance product releases are documented here.
 
+## 1.2.0 — 2026-09-22
+
+Cofrinhos become a complete savings-goal experience while preserving NestBalance's usable-only product rule.
+
+### Cofrinhos
+- Create manually or import several at once from a bank screenshot.
+- Add a private cover photo, name, initial saved amount, goal, deadline, source and personal note.
+- Track progress, remaining amount and suggested monthly/weekly pace toward a dated goal.
+- Reserve and withdraw amounts with an auditable history, without classifying movement between the user's own funds as income or spending.
+- Consolidate the same goal across institutions while keeping each source visible.
+- Re-import bank screenshots idempotently so balances update instead of duplicating pots.
+- Automate NestBalance tracking daily, weekly, every 15 days, monthly, when spending, when receiving income, or by rounding expenses up to the next whole real.
+- Fixed-amount and percentage rules are supported where applicable, with idempotent event processing and Personal/Household scope isolation.
+- Imported bank pots remain bank mirrors: NestBalance does not invent automatic movements for them; a later screenshot refreshes their real-world balance.
+- Finish/archive a pot after its tracked balance reaches zero.
+
+### Trust and privacy
+- Cofrinho photos are private server-mediated assets with authenticated preview and file-signature validation.
+- Privacy export/deletion includes Cofrinho activity and automation records while removing private storage paths from exported metadata.
+- Personal-data deletion removes associated private cover files.
+- NestBalance does not promise bank yield or send transfer/payment orders from Cofrinho controls.
+
 ## 1.1.0 — 2026-09-22
 
 Premium product finish focused on showing only what users can actually use, reducing setup friction and making every primary flow clearer on mobile and desktop.
