@@ -19,8 +19,8 @@
     "check:ci": "npm run check && npm run test:rules && npm run test:authenticated-api && npm run typecheck && npm run build && npm run build:cloudrun",
     "test:document": "tsx --test tests/pdf-text.test.ts tests/vault-verifier.test.ts",
     "deploy:preflight": "node scripts/runtime-preflight.mjs",
-    "test:e2e": "playwright test",
-    "test:e2e:release": "node scripts/production-browser-gate.mjs",
+    "test:e2e": "node scripts/production-browser-gate.mjs",
+    "test:e2e:raw": "playwright test",
     "test:authenticated-api": "npm run build:cloudrun && firebase emulators:exec --only auth,firestore --project demo-nestbalance-auth \"node --test tests/authenticated-api-flow.test.mjs\""
   },
   "dependencies": {
