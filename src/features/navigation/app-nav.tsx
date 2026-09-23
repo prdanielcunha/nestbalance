@@ -9,7 +9,6 @@ export function AppNav({canContribute=true}:{canContribute?:boolean}){
   const items=[
     {href:'/',label:t.navHome},
     {href:'/movements',label:t.navMovements},
-    {href:'/accounts',label:t.navAccounts},
     {href:'/pots',label:t.navPots},
     {href:'/assistant',label:t.navAssistant}
   ];
