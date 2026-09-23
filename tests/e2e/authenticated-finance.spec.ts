@@ -84,7 +84,7 @@ test('authenticated finance screens stay usable from 320px to desktop',async({br
     const page=await context.newPage();
     await mockAuthenticatedApi(page);
     await gotoAuthenticated(page,'/');
-    await expect(page.locator('.hero-balance strong')).toContainText('8.450');
+    await expect(page.locator('.hero-balance > strong')).toContainText('8.450');
     await assertNoHorizontalOverflow(page);
     await assertNoSeriousA11y(page);
 
