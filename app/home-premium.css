@@ -5,6 +5,7 @@
  */
 
 .household-label-long{display:none}
+.home-desktop-primary-nav{display:none}
 
 @media(max-width:839px){
   .home-context-row,
@@ -17,6 +18,8 @@
 }
 
 @media(min-width:840px){
+  .home-desktop-primary-nav{display:block}
+  .home-mobile-primary-nav{display:none}
   .home-shell{
     --home-surface-raised:color-mix(in srgb,var(--surface-strong) 93%,transparent);
     padding-bottom:76px;
