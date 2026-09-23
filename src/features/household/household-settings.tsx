@@ -47,7 +47,7 @@ export function HouseholdSettings({
   const [savingLocale,setSavingLocale]=useState(false);
   const [proactivity,setProactivity]=useState<ProactivityPreferences>(DEFAULT_PROACTIVITY_PREFERENCES);
   const [savingProactivity,setSavingProactivity]=useState(false);
-  const {t,locale:activeLocale,formatDate}=useI18n();
+  const {t,locale:activeLocale,formatDate,alwaysHideValues,setAlwaysHideValues}=useI18n();
   const l=(pt:string,en:string,es:string)=>activeLocale==='en'?en:activeLocale==='es'?es:pt;
   const roleName=(role:HouseholdRole)=>({
     owner:l('Titular','Owner','Titular'),
@@ -368,6 +368,17 @@ export function HouseholdSettings({
           'El modo oscuro es el aspecto oficial de NestBalance. Si prefieres, puedes usar el modo claro; tu elección queda guardada en este dispositivo.'
         )}</p>
         <ThemeChoice/>
+        <label className="privacy-preference-row">
+          <input type="checkbox" checked={alwaysHideValues} onChange={event=>setAlwaysHideValues(event.target.checked)}/>
+          <span>
+            <strong>{l('Sempre ocultar valores ao abrir','Always hide values when opening','Ocultar siempre los valores al abrir')}</strong>
+            <small>{l(
+              'O botão de privacidade no topo mostra os valores quando você quiser. Sem esta opção, o ocultamento dura só até uma nova autenticação.',
+              'The privacy button at the top reveals values when you choose. Without this option, hiding lasts only until a new sign-in.',
+              'El botón de privacidad superior muestra los valores cuando quieras. Sin esta opción, se ocultan solo hasta un nuevo inicio de sesión.'
+            )}</small>
+          </span>
+        </label>
       </section>
 
       <section className="household-panel proactivity-panel">
