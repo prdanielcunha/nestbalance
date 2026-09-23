@@ -2360,6 +2360,8 @@ body.nestbalance-modal-open .scope-view-switch{
 
 
 /* Analysis hardening: mobile density, typography floor and comfortable controls. */
+.hero-balance{overflow:clip}
+
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 input,textarea,select{font-size:16px}
 .app-nav-link,.app-nav-add{touch-action:manipulation}
