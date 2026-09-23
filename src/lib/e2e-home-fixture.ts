@@ -44,7 +44,7 @@ export function e2eHomeFixture(empty=false){
   ];
   const transactions:HomeRow[]=[
     {id:'tx-income',description:'Salário',amountMinor:850000,currency:'BRL',direction:'income',observedOn:month+'-05',status:'confirmed',scope:'household'},
-    {id:'tx-market',description:'Supermercado',amountMinor:42870,currency:'BRL',direction:'expense',observedOn:month+'-12',status:'confirmed',scope:'household',category:'groceries'},
+    {id:'tx-market',description:'Supermercado',amountMinor:42870,currency:'BRL',direction:'expense',observedOn:month+'-12',status:'confirmed',scope:'household',category:'food'},
     {id:'tx-water',description:'Água',amountMinor:18600,currency:'BRL',direction:'expense',observedOn:dayKey(yesterday),status:'confirmed',scope:'household',category:'housing'}
   ];
   const commitments:HomeRow[]=[
