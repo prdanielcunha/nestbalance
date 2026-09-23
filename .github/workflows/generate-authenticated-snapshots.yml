@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: nestbalance-auth-snapshots
+  cancel-in-progress: true
+
 jobs:
   snapshots:
     if: github.actor != 'github-actions[bot]'
@@ -41,4 +45,5 @@ jobs:
           git add tests/e2e/*-snapshots
           git diff --cached --quiet && exit 0
           git commit -m "test: add authenticated visual baselines"
+          git pull --rebase origin codex/nestbalance-analysis-upgrades-20260923
           git push origin HEAD:codex/nestbalance-analysis-upgrades-20260923
