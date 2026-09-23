@@ -19,7 +19,7 @@ export function AppNav({canContribute=true}:{canContribute?:boolean}){
       {canContribute
         ? <Link href="/add" className="app-nav-add" aria-label={t.add}>＋<span>{t.add}</span></Link>
         : <span className="app-nav-add readonly" aria-disabled="true"><span>{t.readOnly}</span></span>}
-      {items.slice(2).map(item=><Link key={item.href} href={item.href} aria-current={pathname===item.href?'page':undefined} className={pathname===item.href?'app-nav-link active':'app-nav-link'}>{item.label}</Link>)}
+      {items.slice(2).map(item=><Link key={item.href} href={item.href} aria-current={pathname===item.href?'page':undefined} className={`${pathname===item.href?'app-nav-link active':'app-nav-link'} ${item.className}`.trim()}>{item.label}</Link>)}
     </div>
   </nav>;
 }
