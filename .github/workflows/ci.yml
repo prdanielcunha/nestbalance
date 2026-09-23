@@ -37,7 +37,10 @@ jobs:
           java-version: "21"
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
 
       - name: Core and static security gates
         run: npm run check

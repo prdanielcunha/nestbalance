@@ -8,6 +8,7 @@ import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { SPENDING_CATEGORIES, categoryLabel, deriveRecurringCandidates, recurringPatternKey, resolvedSpendingCategory, type SpendingCategory } from '@/src/core/insights';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 import { confirmRecurringSuggestion, dismissRecurringSuggestion } from '@/src/lib/repositories/recurrences';
 import { updateTransactionCategory } from '@/src/lib/repositories/categories';
 
@@ -66,6 +67,8 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
       if(!silent) setLoading(false);
     }
   }
+
+  useHouseholdRevisionRefresh(householdId,()=>load(true));
 
   useEffect(()=>{
     void load();

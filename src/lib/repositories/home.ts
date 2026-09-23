@@ -1,5 +1,5 @@
 'use client';
-import { auth } from '@/src/lib/firebase/client';
+import { getBrowserAuthToken } from '@/src/lib/browser-auth-token';
 import type { SpendingCategory } from '@/src/core/insights';
 import type { ProactivityPreferences } from '@/src/core/proactivity';
 import type { SavingsPotAutomation } from '@/src/core/savings-pot-automation';
@@ -114,8 +114,7 @@ export type HomeCreditCard={
 };
 
 export async function loadHomeData(householdId:string){
-  const token=await auth?.currentUser?.getIdToken();
-  if(!token) throw new Error('AUTH_REQUIRED');
+  const token=await getBrowserAuthToken();
   const response=await fetch('/api/home',{
     method:'POST',
     headers:{'content-type':'application/json',authorization:`Bearer ${token}`},

@@ -6,6 +6,8 @@ import { bootstrapSession, type HouseholdSessionOption } from '@/src/lib/reposit
 import { messages } from '@/src/i18n/messages';
 import { normalizeLocale, type AppLocale } from '@/src/core/locale';
 import { LocaleProvider } from '@/src/i18n/locale-provider';
+import { nestBalanceE2eAuthMode } from '@/src/lib/browser-auth-token';
+import { normalizeHouseholdRole } from '@/src/core/household';
 
 function prefersRedirectSignIn(){
   if(typeof window==='undefined'||typeof navigator==='undefined') return false;
@@ -32,12 +34,14 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   const [signingIn, setSigningIn] = useState(false);
   const [sessionError, setSessionError] = useState('');
   const [browserLocale,setBrowserLocale]=useState<AppLocale>('pt-BR');
+  const [e2eMode,setE2eMode]=useState(false);
   const activeLocale=state?.locale||browserLocale;
   const activeCurrency=state?.currency||'BRL';
   const t=messages[activeLocale];
 
   useEffect(()=>{
     setBrowserLocale(normalizeLocale(navigator.language));
+    setE2eMode(nestBalanceE2eAuthMode());
   },[]);
 
   const establishSession = useCallback(async (user: User, forceRefresh = false) => {
@@ -103,6 +107,19 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     await signOut(auth);
     setState(null);
     setSessionError('');
+  }
+
+  if(e2eMode){
+    const params=new URLSearchParams(window.location.search);
+    const e2eRole=normalizeHouseholdRole(params.get('e2eRole')||'owner');
+    const e2eState:SessionState={
+      user:{uid:'e2e-user'} as User,
+      householdId:'e2e-household',
+      households:[{id:'e2e-household',name:'Lar de teste',role:e2eRole,locale:'pt-BR',currency:'BRL'}],
+      locale:'pt-BR',
+      currency:'BRL'
+    };
+    return <LocaleProvider locale="pt-BR" currency="BRL">{children(e2eState)}</LocaleProvider>;
   }
 
   if (!firebaseConfigured) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="setup-card"><div className="brand-mark">N</div><h1>NestBalance</h1><p>{t.setupMissing}</p></section></main></LocaleProvider>;

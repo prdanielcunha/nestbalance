@@ -11,6 +11,7 @@ import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
 import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
@@ -61,6 +62,8 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       if(!silent) setLoadingHome(false);
     }
   }
+
+  useHouseholdRevisionRefresh(householdId,()=>refreshHome(true));
 
   useEffect(() => {
     void refreshHome();
