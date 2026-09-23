@@ -71,7 +71,7 @@ export function AccountOnboarding({householdId,onCreated,variant='onboarding',de
             )}</p>
           </div>
           <div className="first-money-actions">
-            <button className="primary-button" onClick={()=>setOpen(true)}>{l('Informar meu saldo','Enter my balance','Informar mi saldo')}</button>
+            <button className="primary-button" onClick={()=>setOpen(true)}>{l('Adicionar conta ou saldo','Add account or balance','Agregar cuenta o saldo')}</button>
             <Link className="ghost-button" href="/add">{l('Enviar print ou arquivo','Send screenshot or file','Enviar captura o archivo')}</Link>
           </div>
         </section>
