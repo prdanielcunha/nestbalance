@@ -36,8 +36,18 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Generate deterministic dependency lock
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Upload generated dependency lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: nestbalance-package-lock
+          path: package-lock.json
+          retention-days: 2
+
+      - name: Install dependencies reproducibly
+        run: npm ci --no-audit --no-fund
 
       - name: Core and static security gates
         run: npm run check
