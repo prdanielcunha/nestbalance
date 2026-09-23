@@ -1,9 +1,8 @@
 'use client';
-import { auth } from '@/src/lib/firebase/client';
+import { getBrowserAuthToken } from '@/src/lib/browser-auth-token';
 
 export async function loadHouseholdRevision(householdId:string){
-  const token=await auth?.currentUser?.getIdToken();
-  if(!token) throw new Error('AUTH_REQUIRED');
+  const token=await getBrowserAuthToken();
   const response=await fetch('/api/household/revision',{
     method:'POST',
     headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
