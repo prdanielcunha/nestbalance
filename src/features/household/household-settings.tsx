@@ -506,7 +506,9 @@ export function HouseholdSettings({
             </div>}
       </section>
 
-      <PwaInstallCard/>\n\n      <section className="household-panel privacy-entry-card"><div><div className="eyebrow">{l('Privacidade','Privacy','Privacidad')}</div><h2>{l('Lar, Pessoal e seus dados','Household, Personal and your data','Hogar, Personal y tus datos')}</h2><p>{l('Veja o que é compartilhado, exporte seus dados ou controle exclusões.','See what is shared, export your data, or control deletions.','Consulta qué se comparte, exporta tus datos o controla eliminaciones.')}</p></div><Link href="/privacy" className="primary-button privacy-entry-link">{l('Abrir privacidade','Open privacy','Abrir privacidad')}</Link></section>
+      <PwaInstallCard/>
+
+      <section className="household-panel privacy-entry-card"><div><div className="eyebrow">{l('Privacidade','Privacy','Privacidad')}</div><h2>{l('Lar, Pessoal e seus dados','Household, Personal and your data','Hogar, Personal y tus datos')}</h2><p>{l('Veja o que é compartilhado, exporte seus dados ou controle exclusões.','See what is shared, export your data, or control deletions.','Consulta qué se comparte, exporta tus datos o controla eliminaciones.')}</p></div><Link href="/privacy" className="primary-button privacy-entry-link">{l('Abrir privacidade','Open privacy','Abrir privacidad')}</Link></section>
 
       <section className="household-safety-note">
         <strong>{l('Seu papel','Your role','Tu rol')}: {roleName(data.currentRole)}</strong>
