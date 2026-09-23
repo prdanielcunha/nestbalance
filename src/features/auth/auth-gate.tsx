@@ -65,6 +65,7 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     }
     return onAuthStateChanged(auth, user => {
       if (!user) {
+        sessionStorage.removeItem('nestbalance-values-hidden');
         setState(null);
         setSessionError('');
         setLoading(false);
