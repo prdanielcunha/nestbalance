@@ -11,7 +11,7 @@ on:
       - production
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: nestbalance-ci-${{ github.ref }}
@@ -36,33 +36,7 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Generate deterministic dependency lock
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-
-      - name: Upload generated dependency lock
-        uses: actions/upload-artifact@v4
-        with:
-          name: nestbalance-package-lock
-          path: package-lock.json
-          retention-days: 2
-
-      - name: Commit lockfile to same-repository PR branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        shell: bash
-        run: |
-          set -euo pipefail
-          git add package-lock.json
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: add deterministic npm lockfile"
-          git fetch origin "${GITHUB_HEAD_REF}"
-          git rebase "origin/${GITHUB_HEAD_REF}"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
-
-      - name: Install dependencies reproducibly
+      - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
       - name: Core and static security gates
