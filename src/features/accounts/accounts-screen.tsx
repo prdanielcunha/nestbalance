@@ -11,6 +11,7 @@ import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditCard, type HomeInvoiceImport } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { useHouseholdRevision } from '@/src/features/realtime/use-household-revision';
 
 export function AccountsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
   const {t,locale,intlLocale,currency,formatMoney,formatDate}=useI18n();
@@ -55,6 +56,8 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
     return ()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisibility);};
   },[householdId,refreshKey]);
 
+  useHouseholdRevision(householdId,()=>load(true));
+
   const viewAccounts=useMemo(()=>accounts.filter(item=>inFinancialView(item.scope,view)),[accounts,view]);
   const viewCards=useMemo(()=>cards.filter(item=>inFinancialView(item.scope,view)),[cards,view]);
   const viewInvoices=useMemo(()=>invoiceImports.filter(item=>inFinancialView(item.scope,view)),[invoiceImports,view]);
@@ -70,6 +73,20 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
 
   function refreshed(){
     setRefreshKey(value=>value+1);
+  }
+
+  function balanceFreshness(account:HomeAccount){
+    const timestamp=account.balanceAsOfMs;
+    if(!timestamp) return l('Atualização não informada','Update time unavailable','Actualización no informada');
+    const now=new Date();
+    const then=new Date(timestamp);
+    const sameDay=now.getFullYear()===then.getFullYear()&&now.getMonth()===then.getMonth()&&now.getDate()===then.getDate();
+    if(sameDay) return l('Atualizado agora','Updated today','Actualizado hoy');
+    const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+    const thenStart=new Date(then.getFullYear(),then.getMonth(),then.getDate()).getTime();
+    const days=Math.max(1,Math.round((todayStart-thenStart)/(24*60*60*1000)));
+    if(days===1) return l('Atualizado ontem','Updated yesterday','Actualizado ayer');
+    return l(`Há ${days} dias sem atualização`,`Not updated for ${days} days`,`Hace ${days} días sin actualizar`);
   }
 
   function accountTypeLabel(account:HomeAccount){
@@ -177,7 +194,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
                     )}</small>
                   : null}
                 <div className="account-balance-foot">
-                  <small>{account.institutionName||l('Saldo atual informado','Current balance provided','Saldo actual informado')}</small>
+                  <small>{account.institutionName?account.institutionName+' · ':''}{balanceFreshness(account)}</small>
                   {canManage&&<button type="button" onClick={()=>openBalance(account)}>{l('Atualizar','Update','Actualizar')}</button>}
                 </div>
               </article>)}

@@ -10,6 +10,7 @@ import { SPENDING_CATEGORIES, categoryLabel, deriveRecurringCandidates, recurrin
 import { useI18n } from '@/src/i18n/locale-provider';
 import { confirmRecurringSuggestion, dismissRecurringSuggestion } from '@/src/lib/repositories/recurrences';
 import { updateTransactionCategory } from '@/src/lib/repositories/categories';
+import { useHouseholdRevision } from '@/src/features/realtime/use-household-revision';
 
 
 type Filter='all'|'income'|'cash_expense'|'card'|'transfer';
@@ -75,6 +76,8 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     document.addEventListener('visibilitychange',onVisibility);
     return ()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisibility);};
   },[householdId]);
+
+  useHouseholdRevision(householdId,()=>load(true));
 
   const scopedRows=useMemo(()=>rows.filter(row=>inFinancialView(row.scope,view)),[rows,view]);
 

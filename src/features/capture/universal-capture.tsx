@@ -84,6 +84,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const recorderRef=useRef<MediaRecorder|null>(null);
   const recorderChunksRef=useRef<BlobPart[]>([]);
   const recorderStreamRef=useRef<MediaStream|null>(null);
+  const sharedTargetHandledRef=useRef('');
 
   const working = saving || analyzing || recording || geminiWorking;
   const moneyInputValue=(minor:number)=>(minor/100).toLocaleString(intlLocale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
@@ -119,6 +120,63 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       window.removeEventListener('paste',onPaste);
     };
   }, [open, working]);
+
+  useEffect(()=>{
+    if(!open||typeof window==='undefined') return;
+    const params=new URLSearchParams(window.location.search);
+    const shareId=params.get('shareTarget')||'';
+    if(!/^[A-Za-z0-9_-]{8,160}$/.test(shareId)||sharedTargetHandledRef.current===shareId) return;
+    sharedTargetHandledRef.current=shareId;
+    let cancelled=false;
+
+    void (async()=>{
+      try{
+        const metaResponse=await fetch('/__nestbalance-share/'+encodeURIComponent(shareId)+'/meta',{cache:'no-store'});
+        if(!metaResponse.ok) throw new Error('SHARE_NOT_FOUND');
+        const meta=await metaResponse.json() as {
+          title?:string;
+          text?:string;
+          url?:string;
+          files?:Array<{index:number;name:string;type:string;size:number}>;
+        };
+        if(cancelled) return;
+
+        const firstFile=Array.isArray(meta.files)?meta.files[0]:null;
+        if(firstFile){
+          const fileResponse=await fetch('/__nestbalance-share/'+encodeURIComponent(shareId)+'/file-'+firstFile.index,{cache:'no-store'});
+          if(!fileResponse.ok) throw new Error('SHARED_FILE_NOT_FOUND');
+          const blob=await fileResponse.blob();
+          if(cancelled) return;
+          const sharedFile=new File([blob],firstFile.name||'compartilhado',{type:firstFile.type||blob.type||'application/octet-stream'});
+          selectFile(sharedFile,l('Recebido pelo Compartilhar. Já estou organizando.','Received from Share. I am organizing it now.','Recibido desde Compartir. Ya lo estoy organizando.'));
+          await interpret(sharedFile);
+        }else{
+          const sharedText=[meta.text,meta.url,meta.title].map(value=>String(value||'').trim()).filter(Boolean).join('\n');
+          if(!sharedText) throw new Error('EMPTY_SHARE');
+          setText(sharedText);
+          try{applySourceText(sharedText);}catch{}
+          setNotice(l('Recebido pelo Compartilhar. Confira antes de guardar.','Received from Share. Review before saving.','Recibido desde Compartir. Revisa antes de guardar.'));
+          queueMicrotask(()=>textRef.current?.focus());
+        }
+      }catch{
+        if(!cancelled) setError(l(
+          'Não consegui abrir o conteúdo compartilhado. Você ainda pode colar, fotografar ou escolher o arquivo aqui.',
+          'I could not open the shared content. You can still paste, photograph, or choose the file here.',
+          'No pude abrir el contenido compartido. Aún puedes pegar, fotografiar o elegir el archivo aquí.'
+        ));
+      }finally{
+        void fetch('/__nestbalance-share/'+encodeURIComponent(shareId),{method:'DELETE'}).catch(()=>undefined);
+        if(!cancelled){
+          const clean=new URL(window.location.href);
+          clean.searchParams.delete('shareTarget');
+          clean.searchParams.delete('shareError');
+          window.history.replaceState({},'',clean.pathname+(clean.search||''));
+        }
+      }
+    })();
+
+    return ()=>{cancelled=true;};
+  },[open]);
 
   function stopRecorderTracks(){
     recorderStreamRef.current?.getTracks().forEach(track=>track.stop());
@@ -362,7 +420,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   async function tryLocalImage(activeFile:File){
     setLocalOcrPercent(1);
     try{
-      const ocr=await readImageTextLocally(activeFile,progress=>setLocalOcrPercent(progress.percent));
+      const ocr=await readImageTextLocally(activeFile,progress=>setLocalOcrPercent(progress.percent),locale);
       setLocalOcrText(ocr);
       if(!ocr.trim()){
         setNotice(l('Não consegui encontrar texto legível nessa imagem. Você pode tentar outro print ou contar o que aconteceu por texto.','I could not find readable text in this image. Try another screenshot or describe what happened in text.','No encontré texto legible en esta imagen. Prueba otra captura o describe por texto lo que pasó.'));

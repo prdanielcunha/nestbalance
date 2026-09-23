@@ -25,6 +25,7 @@ import {
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { useHouseholdRevision } from '@/src/features/realtime/use-household-revision';
 
 type MoveMode='reserve'|'withdraw';
 
@@ -105,6 +106,8 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     document.addEventListener('visibilitychange',onVisibility);
     return ()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisibility);};
   },[householdId]);
+
+  useHouseholdRevision(householdId,()=>load(true));
 
   useEffect(()=>()=>{if(coverPreview)URL.revokeObjectURL(coverPreview);},[coverPreview]);
 

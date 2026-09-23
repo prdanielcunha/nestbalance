@@ -23,6 +23,7 @@ function accountDto(doc:any){
     connectionId:typeof data.connectionId==='string'?data.connectionId:null,
     automaticallyInvestedMinor:Number.isSafeInteger(data.automaticallyInvestedMinor)?data.automaticallyInvestedMinor:null,
     balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
+    balanceAsOfMs:data.balanceAsOf?.toMillis?.()??data.updatedAt?.toMillis?.()??null,
     currency:String(data.currency||'BRL'),
     status:String(data.status||'active'),
     scope:data.scope==='personal'?'personal':'household'

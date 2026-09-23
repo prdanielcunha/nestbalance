@@ -16,7 +16,9 @@ export default defineConfig({
     video:'off'
   },
   projects:[
-    {name:'mobile-chromium',use:{...devices['Pixel 7']}},
+    {name:'mobile-320',use:{...devices['Pixel 5'],viewport:{width:320,height:760}}},
+    {name:'mobile-chromium',use:{...devices['Pixel 7'],viewport:{width:390,height:844}}},
+    {name:'tablet-768',use:{...devices['Desktop Chrome'],viewport:{width:768,height:1024}}},
     {name:'desktop-chromium',use:{...devices['Desktop Chrome'],viewport:{width:1440,height:1000}}}
   ],
   webServer:{

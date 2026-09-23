@@ -111,6 +111,9 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     assert.equal(account.status,201);
     assert.equal(account.json.status,'created');
 
+    const revisionAfterAccount=await post('/api/household/revision',owner.token,{householdId});
+    assert.equal(typeof revisionAfterAccount.json.revision,'string');
+
     const commitment=await post('/api/capture/commit',owner.token,{
       householdId,
       sourceText:'Internet Vivo 119,90 dia 10 todo mês',
@@ -126,6 +129,9 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
       scope:'household'
     });
     assert.equal(householdExpense.status,201);
+
+    const revisionAfterExpense=await post('/api/household/revision',owner.token,{householdId});
+    assert.notEqual(revisionAfterExpense.json.revision,revisionAfterAccount.json.revision);
 
     const duplicate=await post('/api/capture/commit',owner.token,{
       householdId,

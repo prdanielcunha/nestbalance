@@ -8,17 +8,17 @@ import { ScopeViewSwitch, type FinancialView } from '@/src/features/privacy/scop
 import { useI18n } from '@/src/i18n/locale-provider';
 
 export function AssistantScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
-  const {t,locale,formatMoney,formatDate}=useI18n();
+  const {t,locale,formatMoney,formatMoneyUnmasked,formatDate}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const starters=useMemo(()=>[
     l('Por que gastei mais este mês?','Why did I spend more this month?','¿Por qué gasté más este mes?'),
     l('O que está estranho?','What looks unusual?','¿Qué se ve extraño?'),
-    l(`Dá para gastar ${formatMoney(50000)}?`,`Can I spend ${formatMoney(50000)}?`,`¿Puedo gastar ${formatMoney(50000)}?`),
+    l(`Dá para gastar ${formatMoneyUnmasked(50000)}?`,`Can I spend ${formatMoneyUnmasked(50000)}?`,`¿Puedo gastar ${formatMoneyUnmasked(50000)}?`),
     l('Quais parcelas terminam logo?','Which installments end soon?','¿Qué cuotas terminan pronto?'),
     l('Quanto ainda falta pagar?','How much is still left to pay?','¿Cuánto falta pagar?'),
     l('Quanto tenho disponível?','How much do I have available?','¿Cuánto tengo disponible?'),
     l('O que já está comprometido nos próximos meses?','What is already committed in the next months?','¿Qué ya está comprometido en los próximos meses?')
-  ],[locale,formatMoney]);
+  ],[locale,formatMoneyUnmasked]);
 
   const [question,setQuestion]=useState('');
   const [loading,setLoading]=useState(false);

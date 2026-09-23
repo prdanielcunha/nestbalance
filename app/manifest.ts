@@ -26,6 +26,22 @@ export default function manifest(): MetadataRoute.Manifest {
         type: 'image/svg+xml',
         purpose: 'maskable'
       }
-    ]
-  };
+    ],
+    share_target: {
+      action: '/share-target',
+      method: 'POST',
+      enctype: 'multipart/form-data',
+      params: {
+        title: 'title',
+        text: 'text',
+        url: 'url',
+        files: [
+          {
+            name: 'files',
+            accept: ['image/*','application/pdf','text/csv','text/plain','audio/*']
+          }
+        ]
+      }
+    }
+  } as MetadataRoute.Manifest;
 }
