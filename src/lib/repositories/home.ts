@@ -3,6 +3,8 @@ import { auth } from '@/src/lib/firebase/client';
 import type { SpendingCategory } from '@/src/core/insights';
 import type { ProactivityPreferences } from '@/src/core/proactivity';
 import type { SavingsPotAutomation } from '@/src/core/savings-pot-automation';
+import { e2eFixtureName, isE2ePreview } from '@/src/lib/e2e-preview';
+import { e2eHomeFixture } from '@/src/lib/e2e-home-fixture';
 
 export type HomeRow={
   id:string;
@@ -115,6 +117,7 @@ export type HomeCreditCard={
 };
 
 export async function loadHomeData(householdId:string){
+  if(isE2ePreview()) return e2eHomeFixture(e2eFixtureName()==='empty');
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');
   const response=await fetch('/api/home',{
