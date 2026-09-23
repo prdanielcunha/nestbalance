@@ -58,6 +58,8 @@ const localCardParser=read('./src/core/card-local-reader.ts');
 const geminiFree=read('./server/ai/gemini-free.ts');
 const geminiFallback=read('./server/gemini-fallback.ts');
 const financialRedaction=read('./src/core/financial-redaction.ts');
+const localeProvider=read('./src/i18n/locale-provider.tsx');
+const ciWorkflow=read('./.github/workflows/ci.yml');
 
 assert.match(firestore,/match \/households\/\{hid\}/);
 assert.match(firestore,/allow read, write: if false;/);
@@ -92,6 +94,7 @@ assert.ok(globalStyles.includes('body.nestbalance-modal-open .scope-view-switch'
 assert.ok(globalStyles.includes('z-index:1000'));
 assert.ok(globalStyles.includes('.account-sheet{'));
 assert.ok(!householdSettingsScreen.includes('<PwaInstallCard/>\\n\\n'),'Literal escaped newlines must never render in Household settings UI.');
+assert.ok(existsSync(fileURLToPath(new URL('./package-lock.json',import.meta.url))),'package-lock.json must be committed for reproducible installs.');
 assert.match(rootLayout,/next\/font\/google/);
 assert.match(rootLayout,/Inter\(/);
 const tooSmallFonts=[...globalStyles.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].filter(match=>Number(match[1])<12);
@@ -104,6 +107,8 @@ assert.match(householdRevision,/auditEvents/);
 assert.match(householdRevision,/requireHouseholdMember/);
 assert.match(householdRevisionClient,/25_000/);
 assert.match(householdRevisionClient,/document\.visibilityState==='visible'/);
+assert.match(localeProvider,/nestbalance-values-hidden/);
+assert.match(localeProvider,/nestbalance-always-hide-values/);
 assert.match(accountsSource,/convertedFromLegacySync/);
 assert.match(accountsSource,/source:'manual'/);
 assert.match(savingsPotsSource,/signatureMatchesMime/);
@@ -223,6 +228,10 @@ assert.match(productionWorkflow,/\.release == \$sha/);
 assert.ok(!/firebase deploy[^\n]*(firestore|storage)/.test(productionWorkflow));
 assert.match(browserWorkflow,/playwright install --with-deps chromium/);
 assert.match(browserWorkflow,/npm run test:e2e/);
+for(const [name,workflow] of [['ci',ciWorkflow],['browser',browserWorkflow],['homologation',deployWorkflow],['production',productionWorkflow],['official',officialProductionWorkflow]]){
+  assert.match(workflow,/npm ci --no-audit --no-fund/,`${name} workflow must use npm ci.`);
+  assert.ok(!workflow.includes('npm install --no-audit --no-fund'),`${name} workflow must not use npm install.`);
+}
 assert.match(serviceWorker,/url\.pathname\.startsWith\('\/api\/'\)/);
 assert.match(productionWorkflow,/sw\.js/);
 assert.match(productionWorkflow,/cache-control:\.\*no-store/i);
