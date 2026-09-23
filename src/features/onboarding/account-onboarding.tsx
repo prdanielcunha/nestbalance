@@ -24,6 +24,17 @@ export function AccountOnboarding({householdId,onCreated,variant='onboarding',de
   const [error,setError]=useState('');
   const [scope,setScope]=useState<FinancialScope>(defaultScope);
   useEffect(()=>{if(!open)setScope(defaultScope);},[defaultScope,open]);
+  useEffect(()=>{
+    if(!open) return;
+    const body=document.body;
+    const previousOverflow=body.style.overflow;
+    body.classList.add('nestbalance-modal-open');
+    body.style.overflow='hidden';
+    return ()=>{
+      body.classList.remove('nestbalance-modal-open');
+      body.style.overflow=previousOverflow;
+    };
+  },[open]);
 
   async function save(){
     const balanceMinor=parseMoneyInputToMinor(balance,locale);
