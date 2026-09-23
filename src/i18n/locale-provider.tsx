@@ -12,6 +12,7 @@ type I18nContextValue={
   currency:string;
   t:MessageSet;
   formatMoney:(minor:number)=>string;
+  formatMoneyUnmasked:(minor:number)=>string;
   valuesHidden:boolean;
   toggleValues:()=>void;
   alwaysHideValues:boolean;
@@ -25,6 +26,7 @@ const fallback:I18nContextValue={
   currency:'BRL',
   t:messages['pt-BR'] as MessageSet,
   formatMoney:minor=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(minor/100),
+  formatMoneyUnmasked:minor=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(minor/100),
   valuesHidden:false,
   toggleValues:()=>undefined,
   alwaysHideValues:false,
@@ -83,6 +85,7 @@ export function LocaleProvider({
       currency:safeCurrency,
       t:messages[normalized] as MessageSet,
       formatMoney:minor=>valuesHidden?currencyMark+' ••••':formatter.format(minor/100),
+      formatMoneyUnmasked:minor=>formatter.format(minor/100),
       valuesHidden,
       toggleValues,
       alwaysHideValues,
