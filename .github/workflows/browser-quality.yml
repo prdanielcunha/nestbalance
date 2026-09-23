@@ -35,6 +35,8 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Build exported web app
+        env:
+          NEXT_PUBLIC_NESTBALANCE_E2E: "true"
         run: npm run build
 
       - name: Install Chromium
