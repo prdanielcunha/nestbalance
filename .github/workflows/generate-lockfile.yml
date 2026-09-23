@@ -1,0 +1,39 @@
+name: Generate NestBalance lockfile
+
+on:
+  push:
+    branches:
+      - codex/nestbalance-analysis-upgrades-20260923
+    paths:
+      - package.json
+      - .github/workflows/generate-lockfile.yml
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: codex/nestbalance-analysis-upgrades-20260923
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
+      - name: Generate reproducible npm lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Commit lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: add reproducible npm lockfile"
+          git push origin HEAD:codex/nestbalance-analysis-upgrades-20260923
