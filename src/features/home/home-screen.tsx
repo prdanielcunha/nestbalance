@@ -130,6 +130,10 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     });
   }, [cashAccounts, cashView]);
 
+  const spendableMinor=Math.max(0,snapshot.projectedRemainderMinor);
+  const staleCashAccounts=useMemo(()=>cashAccounts.filter(account=>
+    !account.balanceAsOfMs||Date.now()-account.balanceAsOfMs>3*24*60*60*1000
+  ),[cashAccounts]);
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
@@ -256,9 +260,13 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
     {loadingHome && <div className="home-loading-line" aria-label={l('Atualizando visão financeira','Refreshing financial view','Actualizando visión financiera')} />}
     <section className="hero-balance">
-      <span>{viewAccounts.length ? `${t.availableNow} ${viewLabel}` : l(`saldo ${viewLabel}`,`balance ${viewLabel}`,`saldo ${viewLabel}`)}</span>
-      <strong>{viewAccounts.length ? formatMoney(snapshot.availableMinor) : '—'}</strong>
-      <p>{viewAccounts.length ? (snapshot.futureCommitmentsMinor > 0 ? l(`${formatMoney(snapshot.futureCommitmentsMinor)} ainda estão comprometidos ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} is still committed ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} todavía está comprometido ${viewLabel}.`) : l(`Sem contas pendentes ${viewLabel}.`,`No pending bills ${viewLabel}.`,`Sin cuentas pendientes ${viewLabel}.`)) : l(`Ainda não há saldo ${viewLabel}.`,`There is no balance yet ${viewLabel}.`,`Todavía no hay saldo ${viewLabel}.`)}</p>
+      <span>{viewAccounts.length ? l('Disponível para gastar','Available to spend','Disponible para gastar') : l(`saldo ${viewLabel}`,`balance ${viewLabel}`,`saldo ${viewLabel}`)}</span>
+      <strong>{viewAccounts.length ? formatMoney(spendableMinor) : '—'}</strong>
+      <p>{viewAccounts.length ? l(
+        `Aproximadamente o que pode usar sem comprometer ${formatMoney(snapshot.futureCommitmentsMinor)} em contas e faturas conhecidas.`,
+        `Approximately what you can use without compromising ${formatMoney(snapshot.futureCommitmentsMinor)} in known bills and statements.`,
+        `Aproximadamente lo que puedes usar sin comprometer ${formatMoney(snapshot.futureCommitmentsMinor)} en cuentas y resúmenes conocidos.`
+      ) : l(`Ainda não há saldo ${viewLabel}.`,`There is no balance yet ${viewLabel}.`,`Todavía no hay saldo ${viewLabel}.`)}</p>
       {viewAccounts.length>0&&<details className="balance-explanation">
         <summary>{l('Como calculamos','How this is calculated','Cómo lo calculamos')}</summary>
         <div className="balance-explanation-grid">
@@ -300,14 +308,23 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
           `${partialInvoiceCount} statement${partialInvoiceCount===1?' is':'s are'} still under review. The committed amount may change when review finishes.`,
           `${partialInvoiceCount} resumen${partialInvoiceCount===1?' sigue':'es siguen'} en revisión. El valor comprometido puede cambiar cuando termine la revisión.`
         )}</p>}
+        {staleCashAccounts.length>0&&<p className="balance-freshness-warning">{l(
+          `${staleCashAccounts.length} saldo${staleCashAccounts.length===1?' está':'s estão'} desatualizado${staleCashAccounts.length===1?'':'s'}. A estimativa fica menos confiável até você atualizar.`,
+          `${staleCashAccounts.length} balance${staleCashAccounts.length===1?' is':'s are'} out of date. The estimate is less reliable until refreshed.`,
+          `${staleCashAccounts.length} saldo${staleCashAccounts.length===1?' está':'s están'} desactualizado${staleCashAccounts.length===1?'':'s'}. La estimación es menos confiable hasta que se actualice.`
+        )}</p>}
       </details>}
     </section>
 
     {attentionItems.length>0&&<section className="attention-section" aria-labelledby="attention-title">
       <div className="section-title">
         <div>
-          <span className="section-kicker">{t.importantNow}</span>
-          <h2 id="attention-title">{t.onlyNeedsAttention}</h2>
+          <span className="section-kicker">{l('INBOX FINANCEIRA','FINANCIAL INBOX','BANDEJA FINANCIERA')}</span>
+          <h2 id="attention-title">{l(
+            `${attentionItems.length} ${attentionItems.length===1?'item para conferir':'itens para conferir'}`,
+            `${attentionItems.length} ${attentionItems.length===1?'item':'items'} to review`,
+            `${attentionItems.length} ${attentionItems.length===1?'elemento':'elementos'} para revisar`
+          )}</h2>
         </div>
         <small>{t.quietAttention}</small>
       </div>
@@ -329,6 +346,12 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         </article>)}
       </div>
       {attentionError&&<p className="error-copy attention-error" role="alert">{attentionError}</p>}
+    </section>}
+
+    {attentionItems.length===0&&viewAccounts.length>0&&!loadingHome&&<section className="financial-inbox-clear" aria-label={l('Inbox financeira','Financial inbox','Bandeja financiera')}>
+      <span>{l('INBOX FINANCEIRA','FINANCIAL INBOX','BANDEJA FINANCIERA')}</span>
+      <strong>{l('Tudo organizado','Everything organized','Todo organizado')}</strong>
+      <p>{l('Nada importante precisa da sua atenção agora.','Nothing important needs your attention right now.','Nada importante necesita tu atención ahora.')}</p>
     </section>}
 
     {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
