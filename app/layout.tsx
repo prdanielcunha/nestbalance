@@ -1,7 +1,16 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { PwaRuntime } from '@/src/features/pwa/pwa-runtime';
 import { ThemeRuntime } from '@/src/features/theme/theme-runtime';
+
+const inter=Inter({
+  subsets:['latin'],
+  display:'swap',
+  variable:'--font-inter',
+  fallback:['system-ui','Arial'],
+  adjustFontFallback:true
+});
 
 export const metadata: Metadata = {
   title: 'NestBalance',
@@ -25,6 +34,6 @@ const themeBootScript=`(()=>{try{const saved=localStorage.getItem('nestbalance-t
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
   return <html lang="pt-BR" data-theme="dark" suppressHydrationWarning>
     <head><script dangerouslySetInnerHTML={{__html:themeBootScript}}/></head>
-    <body><PwaRuntime/><ThemeRuntime/>{children}</body>
+    <body className={inter.variable}><PwaRuntime/><ThemeRuntime/>{children}</body>
   </html>;
 }
