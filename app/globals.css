@@ -2310,3 +2310,50 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .theme-preview-light i{background:#e7eaf0}
 .theme-preview-light i:nth-child(2){background:#fff}
 @media(max-width:620px){.theme-choice{grid-template-columns:1fr}.theme-choice>button{grid-template-columns:58px minmax(0,1fr) auto}.theme-preview{width:58px}}
+
+
+/* Mobile modal safety: when a sheet is open, nothing from the page may float over it. */
+body.nestbalance-modal-open{overflow:hidden;overscroll-behavior:none}
+body.nestbalance-modal-open .app-nav,
+body.nestbalance-modal-open .scope-view-switch{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+.sheet-backdrop{
+  z-index:1000;
+  isolation:isolate;
+}
+.account-sheet{
+  max-height:min(94dvh,calc(100dvh - max(8px,env(safe-area-inset-top))));
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scroll-padding-bottom:96px;
+}
+.account-sheet .sheet-actions{
+  position:sticky;
+  z-index:4;
+  bottom:calc(0px - max(28px,env(safe-area-inset-bottom)));
+  margin-inline:calc(0px - clamp(20px,5vw,36px));
+  padding:14px clamp(20px,5vw,36px) max(18px,env(safe-area-inset-bottom));
+  border-top:1px solid color-mix(in srgb,var(--line) 82%,transparent);
+  background:color-mix(in srgb,var(--surface-strong) 96%,transparent);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+@media(max-width:720px){
+  .sheet-backdrop{padding-top:max(6px,env(safe-area-inset-top))}
+  .account-sheet{
+    max-height:calc(100dvh - max(6px,env(safe-area-inset-top)));
+    border-radius:24px 24px 0 0;
+  }
+  .account-sheet .scope-choice{grid-template-columns:1fr 1fr}
+  .account-sheet .scope-choice button{min-height:84px;padding:12px}
+  .account-sheet .scope-choice button strong{font-size:12px}
+  .account-sheet .scope-choice button span{font-size:10px}
+}
+@media(max-width:390px){
+  .account-sheet .scope-choice{grid-template-columns:1fr}
+  .account-sheet .scope-choice button{min-height:68px}
+}
