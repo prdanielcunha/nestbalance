@@ -24,7 +24,7 @@ try{
     ['run','build'],
     {...process.env,NEXT_PUBLIC_NESTBALANCE_E2E:'true'}
   );
-  run('Running authenticated browser release gate',['run','test:e2e']);
+  run('Running authenticated browser release gate',['run','test:e2e:raw']);
 }catch(error){
   gateError=error;
 }finally{
