@@ -11,6 +11,7 @@ import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditCard, type HomeInvoiceImport } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 
 export function AccountsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
   const {t,locale,intlLocale,currency,formatMoney,formatDate}=useI18n();
@@ -45,6 +46,8 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       if(!silent) setLoading(false);
     }
   }
+
+  useHouseholdRevisionRefresh(householdId,()=>load(true));
 
   useEffect(()=>{
     void load();

@@ -25,6 +25,7 @@ import {
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 
 type MoveMode='reserve'|'withdraw';
 
@@ -96,6 +97,8 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       if(!silent) setLoading(false);
     }
   }
+
+  useHouseholdRevisionRefresh(householdId,()=>load(true));
 
   useEffect(()=>{
     void load();

@@ -34,6 +34,7 @@ import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import type { FinancialScope } from '@/src/core/privacy';
 import { readImageTextLocally } from '@/src/lib/local-image-ocr';
 import { analyzeTextWithGeminiFallback, getGeminiFallbackStatus, type GeminiFallbackStatus } from '@/src/lib/repositories/gemini-fallback';
+import { consumeWebShareTarget } from '@/src/lib/pwa/share-target';
 
 type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
 type PendingAi={extraction:AiFinancialExtraction;amountMinor:number|null};
@@ -119,6 +120,40 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       window.removeEventListener('paste',onPaste);
     };
   }, [open, working]);
+
+  useEffect(()=>{
+    if(!open||typeof window==='undefined') return;
+    const params=new URLSearchParams(window.location.search);
+    const shareTargetId=params.get('shareTarget')||'';
+    if(!shareTargetId) return;
+    let cancelled=false;
+    void (async()=>{
+      try{
+        const shared=await consumeWebShareTarget(shareTargetId);
+        if(cancelled||!shared) return;
+        const url=new URL(window.location.href);
+        url.searchParams.delete('shareTarget');
+        window.history.replaceState(null,'',url.pathname+(url.search?url.search:'')+url.hash);
+        if(shared.file){
+          selectFile(shared.file,l(
+            shared.fileCount>1?'Recebi os arquivos compartilhados. Vou começar pelo primeiro.':'Recebi o arquivo compartilhado. Já estou organizando.',
+            shared.fileCount>1?'I received the shared files. I will start with the first one.':'I received the shared file. I am organizing it now.',
+            shared.fileCount>1?'Recibí los archivos compartidos. Empezaré por el primero.':'Recibí el archivo compartido. Ya lo estoy organizando.'
+          ));
+          void interpret(shared.file);
+          return;
+        }
+        const sharedText=[shared.title,shared.text,shared.url].filter(Boolean).join('\n').trim();
+        if(sharedText){
+          setText(sharedText);
+          setNotice(l('Recebi o conteúdo compartilhado. Confira e toque em organizar.','I received the shared content. Review it and tap organize.','Recibí el contenido compartido. Revísalo y toca organizar.'));
+        }
+      }catch{
+        if(!cancelled) setError(l('Não consegui abrir o conteúdo compartilhado. Você ainda pode colar ou escolher o arquivo aqui.','I could not open the shared content. You can still paste or choose the file here.','No pude abrir el contenido compartido. Aún puedes pegar o elegir el archivo aquí.'));
+      }
+    })();
+    return ()=>{cancelled=true;};
+  },[open]);
 
   function stopRecorderTracks(){
     recorderStreamRef.current?.getTracks().forEach(track=>track.stop());
@@ -362,7 +397,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   async function tryLocalImage(activeFile:File){
     setLocalOcrPercent(1);
     try{
-      const ocr=await readImageTextLocally(activeFile,progress=>setLocalOcrPercent(progress.percent));
+      const ocr=await readImageTextLocally(activeFile,progress=>setLocalOcrPercent(progress.percent),locale);
       setLocalOcrText(ocr);
       if(!ocr.trim()){
         setNotice(l('Não consegui encontrar texto legível nessa imagem. Você pode tentar outro print ou contar o que aconteceu por texto.','I could not find readable text in this image. Try another screenshot or describe what happened in text.','No encontré texto legible en esta imagen. Prueba otra captura o describe por texto lo que pasó.'));

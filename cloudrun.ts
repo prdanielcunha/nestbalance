@@ -24,6 +24,7 @@ import { updateTransactionCategory } from './server/categories.js';
 import { updateProactivityPreferences } from './server/proactivity.js';
 import { dismissAttention } from './server/attention.js';
 import { listSecurityDevices, revokeNestBalanceSessions } from './server/security.js';
+import { getHouseholdRevision } from './server/revision.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -45,6 +46,7 @@ app.use(express.json({ limit: '128kb' }));
 app.post('/api/session/bootstrap', bootstrapSession);
 app.post('/api/session/select-household', selectHousehold);
 app.post('/api/household/settings', getHouseholdSettings);
+app.post('/api/household/revision', getHouseholdRevision);
 app.post('/api/household/rename', renameHousehold);
 app.post('/api/household/locale', updateHouseholdLocale);
 app.post('/api/household/invite', sensitiveLimit, createHouseholdInvite);

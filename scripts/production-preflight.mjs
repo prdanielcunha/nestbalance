@@ -27,6 +27,10 @@ if(!process.env.GITHUB_REF?.endsWith('/production')){
   console.error('Production deploy is allowed only from the production branch.');
   process.exit(1);
 }
+if(String(process.env.NEXT_PUBLIC_NESTBALANCE_E2E||'').toLowerCase()==='true'){
+  console.error('Authenticated E2E fixture mode must never be enabled in production.');
+  process.exit(1);
+}
 if(process.env.GCP_DEPLOY_SERVICE_ACCOUNT===process.env.NESTBALANCE_RUNTIME_SERVICE_ACCOUNT){
   console.error('Deploy and runtime identities must remain separated.');
   process.exit(1);
