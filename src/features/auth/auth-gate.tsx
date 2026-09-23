@@ -6,6 +6,7 @@ import { bootstrapSession, type HouseholdSessionOption } from '@/src/lib/reposit
 import { messages } from '@/src/i18n/messages';
 import { normalizeLocale, type AppLocale } from '@/src/core/locale';
 import { LocaleProvider } from '@/src/i18n/locale-provider';
+import { e2eSession, isE2ePreview } from '@/src/lib/e2e-preview';
 
 function prefersRedirectSignIn(){
   if(typeof window==='undefined'||typeof navigator==='undefined') return false;
@@ -32,12 +33,14 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   const [signingIn, setSigningIn] = useState(false);
   const [sessionError, setSessionError] = useState('');
   const [browserLocale,setBrowserLocale]=useState<AppLocale>('pt-BR');
+  const [previewSession,setPreviewSession]=useState<SessionState|null>(null);
   const activeLocale=state?.locale||browserLocale;
   const activeCurrency=state?.currency||'BRL';
   const t=messages[activeLocale];
 
   useEffect(()=>{
     setBrowserLocale(normalizeLocale(navigator.language));
+    if(isE2ePreview()) setPreviewSession(e2eSession());
   },[]);
 
   const establishSession = useCallback(async (user: User, forceRefresh = false) => {
@@ -104,6 +107,8 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     setState(null);
     setSessionError('');
   }
+
+  if(previewSession) return <LocaleProvider locale={previewSession.locale} currency={previewSession.currency}>{children(previewSession)}</LocaleProvider>;
 
   if (!firebaseConfigured) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="setup-card"><div className="brand-mark">N</div><h1>NestBalance</h1><p>{t.setupMissing}</p></section></main></LocaleProvider>;
   if (loading) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><div className="skeleton-card" role="status"><span className="sr-only">{t.loading}</span></div></main></LocaleProvider>;
