@@ -2370,3 +2370,12 @@ body.nestbalance-modal-open .scope-view-switch{
 .financial-inbox-clear>strong{font-size:15px}
 .financial-inbox-clear>p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
 @media(max-width:520px){.financial-inbox-clear{grid-template-columns:1fr}.financial-inbox-clear>span{grid-row:auto}}
+
+.household-actions{display:flex;align-items:center;gap:8px}
+.money-privacy-toggle{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line);border-radius:999px;background:var(--surface-strong);color:var(--ink);cursor:pointer;box-shadow:var(--shadow-sm)}
+.money-privacy-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.privacy-preference-row{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2)}
+.privacy-preference-row input{width:20px;height:20px;margin-top:2px;accent-color:var(--iris)}
+.privacy-preference-row strong,.privacy-preference-row small{display:block}
+.privacy-preference-row strong{font-size:14px}
+.privacy-preference-row small{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.5}
