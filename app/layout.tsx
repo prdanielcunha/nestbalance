@@ -32,8 +32,8 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, view
 const themeBootScript=`(()=>{try{const saved=localStorage.getItem('nestbalance-theme');const theme=saved==='light'?'light':'dark';const root=document.documentElement;root.dataset.theme=theme;root.style.colorScheme=theme;}catch{document.documentElement.dataset.theme='dark';document.documentElement.style.colorScheme='dark';}})();`;
 
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
-  return <html lang="pt-BR" data-theme="dark" suppressHydrationWarning>
+  return <html lang="pt-BR" data-theme="dark" className={inter.variable} suppressHydrationWarning>
     <head><script dangerouslySetInnerHTML={{__html:themeBootScript}}/></head>
-    <body className={inter.variable}><PwaRuntime/><ThemeRuntime/>{children}</body>
+    <body><PwaRuntime/><ThemeRuntime/>{children}</body>
   </html>;
 }
