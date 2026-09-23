@@ -37,6 +37,7 @@ export type HomeAccount={
   connectionId?:string|null;
   automaticallyInvestedMinor?:number|null;
   balanceMinor:number;
+  balanceAsOfMs?:number|null;
   currency:string;
   status:string;
   scope?:'household'|'personal';
