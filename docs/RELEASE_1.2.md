@@ -1,13 +1,27 @@
-# NestBalance 1.2.2 Real-Life Hardening
+# NestBalance 1.2.8 Premium Home & Release Reliability
 
 Source of truth: NestBalance product blueprint plus the 2026-09-22 Cofrinhos product decision.
 
 ## Release identity
 
-- Version: **1.2.2**
-- Release date: **2026-09-22**
+- Version: **1.2.8**
+- Release date: **2026-09-23**
 - Official domain: **https://nestbalance.millionsnest.com**
 - Product rule: expose only capabilities that are usable now. Future bank integrations remain outside the executable user surface.
+
+## 1.2.8 premium Home and release reliability
+
+This patch promotes the Home redesign and closes the production-browser certification gap discovered during deployment:
+
+- desktop Home now uses a dedicated responsive navigation treatment instead of a mobile bottom bar stretched across wide screens;
+- dark-mode navigation contrast and financial hierarchy are strengthened;
+- first-use state distinguishes unknown values from real zero values;
+- balance onboarding is placed beside the primary financial state on desktop;
+- monthly summaries use an explicit unknown state until enough data exists;
+- loading, empty and known-data states are visually distinct;
+- mobile keeps the existing navigation behavior and accessibility targets;
+- browser certification now builds an isolated authenticated fixture bundle, runs Playwright against it, then rebuilds a clean production bundle before deployment;
+- the production bundle never enables the authenticated E2E fixture flag.
 
 ## 1.2.2 real-life hardening
 
