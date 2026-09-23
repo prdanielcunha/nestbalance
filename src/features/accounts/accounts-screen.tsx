@@ -75,6 +75,20 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
     setRefreshKey(value=>value+1);
   }
 
+  function balanceFreshness(account:HomeAccount){
+    const timestamp=account.balanceAsOfMs;
+    if(!timestamp) return l('Atualização não informada','Update time unavailable','Actualización no informada');
+    const now=new Date();
+    const then=new Date(timestamp);
+    const sameDay=now.getFullYear()===then.getFullYear()&&now.getMonth()===then.getMonth()&&now.getDate()===then.getDate();
+    if(sameDay) return l('Atualizado agora','Updated today','Actualizado hoy');
+    const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+    const thenStart=new Date(then.getFullYear(),then.getMonth(),then.getDate()).getTime();
+    const days=Math.max(1,Math.round((todayStart-thenStart)/(24*60*60*1000)));
+    if(days===1) return l('Atualizado ontem','Updated yesterday','Actualizado ayer');
+    return l(`Há ${days} dias sem atualização`,`Not updated for ${days} days`,`Hace ${days} días sin actualizar`);
+  }
+
   function accountTypeLabel(account:HomeAccount){
     if(account.connectedProductType==='investment') return l('Investimento','Investment','Inversión');
     if(account.type==='wallet') return l('Carteira digital','Digital wallet','Billetera digital');
@@ -180,7 +194,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
                     )}</small>
                   : null}
                 <div className="account-balance-foot">
-                  <small>{account.institutionName||l('Saldo atual informado','Current balance provided','Saldo actual informado')}</small>
+                  <small>{account.institutionName?account.institutionName+' · ':''}{balanceFreshness(account)}</small>
                   {canManage&&<button type="button" onClick={()=>openBalance(account)}>{l('Atualizar','Update','Actualizar')}</button>}
                 </div>
               </article>)}
