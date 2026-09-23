@@ -94,11 +94,23 @@ jobs:
           SITE_URL="https://$FIREBASE_OFFICIAL_HOSTING_SITE.web.app"
           DOMAIN_URL="https://$NESTBALANCE_OFFICIAL_DOMAIN"
 
-          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$SITE_URL/api/healthz" | tee /tmp/site-health.json | grep -q '"ok":true'
-          grep -q '"environment":"production"' /tmp/site-health.json
+          wait_for_release() {
+            local url="$1"
+            local output="$2"
+            for attempt in {1..60}; do
+              if curl --fail --silent --show-error --location "$url/api/healthz" >"$output"; then
+                if jq -e --arg sha "$GITHUB_SHA" '.ok == true and .environment == "production" and .release == $sha' "$output" >/dev/null; then
+                  return 0
+                fi
+              fi
+              sleep 5
+            done
+            cat "$output" || true
+            return 1
+          }
 
-          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$DOMAIN_URL/api/healthz" | tee /tmp/domain-health.json | grep -q '"ok":true'
-          grep -q '"environment":"production"' /tmp/domain-health.json
+          wait_for_release "$SITE_URL" /tmp/site-health.json
+          wait_for_release "$DOMAIN_URL" /tmp/domain-health.json
 
           curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$DOMAIN_URL/" | grep -q 'NestBalance'
 
