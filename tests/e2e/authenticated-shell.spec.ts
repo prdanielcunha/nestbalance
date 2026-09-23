@@ -50,6 +50,17 @@ test('authenticated empty and read-only states remain useful',async({page})=>{
   await expect(page.locator('a.app-nav-add')).toHaveCount(0);
 });
 
+test('financial values can be hidden without losing navigation context',async({page})=>{
+  await page.goto('/?e2e=1');
+  const privacy=page.getByRole('button',{name:'Ocultar valores'});
+  await expect(privacy).toBeVisible();
+  await privacy.click();
+  await expect(page.getByRole('button',{name:'Mostrar valores'})).toBeVisible();
+  await expect(page.locator('.hero-balance>strong')).toContainText('••••');
+  await page.reload();
+  await expect(page.locator('.hero-balance>strong')).toContainText('••••');
+});
+
 test('authenticated home reflows at 200 percent zoom',async({page},testInfo)=>{
   test.skip(testInfo.project.name!=='desktop-chromium','Run the zoom gate once on desktop.');
   await page.goto('/?e2e=1');
