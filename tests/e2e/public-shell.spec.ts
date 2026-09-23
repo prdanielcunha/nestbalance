@@ -112,6 +112,9 @@ test('PWA manifest is installable and references the NestBalance icon',async({re
   expect(manifest.display).toBe('standalone');
   expect(manifest.start_url).toBe('/');
   expect(manifest.scope).toBe('/');
+  expect(manifest.share_target?.action).toBe('/share-target');
+  expect(manifest.share_target?.method).toBe('POST');
+  expect(manifest.share_target?.params?.files?.[0]?.accept).toContain('image/*');
   expect(Array.isArray(manifest.icons)).toBeTruthy();
   expect(manifest.icons.some((icon:any)=>icon.src==='/nestbalance-icon.svg'&&icon.type==='image/svg+xml')).toBeTruthy();
 });
