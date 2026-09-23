@@ -253,7 +253,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   return <main className="app-shell home-shell">
     <header className="topbar home-topbar">
       <div className="home-brand"><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div>
-      <AppNav canContribute={canContribute} desktopInline/>
+      <AppNav canContribute={canContribute} desktopInline className="home-desktop-primary-nav"/>
       <HouseholdLink detailed/>
     </header>
 
@@ -414,5 +414,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       <div className="section-title"><h2>{t.movements}</h2><span>{t.timeline}</span></div>
       {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?l('No cartão','On card','En tarjeta'):x.source==='credit_card_invoice_payment'?l('Fatura paga','Statement paid','Tarjeta pagada'):x.direction==='income'?t.moneyIn:x.direction==='transfer'?l('Transferência','Transfer','Transferencia'):l('Saiu','Money out','Salió')}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {formatMoney(x.amountMinor)}</b></article>)}</div>}
     </section>}
+
+    <AppNav canContribute={canContribute} className="home-mobile-primary-nav"/>
   </main>;
 }
