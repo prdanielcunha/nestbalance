@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useI18n } from '@/src/i18n/locale-provider';
 
-export function AppNav({canContribute=true,desktopInline=false}:{canContribute?:boolean;desktopInline?:boolean}){
+export function AppNav({canContribute=true,desktopInline=false,className=''}:{canContribute?:boolean;desktopInline?:boolean;className?:string}){
   const pathname=usePathname();
   const {t}=useI18n();
   const items=[
@@ -13,7 +13,8 @@ export function AppNav({canContribute=true,desktopInline=false}:{canContribute?:
     {href:'/pots',label:t.navPots,className:''},
     {href:'/assistant',label:t.navAssistant,className:''}
   ];
-  return <nav className={desktopInline?'app-nav desktop-inline':'app-nav'} aria-label={t.navHome?`${t.navHome} · ${t.navMovements} · ${t.navAccounts} · ${t.navPots} · ${t.navAssistant}`:'Navegação principal'}>
+  const navClassName=['app-nav',desktopInline?'desktop-inline':'',className].filter(Boolean).join(' ');
+  return <nav className={navClassName} aria-label={t.navHome?`${t.navHome} · ${t.navMovements} · ${t.navAccounts} · ${t.navPots} · ${t.navAssistant}`:'Navegação principal'}>
     <div className="app-nav-track">
       {items.slice(0,2).map(item=><Link key={item.href} href={item.href} aria-current={pathname===item.href?'page':undefined} className={`${pathname===item.href?'app-nav-link active':'app-nav-link'} ${item.className}`.trim()}>{item.label}</Link>)}
       {canContribute
