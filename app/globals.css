@@ -1720,7 +1720,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .capture-sheet{border-radius:28px 28px 0 0}
   .app-nav{width:calc(100% - 12px);bottom:max(6px,env(safe-area-inset-bottom))}
   .app-nav-track{padding:5px;border-radius:22px}
-  .app-nav-link{font-size:12px;min-height:42px;padding-inline:2px}
+  .app-nav-link{font-size:12px;min-height:44px;padding-inline:2px}
   .app-nav-add{width:54px;height:51px;border-radius:17px;margin-top:-18px}
 }
 @media(max-width:390px){
@@ -2379,3 +2379,6 @@ body.nestbalance-modal-open .scope-view-switch{
 .privacy-preference-row strong,.privacy-preference-row small{display:block}
 .privacy-preference-row strong{font-size:14px}
 .privacy-preference-row small{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.5}
+
+html[data-theme="dark"] .app-nav-add{background:#edf0f6;color:#101522}
+html[data-theme="light"] .app-nav-add{background:#0b1020;color:#fff}
