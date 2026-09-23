@@ -45,5 +45,7 @@ jobs:
           git add tests/e2e/*-snapshots
           git diff --cached --quiet && exit 0
           git commit -m "test: add authenticated visual baselines"
+          git reset --hard HEAD
+          git clean -fd
           git pull --rebase origin codex/nestbalance-analysis-upgrades-20260923
           git push origin HEAD:codex/nestbalance-analysis-upgrades-20260923
