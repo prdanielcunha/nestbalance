@@ -59,6 +59,10 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   }, []);
 
   useEffect(() => {
+    if (isE2ePreview()) {
+      setLoading(false);
+      return;
+    }
     if (!auth) {
       setLoading(false);
       return;
