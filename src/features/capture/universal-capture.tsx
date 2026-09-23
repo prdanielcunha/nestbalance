@@ -420,7 +420,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   async function tryLocalImage(activeFile:File){
     setLocalOcrPercent(1);
     try{
-      const ocr=await readImageTextLocally(activeFile,progress=>setLocalOcrPercent(progress.percent));
+      const ocr=await readImageTextLocally(activeFile,progress=>setLocalOcrPercent(progress.percent),locale);
       setLocalOcrText(ocr);
       if(!ocr.trim()){
         setNotice(l('Não consegui encontrar texto legível nessa imagem. Você pode tentar outro print ou contar o que aconteceu por texto.','I could not find readable text in this image. Try another screenshot or describe what happened in text.','No encontré texto legible en esta imagen. Prueba otra captura o describe por texto lo que pasó.'));
