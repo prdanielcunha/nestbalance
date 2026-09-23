@@ -67,6 +67,24 @@ function sharePath(id,suffix='meta'){
   return '/__nestbalance-share/'+id+'/'+suffix;
 }
 
+async function pruneShareCache(cache){
+  const keys=await cache.keys();
+  const metaKeys=keys.filter(request=>new URL(request.url).pathname.endsWith('/meta'));
+  for(const metaRequest of metaKeys){
+    try{
+      const response=await cache.match(metaRequest);
+      const meta=await response?.clone().json();
+      if(!meta?.createdAt||Date.now()-Number(meta.createdAt)>60*60*1000){
+        const parts=new URL(metaRequest.url).pathname.split('/').filter(Boolean);
+        const id=parts[1]||'';
+        if(id) await clearShare(id);
+      }
+    }catch{
+      await cache.delete(metaRequest);
+    }
+  }
+}
+
 async function receiveShare(request){
   try{
     const form=await request.formData();
@@ -76,6 +94,7 @@ async function receiveShare(request){
     const sharedUrl=String(form.get('url')||'').slice(0,2_000);
     const files=form.getAll('files').filter(value=>value instanceof File).slice(0,3);
     const cache=await caches.open(SHARE_CACHE);
+    await pruneShareCache(cache);
     const fileMeta=[];
     for(let index=0;index<files.length;index++){
       const file=files[index];
@@ -86,7 +105,7 @@ async function receiveShare(request){
         'cache-control':'no-store'
       }}));
     }
-    await cache.put(sharePath(id),new Response(JSON.stringify({title,text,url:sharedUrl,files:fileMeta}),{
+    await cache.put(sharePath(id),new Response(JSON.stringify({title,text,url:sharedUrl,files:fileMeta,createdAt:Date.now()}),{
       headers:{'content-type':'application/json','cache-control':'no-store'}
     }));
     return Response.redirect(new URL('/add?shareTarget='+encodeURIComponent(id),self.location.origin).toString(),303);
