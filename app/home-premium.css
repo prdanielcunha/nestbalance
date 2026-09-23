@@ -12,6 +12,10 @@
   .home-hero-grid{
     display:contents;
   }
+  .home-scope-copy,
+  .home-refreshing{
+    display:none;
+  }
   .home-shell .estimate-badge{
     display:none!important;
   }
