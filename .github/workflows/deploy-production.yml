@@ -192,6 +192,7 @@ jobs:
           HOSTING_URL="https://$FIREBASE_HOSTING_SITE.web.app"
           curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$HOSTING_URL/api/healthz" | tee /tmp/prod-health.json | grep -q '"ok":true'
           grep -q '"environment":"production"' /tmp/prod-health.json
+          jq -e --arg sha "$GITHUB_SHA" '.release == $sha' /tmp/prod-health.json >/dev/null
           curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$HOSTING_URL/" | grep -q 'NestBalance'
           curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$HOSTING_URL/sw.js" | grep -Fq "url.pathname.startsWith('/api/')"
           curl --fail --silent --show-error --head "$HOSTING_URL/sw.js" | tr -d '\r' | grep -Eqi '^cache-control:.*no-store'
