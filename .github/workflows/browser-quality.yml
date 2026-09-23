@@ -35,6 +35,8 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Build exported web app
+        env:
+          NEXT_PUBLIC_NESTBALANCE_E2E_MODE: "1"
         run: npm run build
 
       - name: Install Chromium
@@ -43,11 +45,11 @@ jobs:
       - name: Mobile desktop accessibility smoke
         run: npm run test:e2e
 
-      - name: Upload browser traces on failure
-        if: failure()
+      - name: Upload authenticated screenshots and browser traces
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: nestbalance-browser-artifacts
           path: test-results/
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 14
