@@ -133,6 +133,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
+  const monthHasKnownData = monthTransactions.length + currentMonthCommitments.length + viewInvoiceImports.length > 0;
   const defaultCreateScope=view==='personal'?'personal':'household';
   const viewLabel=view==='household'?l('do Lar','in Household','del Hogar'):view==='personal'?l('Pessoal','Personal','Personal'):l('na sua visão completa','in your full view','en tu vista completa');
   const spendingComparison=useMemo(()=>deriveSpendingComparison(viewTransactions,new Date()),[viewTransactions]);
@@ -249,16 +250,25 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   }
 
 
-  return <main className="app-shell">
-    <header className="topbar"><div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div><HouseholdLink/></header>
-    <ScopeViewSwitch value={view} onChange={setView}/>
+  return <main className="app-shell home-shell">
+    <header className="topbar home-topbar">
+      <div className="home-brand"><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div>
+      <AppNav canContribute={canContribute} desktopInline/>
+      <HouseholdLink/>
+    </header>
+
+    <div className="home-context-row">
+      <div className="home-scope-copy"><span>{l('Visão','View','Vista')}</span><small>{l('Escolha o que entra nesta tela.','Choose what is included on this screen.','Elige qué aparece en esta pantalla.')}</small></div>
+      <ScopeViewSwitch value={view} onChange={setView}/>
+      {loadingHome && <div className="home-refreshing" role="status"><span aria-hidden="true"/>{l('Atualizando seus dados…','Refreshing your data…','Actualizando tus datos…')}</div>}
+    </div>
 
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
-    {loadingHome && <div className="home-loading-line" aria-label={l('Atualizando visão financeira','Refreshing financial view','Actualizando visión financiera')} />}
-    <section className="hero-balance">
-      <span>{viewAccounts.length ? `${t.availableNow} ${viewLabel}` : l(`saldo ${viewLabel}`,`balance ${viewLabel}`,`saldo ${viewLabel}`)}</span>
+    <div className={`home-hero-grid ${viewAccounts.length===0?'is-empty':'has-balance'}`}>
+    <section className="hero-balance home-balance-card">
+      <span>{`${t.availableNow} ${viewLabel}`}</span>
       <strong>{viewAccounts.length ? formatMoney(snapshot.availableMinor) : '—'}</strong>
-      <p>{viewAccounts.length ? (snapshot.futureCommitmentsMinor > 0 ? l(`${formatMoney(snapshot.futureCommitmentsMinor)} ainda estão comprometidos ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} is still committed ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} todavía está comprometido ${viewLabel}.`) : l(`Sem contas pendentes ${viewLabel}.`,`No pending bills ${viewLabel}.`,`Sin cuentas pendientes ${viewLabel}.`)) : l(`Ainda não há saldo ${viewLabel}.`,`There is no balance yet ${viewLabel}.`,`Todavía no hay saldo ${viewLabel}.`)}</p>
+      <p>{viewAccounts.length ? (snapshot.futureCommitmentsMinor > 0 ? l(`${formatMoney(snapshot.futureCommitmentsMinor)} ainda estão comprometidos ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} is still committed ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} todavía está comprometido ${viewLabel}.`) : l(`Sem contas pendentes ${viewLabel}.`,`No pending bills ${viewLabel}.`,`Sin cuentas pendientes ${viewLabel}.`)) : l('Ainda não sabemos quanto você tem disponível. Adicione uma conta, saldo ou envie um print para começar.','We do not know how much you have available yet. Add an account, balance, or send a screenshot to get started.','Aún no sabemos cuánto tienes disponible. Agrega una cuenta, saldo o envía una captura para comenzar.')}</p>
       {viewAccounts.length>0&&<details className="balance-explanation">
         <summary>{l('Como calculamos','How this is calculated','Cómo lo calculamos')}</summary>
         <div className="balance-explanation-grid">
@@ -302,6 +312,8 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         )}</p>}
       </details>}
     </section>
+    {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
+    </div>
 
     {attentionItems.length>0&&<section className="attention-section" aria-labelledby="attention-title">
       <div className="section-title">
@@ -331,8 +343,6 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       {attentionError&&<p className="error-copy attention-error" role="alert">{attentionError}</p>}
     </section>}
 
-    {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
-
     {viewAccounts.length>0&&!hasData&&canContribute&&<section className="first-use-guide">
       <div>
         <span className="section-kicker">{l('PRÓXIMO PASSO','NEXT STEP','SIGUIENTE PASO')}</span>
@@ -357,12 +367,17 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     <MonthlyPayments householdId={householdId} commitments={viewCommitments} canContribute={canContribute} onChanged={()=>void refreshHome(true)} />
 
     <section className="month-section">
-      <div className="section-title"><h2>{t.month}</h2></div>
-      <div className="month-grid">
-        <div><span>{t.moneyIn}</span><strong>{formatMoney(monthTransactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0))}</strong></div>
-        <div><span>{t.moneyOut}</span><strong>{formatMoney(snapshot.paidExpenseMinor)}</strong></div>
-        <div><span>{t.moneyToGo}</span><strong>{formatMoney(snapshot.futureCommitmentsMinor)}</strong></div>
-        <div className="projected"><span>{t.projectedLeft}</span><strong>{viewAccounts.length ? formatMoney(snapshot.projectedRemainderMinor) : '—'}</strong></div>
+      <div className="section-title">
+        <div>
+          <h2>{t.month}</h2>
+          {!monthHasKnownData&&<span>{l('Ainda sem dados suficientes para resumir este mês.','Not enough data to summarize this month yet.','Aún no hay datos suficientes para resumir este mes.')}</span>}
+        </div>
+      </div>
+      <div className={monthHasKnownData?'month-grid':'month-grid month-grid-unknown'}>
+        <div><span>{t.moneyIn}</span><strong>{monthHasKnownData?formatMoney(monthTransactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)):'—'}</strong></div>
+        <div><span>{t.moneyOut}</span><strong>{monthHasKnownData?formatMoney(snapshot.paidExpenseMinor):'—'}</strong></div>
+        <div><span>{t.moneyToGo}</span><strong>{monthHasKnownData?formatMoney(snapshot.futureCommitmentsMinor):'—'}</strong></div>
+        <div className="projected"><span>{t.projectedLeft}{monthHasKnownData&&<small className="estimate-badge">{l('estimado','estimate','estimado')}</small>}</span><strong>{monthHasKnownData&&viewAccounts.length ? formatMoney(snapshot.projectedRemainderMinor) : '—'}</strong></div>
       </div>
     </section>
 
@@ -376,7 +391,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
     />
 
-    <section className="future-section">
+    {hasData&&<section className="future-section">
       <div className="section-title"><h2>{t.nextMonths}</h2><span>{t.committed}</span></div>
       <div className="future-grid">
         {futureMonths.map(item=>{
@@ -393,13 +408,11 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         <div><span>{t.repeatingBills}</span><strong>{formatMoney(expandedProjection.fixedMinor)}</strong></div>
         <p>{l('É uma projeção com o que já foi confirmado. O NestBalance não presume recorrência só porque existe uma data de vencimento.','This forecast uses only confirmed information. NestBalance does not assume recurrence just because a due date exists.','Esta previsión usa solo información confirmada. NestBalance no supone recurrencia solo porque exista una fecha de vencimiento.')}</p>
       </div>}
-    </section>
+    </section>}
 
-    <section className="timeline-section">
+    {hasData&&<section className="timeline-section">
       <div className="section-title"><h2>{t.movements}</h2><span>{t.timeline}</span></div>
       {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?l('No cartão','On card','En tarjeta'):x.source==='credit_card_invoice_payment'?l('Fatura paga','Statement paid','Tarjeta pagada'):x.direction==='income'?t.moneyIn:x.direction==='transfer'?l('Transferência','Transfer','Transferencia'):l('Saiu','Money out','Salió')}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {formatMoney(x.amountMinor)}</b></article>)}</div>}
-    </section>
-
-    <AppNav canContribute={canContribute}/>
+    </section>}
   </main>;
 }
