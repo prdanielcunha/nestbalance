@@ -17,6 +17,7 @@ import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallme
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 import { dismissAttention } from '@/src/lib/repositories/attention';
 import { isDismissibleAttentionKind } from '@/src/core/attention';
+import { useHouseholdRevision } from '@/src/features/realtime/use-household-revision';
 
 
 export function HomeScreen({ householdId, role }: { householdId: string; role: HouseholdRole }) {
@@ -70,6 +71,8 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     document.addEventListener('visibilitychange',onVisibility);
     return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
   }, [householdId, accountCreated, cardCreated]);
+
+  useHouseholdRevision(householdId,()=>refreshHome(true));
 
   const viewAccounts=useMemo(()=>accounts.filter(item=>inFinancialView(item.scope,view)),[accounts,view]);
   const viewCards=useMemo(()=>cards.filter(item=>inFinancialView(item.scope,view)),[cards,view]);
