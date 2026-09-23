@@ -14,7 +14,11 @@ for(const route of authenticatedRoutes){
   test('authenticated '+route.name+' is responsive, accessible and visually captured',async({page},testInfo)=>{
     await page.goto(route.path);
     await expect(page.locator('main')).toBeVisible();
-    await expect(page.getByText('NestBalance',{exact:true}).first()).toBeVisible();
+    if(route.name==='capture'){
+      await expect(page.getByRole('dialog',{name:'Jogue aqui. O NestBalance organiza.'})).toBeVisible();
+    }else{
+      await expect(page.getByText('NestBalance',{exact:true}).first()).toBeVisible();
+    }
 
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
@@ -35,7 +39,7 @@ test('authenticated home exposes finance inbox, spendable money and balance fres
   await page.goto('/?e2e=1');
   await expect(page.getByText('Disponível para gastar')).toBeVisible();
   await expect(page.getByText('INBOX FINANCEIRA')).toBeVisible();
-  await expect(page.getByText(/item(?:s)? para conferir/i)).toBeVisible();
+  await expect(page.getByRole('region',{name:/\d+ (?:item|itens) para conferir/i})).toBeVisible();
 
   await page.goto('/accounts?e2e=1');
   await expect(page.getByText(/Atualizado agora|Há 8 dias sem atualização/).first()).toBeVisible();
