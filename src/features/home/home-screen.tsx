@@ -254,7 +254,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     <header className="topbar home-topbar">
       <div className="home-brand"><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div>
       <AppNav canContribute={canContribute} desktopInline/>
-      <HouseholdLink/>
+      <HouseholdLink detailed/>
     </header>
 
     <div className="home-context-row">
@@ -268,7 +268,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     <section className="hero-balance home-balance-card">
       <span>{`${t.availableNow} ${viewLabel}`}</span>
       <strong>{viewAccounts.length ? formatMoney(snapshot.availableMinor) : '—'}</strong>
-      <p>{viewAccounts.length ? (snapshot.futureCommitmentsMinor > 0 ? l(`${formatMoney(snapshot.futureCommitmentsMinor)} ainda estão comprometidos ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} is still committed ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} todavía está comprometido ${viewLabel}.`) : l(`Sem contas pendentes ${viewLabel}.`,`No pending bills ${viewLabel}.`,`Sin cuentas pendientes ${viewLabel}.`)) : l('Ainda não sabemos quanto você tem disponível. Adicione uma conta, saldo ou envie um print para começar.','We do not know how much you have available yet. Add an account, balance, or send a screenshot to get started.','Aún no sabemos cuánto tienes disponible. Agrega una cuenta, saldo o envía una captura para comenzar.')}</p>
+      <p>{viewAccounts.length ? (snapshot.futureCommitmentsMinor > 0 ? l(`${formatMoney(snapshot.futureCommitmentsMinor)} ainda estão comprometidos ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} is still committed ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} todavía está comprometido ${viewLabel}.`) : l(`Sem contas pendentes ${viewLabel}.`,`No pending bills ${viewLabel}.`,`Sin cuentas pendientes ${viewLabel}.`)) : l('Ainda não há saldo informado nesta visão. Adicione uma conta, saldo ou envie um print para começar.','There is no balance entered in this view yet. Add an account, balance, or send a screenshot to get started.','Aún no hay saldo informado en esta vista. Agrega una cuenta, saldo o envía una captura para comenzar.')}</p>
       {viewAccounts.length>0&&<details className="balance-explanation">
         <summary>{l('Como calculamos','How this is calculated','Cómo lo calculamos')}</summary>
         <div className="balance-explanation-grid">
