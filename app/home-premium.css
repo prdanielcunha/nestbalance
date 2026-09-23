@@ -1,335 +1,28 @@
 /*
- * NestBalance — premium desktop Home pass
- * Keeps the mobile bottom navigation, turns Home into a true desktop layout,
- * strengthens dark-mode contrast, and removes "unknown = R$ 0,00" ambiguity.
+ * NestBalance — premium desktop Home pass.
+ * Mobile intentionally keeps the established visual contract; this file only
+ * promotes Home into a desktop-specific composition from 840px upward.
  */
 
-/* Bottom navigation must remain readable everywhere, especially in dark mode. */
-html[data-theme="dark"] .app-nav-track{
-  border-color:rgba(255,255,255,.10);
-  background:rgba(17,22,35,.94);
-  box-shadow:0 20px 58px rgba(0,0,0,.40),inset 0 1px 0 rgba(255,255,255,.045);
-}
-html[data-theme="dark"] .app-nav-link{
-  color:#b6bfd2;
-}
-html[data-theme="dark"] .app-nav-link:hover{
-  color:#f4f6fb;
-  background:rgba(255,255,255,.055);
-}
-html[data-theme="dark"] .app-nav-link.active{
-  color:#f7f8fc;
-  background:#242b3d;
-  box-shadow:0 6px 20px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.045);
-}
-html[data-theme="dark"] .app-nav-add{
-  background:#f2f4f8;
-  color:#111727;
-  box-shadow:0 16px 38px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.55);
-}
-html[data-theme="dark"] .app-nav-add span{
-  color:#111727;
+.household-label-long{display:none}
+
+@media(max-width:839px){
+  .home-context-row,
+  .home-hero-grid{
+    display:contents;
+  }
+  .home-shell .estimate-badge{
+    display:none!important;
+  }
 }
 
-/* Home header + context */
-.home-shell{
-  --home-surface-quiet:color-mix(in srgb,var(--surface-strong) 76%,transparent);
-  --home-surface-raised:color-mix(in srgb,var(--surface-strong) 93%,transparent);
-}
-.home-topbar .home-brand{
-  min-width:0;
-  display:grid;
-  gap:2px;
-}
-.home-context-row{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  min-height:48px;
-  margin:14px 0 8px;
-}
-.home-scope-copy{
-  display:grid;
-  gap:2px;
-  min-width:160px;
-}
-.home-scope-copy>span{
-  color:var(--ink);
-  font-size:12px;
-  font-weight:850;
-}
-.home-scope-copy>small{
-  color:var(--muted);
-  font-size:11px;
-  line-height:1.35;
-}
-.home-context-row .scope-view-switch{
-  margin:0;
-}
-.home-refreshing{
-  margin-left:auto;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  min-height:34px;
-  padding:0 11px;
-  border-radius:999px;
-  background:color-mix(in srgb,var(--surface-strong) 72%,transparent);
-  color:var(--muted);
-  font-size:11px;
-  font-weight:700;
-  white-space:nowrap;
-}
-.home-refreshing>span{
-  width:7px;
-  height:7px;
-  flex:0 0 auto;
-  border-radius:50%;
-  background:var(--iris);
-  box-shadow:0 0 0 4px rgba(94,106,210,.11);
-  animation:homePulse 1.25s ease-in-out infinite;
-}
-@keyframes homePulse{
-  50%{opacity:.42;transform:scale(.82)}
-}
-
-/* The Home hero is a deliberate desktop composition, not a stretched mobile stack. */
-.home-hero-grid{
-  display:grid;
-  gap:18px;
-  margin:18px 0 28px;
-}
-.home-hero-grid.is-empty{
-  grid-template-columns:minmax(0,.88fr) minmax(380px,1.12fr);
-  align-items:stretch;
-}
-.home-hero-grid.has-balance{
-  grid-template-columns:1fr;
-}
-.home-balance-card{
-  min-width:0;
-  min-height:236px;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  margin:0;
-  padding:28px 30px;
-  border-radius:28px;
-  background:
-    radial-gradient(circle at 90% 12%,rgba(94,106,210,.12),transparent 34%),
-    linear-gradient(145deg,color-mix(in srgb,var(--surface-strong) 96%,transparent),color-mix(in srgb,var(--surface-strong) 76%,var(--paper)));
-  box-shadow:0 16px 48px rgba(17,23,43,.055);
-}
-.home-balance-card::after{
-  display:none;
-}
-.home-balance-card>span{
-  color:var(--muted);
-  font-size:13px;
-  font-weight:750;
-}
-.home-balance-card>strong{
-  margin-top:10px;
-  font-size:clamp(48px,6.3vw,76px);
-  line-height:.96;
-  letter-spacing:-.062em;
-}
-.home-balance-card>p{
-  max-width:640px;
-  margin:14px 0 0;
-  color:var(--muted);
-  font-size:14px;
-  line-height:1.55;
-}
-.home-hero-grid.is-empty .home-balance-card>strong{
-  color:color-mix(in srgb,var(--ink) 72%,var(--muted));
-}
-.home-hero-grid .first-money-card{
-  height:100%;
-  margin:0;
-  padding:26px;
-  grid-template-columns:1fr;
-  align-content:center;
-  align-items:start;
-  gap:20px;
-  border:0;
-  border-radius:28px;
-  background:
-    radial-gradient(circle at 100% 0,rgba(94,106,210,.13),transparent 42%),
-    color-mix(in srgb,var(--surface-strong) 94%,transparent);
-  box-shadow:0 16px 48px rgba(17,23,43,.055);
-}
-.home-hero-grid .first-money-card h2{
-  max-width:520px;
-  margin-bottom:9px;
-  font-size:clamp(22px,2.2vw,28px);
-  line-height:1.08;
-}
-.home-hero-grid .first-money-card p{
-  max-width:580px;
-  font-size:13px;
-}
-.home-hero-grid .first-money-actions{
-  width:100%;
-  display:flex;
-  flex-wrap:wrap;
-  gap:9px;
-}
-.home-hero-grid .first-money-actions>*{
-  min-height:46px;
-}
-.home-hero-grid .first-money-actions .primary-button{
-  padding-inline:18px;
-}
-.home-hero-grid .first-money-actions .ghost-button{
-  padding-inline:16px;
-}
-
-/* Month summary: surfaces and hierarchy instead of a large bordered table. */
-.home-shell .month-section{
-  margin-top:30px;
-}
-.home-shell .month-section .section-title{
-  margin-bottom:12px;
-}
-.home-shell .month-section .section-title>div{
-  display:grid;
-  gap:4px;
-}
-.home-shell .month-grid{
-  gap:10px;
-  overflow:visible;
-  border:0;
-  background:transparent;
-  border-radius:0;
-}
-.home-shell .month-grid>div{
-  min-height:104px;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  padding:19px 20px;
-  border:0;
-  border-radius:20px;
-  background:var(--home-surface-raised);
-  box-shadow:0 10px 30px rgba(17,23,43,.045);
-}
-.home-shell .month-grid .projected{
-  background:
-    radial-gradient(circle at 95% 5%,rgba(94,106,210,.13),transparent 48%),
-    var(--home-surface-raised);
-}
-.home-shell .month-grid span{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  margin-bottom:7px;
-  color:var(--muted);
-  font-size:12px;
-}
-.home-shell .month-grid strong{
-  font-size:22px;
-  letter-spacing:-.03em;
-}
-.home-shell .month-grid-unknown strong{
-  color:color-mix(in srgb,var(--muted) 78%,transparent);
-}
-.estimate-badge{
-  display:inline-flex!important;
-  align-items:center;
-  width:max-content;
-  margin:0!important;
-  padding:3px 6px;
-  border-radius:999px;
-  background:rgba(94,106,210,.10);
-  color:var(--iris)!important;
-  font-size:9px!important;
-  font-weight:850!important;
-  line-height:1!important;
-  letter-spacing:.02em;
-  text-transform:uppercase;
-}
-
-/* Section contrast and calmer surfaces. */
-.home-shell .section-title span,
-.home-shell .section-title small{
-  color:color-mix(in srgb,var(--muted) 92%,var(--ink));
-}
-.home-shell .cards-section,
-.home-shell .future-section,
-.home-shell .timeline-section,
-.home-shell .monthly-payments-section{
-  margin-top:34px;
-}
-.home-shell .card-empty{
-  border:0;
-  background:
-    radial-gradient(circle at 100% 0,rgba(94,106,210,.10),transparent 38%),
-    var(--home-surface-raised);
-  box-shadow:0 12px 34px rgba(17,23,43,.045);
-}
-.home-shell .card-empty>small{
-  font-size:12px;
-}
-.home-shell .future-card{
-  border:0;
-  background:var(--home-surface-raised);
-  box-shadow:0 9px 28px rgba(17,23,43,.04);
-}
-.home-shell .timeline{
-  border-top-color:color-mix(in srgb,var(--line) 62%,transparent);
-}
-
-/* Dark Home surfaces are intentionally authored, not mechanically inverted. */
-html[data-theme="dark"] .home-shell{
-  --home-surface-quiet:rgba(15,20,33,.72);
-  --home-surface-raised:rgba(18,24,39,.92);
-}
-html[data-theme="dark"] .home-balance-card{
-  background:
-    radial-gradient(circle at 90% 10%,rgba(94,106,210,.18),transparent 34%),
-    linear-gradient(145deg,rgba(22,28,45,.96),rgba(13,18,31,.94));
-  box-shadow:0 20px 58px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.025);
-}
-html[data-theme="dark"] .home-hero-grid .first-money-card{
-  background:
-    radial-gradient(circle at 100% 0,rgba(94,106,210,.17),transparent 42%),
-    rgba(17,23,38,.93);
-  box-shadow:0 20px 58px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.025);
-}
-html[data-theme="dark"] .home-shell .month-grid>div,
-html[data-theme="dark"] .home-shell .card-empty,
-html[data-theme="dark"] .home-shell .future-card{
-  box-shadow:0 12px 34px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.022);
-}
-html[data-theme="dark"] .home-shell .scope-view-switch{
-  border-color:rgba(255,255,255,.085);
-  background:rgba(13,18,30,.76);
-}
-html[data-theme="dark"] .home-shell .scope-view-switch button{
-  color:#aeb7c9;
-}
-html[data-theme="dark"] .home-shell .scope-view-switch button span{
-  color:#9da8bc;
-}
-html[data-theme="dark"] .home-shell .scope-view-switch button.active{
-  color:#f4f6fb;
-  background:#20273a;
-  box-shadow:0 4px 14px rgba(0,0,0,.22);
-}
-html[data-theme="dark"] .home-shell .scope-view-switch button.active span{
-  color:#c3cada;
-}
-html[data-theme="dark"] .home-refreshing{
-  background:rgba(19,25,40,.74);
-  color:#aeb7c9;
-}
-
-/* True desktop navigation for Home. The mobile bottom bar stays untouched. */
 @media(min-width:840px){
   .home-shell{
+    --home-surface-raised:color-mix(in srgb,var(--surface-strong) 93%,transparent);
     padding-bottom:76px;
   }
+
+  /* Header: brand + real desktop navigation + household access. */
   .home-topbar{
     display:grid;
     grid-template-columns:minmax(0,1fr) auto;
@@ -338,6 +31,14 @@ html[data-theme="dark"] .home-refreshing{
     padding-top:12px;
     padding-bottom:12px;
   }
+  .home-topbar .home-brand{
+    min-width:0;
+    display:grid;
+    gap:2px;
+  }
+  .home-topbar .household-label-short{display:none}
+  .home-topbar .household-label-long{display:inline}
+
   .home-topbar .app-nav.desktop-inline{
     position:static;
     z-index:auto;
@@ -357,7 +58,7 @@ html[data-theme="dark"] .home-refreshing{
     padding:4px;
     border:1px solid color-mix(in srgb,var(--line) 75%,transparent);
     border-radius:17px;
-    background:color-mix(in srgb,var(--surface-strong) 70%,transparent);
+    background:color-mix(in srgb,var(--surface-strong) 72%,transparent);
     box-shadow:none;
     backdrop-filter:blur(18px) saturate(1.18);
     -webkit-backdrop-filter:blur(18px) saturate(1.18);
@@ -369,6 +70,10 @@ html[data-theme="dark"] .home-refreshing{
     color:color-mix(in srgb,var(--muted) 88%,var(--ink));
     font-size:12px;
     font-weight:780;
+  }
+  .home-topbar .app-nav.desktop-inline .app-nav-link:hover{
+    color:var(--ink);
+    background:color-mix(in srgb,var(--surface-strong) 82%,transparent);
   }
   .home-topbar .app-nav.desktop-inline .app-nav-link.active{
     color:var(--ink);
@@ -394,16 +99,306 @@ html[data-theme="dark"] .home-refreshing{
     margin:0;
     font-size:12px;
   }
-  html[data-theme="dark"] .home-topbar .app-nav.desktop-inline .app-nav-track{
-    border-color:rgba(255,255,255,.075);
-    background:rgba(16,21,34,.74);
+
+  /* View selector gains meaning instead of floating without context. */
+  .home-context-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    min-height:48px;
+    margin:15px 0 8px;
   }
-  html[data-theme="dark"] .home-topbar .app-nav.desktop-inline .app-nav-link{
+  .home-scope-copy{
+    display:grid;
+    gap:2px;
+    min-width:166px;
+  }
+  .home-scope-copy>span{
+    color:var(--ink);
+    font-size:12px;
+    font-weight:850;
+  }
+  .home-scope-copy>small{
+    color:var(--muted);
+    font-size:11px;
+    line-height:1.35;
+  }
+  .home-context-row .scope-view-switch{
+    margin:0;
+  }
+  .home-refreshing{
+    margin-left:auto;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:34px;
+    padding:0 11px;
+    border-radius:999px;
+    background:color-mix(in srgb,var(--surface-strong) 72%,transparent);
+    color:var(--muted);
+    font-size:11px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .home-refreshing>span{
+    width:7px;
+    height:7px;
+    flex:0 0 auto;
+    border-radius:50%;
+    background:var(--iris);
+    box-shadow:0 0 0 4px rgba(94,106,210,.11);
+    animation:homePulse 1.25s ease-in-out infinite;
+  }
+
+  /* Desktop hero: balance and first action share the first viewport. */
+  .home-hero-grid{
+    display:grid;
+    gap:18px;
+    margin:18px 0 28px;
+  }
+  .home-hero-grid.is-empty{
+    grid-template-columns:minmax(0,.88fr) minmax(380px,1.12fr);
+    align-items:stretch;
+  }
+  .home-hero-grid.has-balance{
+    grid-template-columns:1fr;
+  }
+  .home-balance-card{
+    min-width:0;
+    min-height:236px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    margin:0;
+    padding:28px 30px;
+    border-radius:28px;
+    background:
+      radial-gradient(circle at 90% 12%,rgba(94,106,210,.12),transparent 34%),
+      linear-gradient(145deg,color-mix(in srgb,var(--surface-strong) 96%,transparent),color-mix(in srgb,var(--surface-strong) 76%,var(--paper)));
+    box-shadow:0 16px 48px rgba(17,23,43,.055);
+  }
+  .home-balance-card::after{display:none}
+  .home-balance-card>span{
+    color:var(--muted);
+    font-size:13px;
+    font-weight:750;
+  }
+  .home-balance-card>strong{
+    margin-top:10px;
+    font-size:clamp(48px,6.3vw,76px);
+    line-height:.96;
+    letter-spacing:-.062em;
+  }
+  .home-balance-card>p{
+    max-width:640px;
+    margin:14px 0 0;
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.55;
+  }
+  .home-hero-grid.is-empty .home-balance-card>strong{
+    color:color-mix(in srgb,var(--ink) 72%,var(--muted));
+  }
+  .home-hero-grid .first-money-card{
+    height:100%;
+    margin:0;
+    padding:26px;
+    grid-template-columns:1fr;
+    align-content:center;
+    align-items:start;
+    gap:20px;
+    border:0;
+    border-radius:28px;
+    background:
+      radial-gradient(circle at 100% 0,rgba(94,106,210,.13),transparent 42%),
+      color-mix(in srgb,var(--surface-strong) 94%,transparent);
+    box-shadow:0 16px 48px rgba(17,23,43,.055);
+  }
+  .home-hero-grid .first-money-card h2{
+    max-width:520px;
+    margin-bottom:9px;
+    font-size:clamp(22px,2.2vw,28px);
+    line-height:1.08;
+  }
+  .home-hero-grid .first-money-card p{
+    max-width:580px;
+    font-size:13px;
+  }
+  .home-hero-grid .first-money-actions{
+    width:100%;
+    display:flex;
+    flex-wrap:wrap;
+    gap:9px;
+  }
+  .home-hero-grid .first-money-actions>*{
+    min-height:46px;
+  }
+  .home-hero-grid .first-money-actions .primary-button{
+    padding-inline:18px;
+  }
+  .home-hero-grid .first-money-actions .ghost-button{
+    padding-inline:16px;
+  }
+
+  /* Month: no more bordered spreadsheet strip, and unknown is not zero. */
+  .home-shell .month-section{
+    margin-top:30px;
+  }
+  .home-shell .month-section .section-title{
+    margin-bottom:12px;
+  }
+  .home-shell .month-section .section-title>div{
+    display:grid;
+    gap:4px;
+  }
+  .home-shell .month-grid{
+    gap:10px;
+    overflow:visible;
+    border:0;
+    background:transparent;
+    border-radius:0;
+  }
+  .home-shell .month-grid>div{
+    min-height:104px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:19px 20px;
+    border:0;
+    border-radius:20px;
+    background:var(--home-surface-raised);
+    box-shadow:0 10px 30px rgba(17,23,43,.045);
+  }
+  .home-shell .month-grid .projected{
+    background:
+      radial-gradient(circle at 95% 5%,rgba(94,106,210,.13),transparent 48%),
+      var(--home-surface-raised);
+  }
+  .home-shell .month-grid span{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    margin-bottom:7px;
+    color:var(--muted);
+    font-size:12px;
+  }
+  .home-shell .month-grid strong{
+    font-size:22px;
+    letter-spacing:-.03em;
+  }
+  .home-shell .month-grid-unknown strong{
+    color:color-mix(in srgb,var(--muted) 78%,transparent);
+  }
+  .estimate-badge{
+    display:inline-flex!important;
+    align-items:center;
+    width:max-content;
+    margin:0!important;
+    padding:3px 6px;
+    border-radius:999px;
+    background:rgba(94,106,210,.10);
+    color:var(--iris)!important;
+    font-size:9px!important;
+    font-weight:850!important;
+    line-height:1!important;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+  }
+
+  /* Calmer hierarchy: fewer outlines, more space and depth. */
+  .home-shell .section-title span,
+  .home-shell .section-title small{
+    color:color-mix(in srgb,var(--muted) 92%,var(--ink));
+  }
+  .home-shell .cards-section,
+  .home-shell .future-section,
+  .home-shell .timeline-section,
+  .home-shell .monthly-payments-section{
+    margin-top:34px;
+  }
+  .home-shell .card-empty{
+    border:0;
+    background:
+      radial-gradient(circle at 100% 0,rgba(94,106,210,.10),transparent 38%),
+      var(--home-surface-raised);
+    box-shadow:0 12px 34px rgba(17,23,43,.045);
+  }
+  .home-shell .future-card{
+    border:0;
+    background:var(--home-surface-raised);
+    box-shadow:0 9px 28px rgba(17,23,43,.04);
+  }
+  .home-shell .timeline{
+    border-top-color:color-mix(in srgb,var(--line) 62%,transparent);
+  }
+
+  /* Authored dark mode for the new desktop surfaces. */
+  html[data-theme="dark"] .home-shell{
+    --home-surface-raised:rgba(18,24,39,.92);
+  }
+  html[data-theme="dark"] .home-balance-card{
+    background:
+      radial-gradient(circle at 90% 10%,rgba(94,106,210,.18),transparent 34%),
+      linear-gradient(145deg,rgba(22,28,45,.96),rgba(13,18,31,.94));
+    box-shadow:0 20px 58px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.025);
+  }
+  html[data-theme="dark"] .home-hero-grid .first-money-card{
+    background:
+      radial-gradient(circle at 100% 0,rgba(94,106,210,.17),transparent 42%),
+      rgba(17,23,38,.93);
+    box-shadow:0 20px 58px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.025);
+  }
+  html[data-theme="dark"] .home-shell .month-grid>div,
+  html[data-theme="dark"] .home-shell .card-empty,
+  html[data-theme="dark"] .home-shell .future-card{
+    box-shadow:0 12px 34px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.022);
+  }
+  html[data-theme="dark"] .home-shell .scope-view-switch{
+    border-color:rgba(255,255,255,.085);
+    background:rgba(13,18,30,.76);
+  }
+  html[data-theme="dark"] .home-shell .scope-view-switch button{
     color:#aeb7c9;
   }
+  html[data-theme="dark"] .home-shell .scope-view-switch button span{
+    color:#9da8bc;
+  }
+  html[data-theme="dark"] .home-shell .scope-view-switch button.active{
+    color:#f4f6fb;
+    background:#20273a;
+    box-shadow:0 4px 14px rgba(0,0,0,.22);
+  }
+  html[data-theme="dark"] .home-shell .scope-view-switch button.active span{
+    color:#c3cada;
+  }
+  html[data-theme="dark"] .home-refreshing{
+    background:rgba(19,25,40,.74);
+    color:#aeb7c9;
+  }
+  html[data-theme="dark"] .home-topbar .app-nav.desktop-inline .app-nav-track{
+    border-color:rgba(255,255,255,.075);
+    background:rgba(16,21,34,.88);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+  }
+  html[data-theme="dark"] .home-topbar .app-nav.desktop-inline .app-nav-link{
+    color:#b7c0d2;
+  }
+  html[data-theme="dark"] .home-topbar .app-nav.desktop-inline .app-nav-link:hover{
+    color:#f4f6fb;
+    background:rgba(255,255,255,.05);
+  }
   html[data-theme="dark"] .home-topbar .app-nav.desktop-inline .app-nav-link.active{
-    color:#f5f7fb;
+    color:#f7f8fc;
     background:#242b3d;
+    box-shadow:0 5px 18px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+  html[data-theme="dark"] .home-topbar .app-nav.desktop-inline .app-nav-add{
+    background:#f1f3f8;
+    color:#111727;
+    box-shadow:0 10px 24px rgba(0,0,0,.24);
+  }
+  html[data-theme="dark"] .home-topbar .app-nav.desktop-inline .app-nav-add span{
+    color:#111727;
   }
 }
 
@@ -424,7 +419,7 @@ html[data-theme="dark"] .home-refreshing{
   }
 }
 
-@media(max-width:960px){
+@media(min-width:840px) and (max-width:960px){
   .home-hero-grid.is-empty{
     grid-template-columns:1fr;
   }
@@ -433,59 +428,10 @@ html[data-theme="dark"] .home-refreshing{
   }
 }
 
-@media(max-width:839px){
-  .home-context-row{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:8px;
-    margin:10px 0 2px;
-  }
-  .home-scope-copy{
-    display:none;
-  }
-  .home-context-row .scope-view-switch{
-    width:100%;
-  }
-  .home-refreshing{
-    margin:0;
-    width:max-content;
-  }
-  .home-hero-grid{
-    margin-top:10px;
-    gap:12px;
-  }
-  .home-balance-card{
-    min-height:0;
-    padding:25px 20px;
-    border-radius:24px;
-  }
-  .home-balance-card>strong{
-    font-size:clamp(44px,14vw,66px);
-  }
-  .home-hero-grid .first-money-card{
-    padding:20px;
-    border-radius:24px;
-  }
-  .home-shell .month-grid{
-    grid-template-columns:1fr 1fr;
-  }
-}
-
-@media(max-width:520px){
-  .home-shell .month-grid{
-    gap:8px;
-  }
-  .home-shell .month-grid>div{
-    min-height:96px;
-    padding:16px;
-  }
-  .home-shell .month-grid strong{
-    font-size:19px;
-  }
+@keyframes homePulse{
+  50%{opacity:.42;transform:scale(.82)}
 }
 
 @media(prefers-reduced-motion:reduce){
-  .home-refreshing>span{
-    animation:none;
-  }
+  .home-refreshing>span{animation:none}
 }
