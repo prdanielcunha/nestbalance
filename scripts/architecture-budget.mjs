@@ -28,11 +28,6 @@ for(const path of roots.flatMap(files)){
     console.log('[architecture-budget] legacy debt: '+path+': '+lines+'/'+allowed);
   }
 }
-if(failed){
-  console.error('[architecture-budget] Split the component or reduce an existing legacy ceiling; do not grow component debt.');
-  process.exit(1);
-}
-
 const cssLayers=['app/tokens.css','app/primitives.css','app/patterns.css'];
 for(const path of cssLayers){
   if(!existsSync(path)){
@@ -47,4 +42,9 @@ if(existsSync('app/globals.css')){
     console.error('[architecture-budget] app/globals.css: '+globalLines+' lines > '+globalLimit+'; move styles into tokens/primitives/patterns/features.');
     failed=true;
   }
+}
+
+if(failed){
+  console.error('[architecture-budget] Split oversized feature code or move legacy CSS into the defined layers; do not grow architecture debt.');
+  process.exit(1);
 }
