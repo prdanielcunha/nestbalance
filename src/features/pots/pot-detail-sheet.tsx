@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { SavingsPotAutomationKind, SavingsPotAutomationMode, SavingsPotFrequency } from '@/src/core/savings-pot-automation';
 import { savingsPotGoalPace } from '@/src/core/savings-pot-goal';
 import { SavingsPotCover } from '@/src/features/pots/pot-cover';
@@ -50,6 +51,7 @@ export function PotDetailSheet({
   onArchive:()=>void|Promise<void>;
 }){
   const {locale,intlLocale,formatMoney,formatDate}=useI18n();
+  const [confirmAutomation,setConfirmAutomation]=useState(false);
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const pace=savingsPotGoalPace(selected.balanceMinor,selected.goalMinor,selected.targetDate);
   const formatInput=(minor:number)=>(minor/100).toLocaleString(intlLocale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
@@ -102,7 +104,13 @@ export function PotDetailSheet({
                       ? <div className="pot-automation-explainer"><strong>{l('Os centavos viram progresso.','Your cents become progress.','Tus centavos se convierten en progreso.')}</strong><span>{l('Exemplo: ao registrar um gasto de R$ 12,37, o NestBalance acrescenta R$ 0,63 ao acompanhamento deste cofrinho. Nada é debitado do banco.','Example: when you record a R$ 12.37 expense, NestBalance adds R$ 0.63 to this savings pot tracking. Nothing is debited from your bank.','Ejemplo: al registrar un gasto de R$ 12,37, NestBalance agrega R$ 0,63 al seguimiento de esta alcancía. No se debita nada del banco.')}</span></div>
                       : <><div className="pot-mode-tabs"><button type="button" className={automationMode==='fixed'?'active':''} onClick={()=>onAutomationModeChange('fixed')}>{l('Valor fixo','Fixed amount','Valor fijo')}</button><button type="button" className={automationMode==='percent'?'active':''} onClick={()=>onAutomationModeChange('percent')}>{l('Percentual','Percentage','Porcentaje')}</button></div><label><span className="field-label">{automationMode==='fixed'?l('Quanto reservar','Amount to save','Cuánto reservar'):l('Percentual','Percentage','Porcentaje')}</span>{automationMode==='fixed'?<div className="money-input-wrap"><span>R$</span><input inputMode="decimal" value={automationValue} onChange={event=>onAutomationValueChange(event.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>:<div className="pot-percent-input"><input inputMode="decimal" value={automationValue} onChange={event=>onAutomationValueChange(event.target.value)} placeholder="5"/><span>%</span></div>}</label></>}
                 </>}
-                <div className="sheet-actions"><button className="ghost-button" disabled={automationWorking} onClick={onCancelAutomation}>{l('Cancelar','Cancel','Cancelar')}</button><button className="primary-button" disabled={automationWorking} onClick={()=>void onSaveAutomation()}>{automationWorking?l('Guardando…','Saving…','Guardando…'):l('Salvar automação','Save automation','Guardar automatización')}</button></div>
+                {confirmAutomation&&<div className="pot-automation-confirm" role="alertdialog" aria-label={l('Confirmar automação','Confirm automation','Confirmar automatización')}>
+                  <strong>{automationEnabled?l('Ativar esta regra?','Enable this rule?','¿Activar esta regla?'):l('Desativar esta regra?','Disable this rule?','¿Desactivar esta regla?')}</strong>
+                  <span>{automationEnabled?savingsPotAutomationLabel({enabled:true,kind:automationKind,mode:automationKind==='roundup'?'fixed':automationMode,amountMinor:null,percentBps:null,frequency:automationKind==='frequency'?automationFrequency:null,anchorDate:automationStartDate||null},locale):l('A automação deixará de criar reservas organizacionais.','The automation will stop creating organizational savings.','La automatización dejará de crear ahorros organizacionales.')}</span>
+                  <small>{l('Confirme sabendo que isso só registra organização dentro do NestBalance. Nenhuma ordem ou movimentação será enviada ao banco.','Confirm knowing this only records organization inside NestBalance. No order or money movement will be sent to your bank.','Confirma sabiendo que esto solo registra organización dentro de NestBalance. No se enviará ninguna orden ni movimiento al banco.')}</small>
+                  <div><button className="ghost-button" type="button" disabled={automationWorking} onClick={()=>setConfirmAutomation(false)}>{l('Voltar','Back','Volver')}</button><button className="primary-button" type="button" disabled={automationWorking} onClick={()=>{setConfirmAutomation(false);void onSaveAutomation();}}>{automationWorking?l('Guardando…','Saving…','Guardando…'):l('Confirmar regra','Confirm rule','Confirmar regla')}</button></div>
+                </div>}
+                {!confirmAutomation&&<div className="sheet-actions"><button className="ghost-button" disabled={automationWorking} onClick={()=>{setConfirmAutomation(false);onCancelAutomation();}}>{l('Cancelar','Cancel','Cancelar')}</button><button className="primary-button" disabled={automationWorking} onClick={()=>setConfirmAutomation(true)}>{l('Revisar e salvar','Review and save','Revisar y guardar')}</button></div>}
               </div>}
             </>}
       </section>

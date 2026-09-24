@@ -2376,3 +2376,7 @@ input,textarea,select{font-size:16px}
   .app-nav-link{font-size:12px;padding-inline:2px}
 }
 @media(min-resolution:2dppx){.app-nav-track{backdrop-filter:blur(22px) saturate(1.18)}}
+
+.pot-automation-confirm{display:grid;gap:7px;margin-top:12px;padding:14px;border:1px solid color-mix(in srgb,var(--iris) 32%,var(--line));border-radius:16px;background:color-mix(in srgb,var(--iris) 7%,var(--surface-strong))}
+.pot-automation-confirm>strong{font-size:14px}.pot-automation-confirm>span{font-size:13px;color:var(--ink)}.pot-automation-confirm>small{font-size:11px;line-height:1.5;color:var(--muted)}
+.pot-automation-confirm>div{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
