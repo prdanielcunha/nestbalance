@@ -1,29 +1,37 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { deriveCashView } from '@/src/core/cash-view';
 import { projectHouseholdFuture } from '@/src/core/future-projection';
-import { categoryLabel, deriveFinancialAnomalies, deriveSpendingComparison } from '@/src/core/insights';
-import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
-import { CreditCardManager } from '@/src/features/cards/card-manager';
+import { deriveFinancialAnomalies, deriveSpendingComparison } from '@/src/core/insights';
 import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
-import { AppNav } from '@/src/features/navigation/app-nav';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { AppShell } from '@/src/features/navigation/app-shell';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 import { dismissAttention } from '@/src/lib/repositories/attention';
 import { isDismissibleAttentionKind } from '@/src/core/attention';
-
-
-export function HomeScreen({ householdId, role }: { householdId: string; role: HouseholdRole }) {
+import { reportProductEvent } from '@/src/lib/product-events';
+import { DEFAULT_HOME_PREFERENCES, type HomePreferences } from '@/src/core/home-preferences';
+import { saveHomePreferences } from '@/src/lib/repositories/home-preferences';
+import { deriveHomeAttentionItems, deriveHomeMonthNarrative } from '@/src/features/home/home-attention';
+import { HomeFirstUseGuide, HomeFutureSection, HomeMonthSection, HomeTimelineSection } from '@/src/features/home/home-lower-sections';
+const AccountOnboarding=dynamic(
+  ()=>import('@/src/features/onboarding/account-onboarding').then(module=>module.AccountOnboarding),
+  {ssr:false}
+);
+const CreditCardManager=dynamic(
+  ()=>import('@/src/features/cards/card-manager').then(module=>module.CreditCardManager),
+  {ssr:false}
+);
+export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { householdId: string; role: HouseholdRole; firstValueStartedAtMs?:number }) {
   const {t,locale,intlLocale,formatMoney}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
-  const monthName=useMemo(()=>new Intl.DateTimeFormat(intlLocale,{month:'long'}),[intlLocale]);
   const canManage = canHouseholdRole(role,'manage_finance');
   const canContribute = role !== 'read_only';
   const [transactions, setTransactions] = useState<HomeRow[]>([]);
@@ -42,7 +50,12 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const [dismissedAttentionKeys,setDismissedAttentionKeys]=useState<string[]>([]);
   const [attentionWorking,setAttentionWorking]=useState('');
   const [attentionError,setAttentionError]=useState('');
-
+  const [refreshedAt,setRefreshedAt]=useState<string|null>(null);
+  const [hideValues,setHideValues]=useState(false);
+  const [homePreferences,setHomePreferences]=useState<HomePreferences>(DEFAULT_HOME_PREFERENCES);
+  const [homePreferencesSaving,setHomePreferencesSaving]=useState(false);
+  const [homePreferencesError,setHomePreferencesError]=useState('');
+  const firstValueReportedRef=useRef(false);
   async function refreshHome(silent=false){
     if(!silent) setLoadingHome(true);
     try{
@@ -54,7 +67,9 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       setInstallmentPlans(data.installmentPlans||[]);
       setInvoiceImports(data.invoiceImports||[]);
       setProactivity(data.proactivityPreferences||DEFAULT_PROACTIVITY_PREFERENCES);
+      setHomePreferences(data.homePreferences||DEFAULT_HOME_PREFERENCES);
       setDismissedAttentionKeys(data.dismissedAttentionKeys||[]);
+      setRefreshedAt(data.refreshedAt||new Date().toISOString());
       setHomeError('');
     }catch{
       setHomeError(l('Não conseguimos atualizar sua visão financeira agora.','We could not refresh your financial view right now.','No pudimos actualizar tu visión financiera ahora.'));
@@ -62,9 +77,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       if(!silent) setLoadingHome(false);
     }
   }
-
-  useHouseholdRevisionRefresh(householdId,()=>refreshHome(true));
-
+  useHouseholdRevisionRefresh(householdId,()=>refreshHome(true),25_000,['home','movements','accounts','invoices','pots']);
   useEffect(() => {
     void refreshHome();
     const onFocus=()=>void refreshHome(true);
@@ -73,14 +86,12 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     document.addEventListener('visibilitychange',onVisibility);
     return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
   }, [householdId, accountCreated, cardCreated]);
-
   const viewAccounts=useMemo(()=>accounts.filter(item=>inFinancialView(item.scope,view)),[accounts,view]);
   const viewCards=useMemo(()=>cards.filter(item=>inFinancialView(item.scope,view)),[cards,view]);
   const viewTransactions=useMemo(()=>transactions.filter(item=>inFinancialView(item.scope,view)),[transactions,view]);
   const viewCommitments=useMemo(()=>commitments.filter(item=>inFinancialView(item.scope,view)),[commitments,view]);
   const viewInstallmentPlans=useMemo(()=>installmentPlans.filter(item=>inFinancialView(item.scope,view)),[installmentPlans,view]);
   const viewInvoiceImports=useMemo(()=>invoiceImports.filter(item=>inFinancialView(item.scope,view)),[invoiceImports,view]);
-
   const currentMonthKey=useMemo(()=>{
     const now=new Date();
     return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -89,18 +100,15 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     ()=>viewTransactions.filter(item=>typeof item.observedOn==='string'&&item.observedOn.startsWith(currentMonthKey)),
     [viewTransactions,currentMonthKey]
   );
-
   const currentMonthCommitments=useMemo(
     ()=>viewCommitments.filter(item=>!item.paidThisMonth),
     [viewCommitments]
   );
-
   const cashView=useMemo(()=>deriveCashView({
     transactions:monthTransactions,
     commitments:currentMonthCommitments,
     invoices:viewInvoiceImports
   }),[monthTransactions,currentMonthCommitments,viewInvoiceImports]);
-
   const cashAccounts=useMemo(
     ()=>viewAccounts.filter(account=>account.connectedProductType!=='investment'),
     [viewAccounts]
@@ -117,7 +125,6 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     ()=>viewInvoiceImports.filter(invoice=>invoice.status==='partial'&&invoice.paymentStatus!=='paid').length,
     [viewInvoiceImports]
   );
-
   const snapshot = useMemo(() => {
     const availableMinor = cashAccounts
       .reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
@@ -129,112 +136,69 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       dueSoonMinor:cashView.futureCommitmentsMinor
     });
   }, [cashAccounts, cashView]);
-
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
-  const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
+  const hasFirstValue = hasData || viewAccounts.some(account=>account.balanceMinor!==null&&account.balanceMinor!==undefined);
+  useEffect(()=>{
+    if(!firstValueStartedAtMs||loadingHome||!hasFirstValue||firstValueReportedRef.current) return;
+    firstValueReportedRef.current=true;
+    reportProductEvent('first_value_observed',{durationMs:Date.now()-firstValueStartedAtMs});
+  },[firstValueStartedAtMs,loadingHome,hasFirstValue]);
   const monthHasKnownData = monthTransactions.length + currentMonthCommitments.length + viewInvoiceImports.length > 0;
   const defaultCreateScope=view==='personal'?'personal':'household';
   const viewLabel=view==='household'?l('do Lar','in Household','del Hogar'):view==='personal'?l('Pessoal','Personal','Personal'):l('na sua visão completa','in your full view','en tu vista completa');
   const spendingComparison=useMemo(()=>deriveSpendingComparison(viewTransactions,new Date()),[viewTransactions]);
   const anomalies=useMemo(()=>deriveFinancialAnomalies(viewTransactions,new Date()),[viewTransactions]);
-  const attentionItems=useMemo(()=>{
-    const now=new Date();
-    const today=now.getDate();
-    const items:Array<{key:string;code:string;kind:string;title:string;detail:string;reason:string;href:string;action:string;snoozeDays:number}>=[];
-
-    const overdue=viewCommitments
-      .filter(item=>!item.paidThisMonth&&item.status!=='paid'&&item.status!=='cancelled'&&Number.isInteger(item.dueDay)&&Number(item.dueDay)<today)
-      .sort((a,b)=>Number(a.dueDay)-Number(b.dueDay))[0];
-    const dueSoon=viewCommitments
-      .filter(item=>!item.paidThisMonth&&item.status!=='paid'&&item.status!=='cancelled'&&Number.isInteger(item.dueDay)&&Number(item.dueDay)>=today&&Number(item.dueDay)<=today+3)
-      .sort((a,b)=>Number(a.dueDay)-Number(b.dueDay))[0];
-
-    if(proactivity.dueBills&&overdue){
-      items.push({
-        key:'overdue-'+overdue.id,
-        code:'overdue',
-        kind:l('VENCEU','OVERDUE','VENCIDA'),
-        title:l(`${overdue.description} ainda aparece como pendente.`,`${overdue.description} still appears unpaid.`,`${overdue.description} todavía aparece pendiente.`),
-        detail:l(`${formatMoney(overdue.amountMinor)} · venceu dia ${overdue.dueDay}. Se você já pagou, marque como pago para a previsão ficar correta.`,`${formatMoney(overdue.amountMinor)} · due on day ${overdue.dueDay}. If you already paid it, mark it paid so the forecast stays accurate.`,`${formatMoney(overdue.amountMinor)} · venció el día ${overdue.dueDay}. Si ya pagaste, márcalo como pagado para mantener correcta la previsión.`),
-        reason:l('Esta conta tem data conhecida, já passou do dia de vencimento deste mês e ainda não foi marcada como paga.','This bill has a known due day, that day has already passed this month, and it is not marked as paid.','Esta cuenta tiene una fecha conocida, el vencimiento de este mes ya pasó y todavía no está marcada como pagada.'),
-        href:'#monthly-payments',
-        action:l('Ver conta','View bill','Ver cuenta'),
-        snoozeDays:1
-      });
-    }else if(proactivity.dueBills&&dueSoon){
-      items.push({
-        key:'due-'+dueSoon.id,
-        code:Number(dueSoon.dueDay)===today?'due_today':'due_soon',
-        kind:Number(dueSoon.dueDay)===today?l('VENCE HOJE','DUE TODAY','VENCE HOY'):l('PRÓXIMO PAGAMENTO','UPCOMING PAYMENT','PRÓXIMO PAGO'),
-        title:l(`${dueSoon.description} ${Number(dueSoon.dueDay)===today?'vence hoje':`vence dia ${dueSoon.dueDay}`}.`,`${dueSoon.description} ${Number(dueSoon.dueDay)===today?'is due today':`is due on day ${dueSoon.dueDay}`}.`,`${dueSoon.description} ${Number(dueSoon.dueDay)===today?'vence hoy':`vence el día ${dueSoon.dueDay}`}.`),
-        detail:l(`${formatMoney(dueSoon.amountMinor)} já está considerado no que ainda vai sair.`,`${formatMoney(dueSoon.amountMinor)} is already included in what is still expected to leave.`,`${formatMoney(dueSoon.amountMinor)} ya está incluido en lo que todavía saldrá.`),
-        reason:l(`O vencimento conhecido é dia ${dueSoon.dueDay}, dentro dos próximos três dias, e a conta ainda aparece pendente.`,`The known due day is ${dueSoon.dueDay}, within the next three days, and the bill still appears unpaid.`,`El vencimiento conocido es el día ${dueSoon.dueDay}, dentro de los próximos tres días, y la cuenta todavía aparece pendiente.`),
-        href:'#monthly-payments',
-        action:l('Ver conta','View bill','Ver cuenta'),
-        snoozeDays:1
-      });
+  const homeCoverage=viewAccounts.length===0
+    ? 'initial'
+    : !monthHasKnownData||partialInvoiceCount>0
+      ? 'partial'
+      : 'high';
+  const coverageLabel=homeCoverage==='high'
+    ? l('Dados bem cobertos','Well-covered data','Datos bien cubiertos')
+    : homeCoverage==='partial'
+      ? l('Visão parcial','Partial view','Vista parcial')
+      : l('Começando','Getting started','Empezando');
+  const refreshedLabel=refreshedAt
+    ? new Intl.DateTimeFormat(intlLocale,{hour:'2-digit',minute:'2-digit'}).format(new Date(refreshedAt))
+    : null;
+  const monthNarrative=useMemo(()=>deriveHomeMonthNarrative({
+    accountCount:viewAccounts.length,
+    futureCommitmentsMinor:snapshot.futureCommitmentsMinor,
+    projectedRemainderMinor:snapshot.projectedRemainderMinor,
+    spendingComparison,
+    partialInvoiceCount,
+    hasData,
+    locale,
+    formatMoney
+  }),[viewAccounts.length,snapshot.futureCommitmentsMinor,snapshot.projectedRemainderMinor,spendingComparison,partialInvoiceCount,hasData,formatMoney,locale]);
+  const attentionItems=useMemo(()=>deriveHomeAttentionItems({
+    commitments:viewCommitments,
+    installmentPlans:viewInstallmentPlans,
+    anomalies,
+    spendingComparison,
+    proactivity,
+    locale,
+    formatMoney,
+    currentMonthKey,
+    dismissedKeys:dismissedAttentionKeys
+  }),[viewCommitments,viewInstallmentPlans,anomalies,spendingComparison,proactivity,locale,formatMoney,currentMonthKey,dismissedAttentionKeys]);
+  async function changeHomePreferences(next:HomePreferences){
+    if(homePreferencesSaving) return;
+    const previous=homePreferences;
+    setHomePreferences(next);
+    setHomePreferencesSaving(true);
+    setHomePreferencesError('');
+    try{
+      const saved=await saveHomePreferences(householdId,next);
+      setHomePreferences(saved.preferences);
+    }catch{
+      setHomePreferences(previous);
+      setHomePreferencesError(l('Não conseguimos salvar esta preferência agora.','We could not save this preference right now.','No pudimos guardar esta preferencia ahora.'));
+    }finally{
+      setHomePreferencesSaving(false);
     }
-
-    const anomaly=anomalies[0];
-    if(proactivity.anomalies&&anomaly){
-      items.push({
-        key:'anomaly-'+anomaly.transactionId,
-        code:'anomaly',
-        kind:anomaly.type==='possible_duplicate'?l('VALE CONFERIR','WORTH CHECKING','CONVIENE REVISAR'):l('FORA DO PADRÃO','OUT OF PATTERN','FUERA DEL PATRÓN'),
-        title:anomaly.type==='possible_duplicate'
-          ? l(`${anomaly.description} apareceu mais de uma vez no mesmo dia.`,`${anomaly.description} appeared more than once on the same day.`,`${anomaly.description} apareció más de una vez el mismo día.`)
-          : l(`${anomaly.description} veio acima do histórico conhecido.`,`${anomaly.description} is above its known history.`,`${anomaly.description} está por encima de su historial conocido.`),
-        detail:anomaly.type==='possible_duplicate'
-          ? l('Pode estar certo. O NestBalance só está sinalizando para você não pagar ou contar duas vezes sem querer.','It may be correct. NestBalance is only flagging it so you do not pay or count it twice by mistake.','Puede estar bien. NestBalance solo lo señala para evitar pagar o contar dos veces por error.')
-          : l(`${formatMoney(anomaly.amountMinor)} agora · histórico típico de ${formatMoney(anomaly.baselineMinor||0)}.`,`${formatMoney(anomaly.amountMinor)} now · typical history ${formatMoney(anomaly.baselineMinor||0)}.`,`${formatMoney(anomaly.amountMinor)} ahora · historial típico ${formatMoney(anomaly.baselineMinor||0)}.`),
-        reason:anomaly.type==='possible_duplicate'
-          ? l('Dois ou mais lançamentos com a mesma descrição, valor e dia apareceram nos dados conhecidos.','Two or more known entries share the same description, amount and day.','Dos o más movimientos conocidos tienen la misma descripción, importe y día.')
-          : l(`O valor atual ficou pelo menos 35% e ${formatMoney(anomaly.differenceMinor||0)} acima da mediana do histórico dessa descrição.`,`The current amount is at least 35% and ${formatMoney(anomaly.differenceMinor||0)} above the median history for this description.`,`El valor actual quedó al menos 35% y ${formatMoney(anomaly.differenceMinor||0)} por encima de la mediana histórica de esta descripción.`),
-        href:'/assistant',
-        action:l('Entender','Understand','Entender'),
-        snoozeDays:7
-      });
-    }
-
-    if(proactivity.spendingChanges&&spendingComparison.hasComparableData&&spendingComparison.deltaMinor>0){
-      const top=spendingComparison.topIncreases[0];
-      items.push({
-        key:'spending-change-'+currentMonthKey,
-        code:'spending_change',
-        kind:l('SEU MÊS MUDOU','YOUR MONTH CHANGED','TU MES CAMBIÓ'),
-        title:l(`Os gastos conhecidos estão ${formatMoney(spendingComparison.deltaMinor)} acima do mês anterior.`,`Known spending is ${formatMoney(spendingComparison.deltaMinor)} above last month.`,`Los gastos conocidos están ${formatMoney(spendingComparison.deltaMinor)} por encima del mes anterior.`),
-        detail:top
-          ? l(`${categoryLabel(top.category,'pt-BR')} foi a maior alta até agora, com ${formatMoney(top.deltaMinor)} a mais.`,`${categoryLabel(top.category,'en')} had the biggest increase so far, up ${formatMoney(top.deltaMinor)}.`,`${categoryLabel(top.category,'es')} fue el mayor aumento hasta ahora, con ${formatMoney(top.deltaMinor)} más.`)
-          : l('A comparação usa somente gastos conhecidos e evita contar transferências e pagamento de fatura como nova despesa.','The comparison uses only known spending and excludes transfers and statement payments so expenses are not counted twice.','La comparación usa solo gastos conocidos y excluye transferencias y pagos de tarjeta para no contar el gasto dos veces.'),
-        reason:l('A comparação soma apenas gastos conhecidos do mês atual e do anterior, excluindo transferências entre suas contas e pagamento de fatura para evitar dupla contagem.','The comparison adds only known spending from this month and the previous one, excluding transfers between your accounts and statement payments to avoid double counting.','La comparación suma solo gastos conocidos de este mes y del anterior, excluyendo transferencias entre tus cuentas y pagos de tarjeta para evitar doble conteo.'),
-        href:'/assistant',
-        action:l('Ver por quê','See why','Ver por qué'),
-        snoozeDays:7
-      });
-    }
-
-    const ending=viewInstallmentPlans
-      .map(plan=>({...plan,remaining:Math.max(0,plan.totalInstallments-plan.lastObservedInstallment)}))
-      .filter(plan=>plan.remaining===1&&plan.amountMinor>0)
-      .sort((a,b)=>b.amountMinor-a.amountMinor)[0];
-    if(proactivity.installmentEnds&&ending){
-      items.push({
-        key:'ending-'+ending.id,
-        code:'installment_ending',
-        kind:l('TERMINA LOGO','ENDING SOON','TERMINA PRONTO'),
-        title:l(`${ending.description} está na última parcela conhecida.`,`${ending.description} is on its last known installment.`,`${ending.description} está en su última cuota conocida.`),
-        detail:l(`Depois dela, ${formatMoney(ending.amountMinor)} por mês deixam de estar comprometidos nessa projeção.`,`After it ends, ${formatMoney(ending.amountMinor)} per month is no longer committed in this forecast.`,`Después, ${formatMoney(ending.amountMinor)} al mes dejan de estar comprometidos en esta previsión.`),
-        reason:l('O plano reconciliado mostra apenas uma parcela restante com o valor atual conhecido.','The reconciled installment plan shows only one remaining installment at the current known amount.','El plan de cuotas conciliado muestra solo una cuota restante con el valor actual conocido.'),
-        href:'/assistant',
-        action:l('Ver parcelas','View installments','Ver cuotas'),
-        snoozeDays:30
-      });
-    }
-
-    return items.filter(item=>!dismissedAttentionKeys.includes(item.key)).slice(0,3);
-  },[viewCommitments,viewInstallmentPlans,anomalies,spendingComparison,proactivity,locale,formatMoney,currentMonthKey,dismissedAttentionKeys]);
-
+  }
   async function snoozeAttention(item:{key:string;code:string;snoozeDays:number}){
     if(!isDismissibleAttentionKind(item.code)||attentionWorking) return;
     setAttentionWorking(item.key);
@@ -248,21 +212,27 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       setAttentionWorking('');
     }
   }
-
-
-  return <main className={`app-shell home-shell ${viewAccounts.length===0?'home-first-use':''}`.trim()}>
-    <header className="topbar home-topbar">
-      <div className="home-brand"><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div>
-      <HouseholdLink detailed/>
-    </header>
-    <AppNav canContribute={canContribute} desktopInline className="home-primary-nav"/>
-
+  return <AppShell
+    className={`home-shell ${viewAccounts.length===0?'home-first-use':''} ${hideValues?'home-values-hidden':''}`.trim()}
+    subtitle={t.brandTagline}
+    canContribute={canContribute}
+    householdLink="detailed"
+    navClassName="home-primary-nav"
+  >
     <div className="home-context-row">
       <div className="home-scope-copy"><span>{l('Visão','View','Vista')}</span><small>{l('Escolha o que entra nesta tela.','Choose what is included on this screen.','Elige qué aparece en esta pantalla.')}</small></div>
       <ScopeViewSwitch value={view} onChange={setView}/>
-      {loadingHome && <div className="home-refreshing" role="status"><span aria-hidden="true"/>{l('Atualizando seus dados…','Refreshing your data…','Actualizando tus datos…')}</div>}
+      <div className="home-context-actions">
+        <button type="button" className="home-privacy-toggle" aria-pressed={hideValues} onClick={()=>setHideValues(value=>!value)}>
+          {hideValues?l('Mostrar valores','Show values','Mostrar valores'):l('Ocultar valores','Hide values','Ocultar valores')}
+        </button>
+        {loadingHome
+          ? <div className="home-refreshing" role="status"><span aria-hidden="true"/>{l('Atualizando seus dados…','Refreshing your data…','Actualizando tus datos…')}</div>
+          : <div className={`home-data-quality ${homeCoverage}`} title={l('A qualidade indica quanto da visão vem de dados confirmados.','Quality indicates how much of this view comes from confirmed data.','La calidad indica cuánto de esta vista proviene de datos confirmados.')}>
+              <span>{coverageLabel}</span>{refreshedLabel&&<small>{l('atualizado','updated','actualizado')} {refreshedLabel}</small>}
+            </div>}
+      </div>
     </div>
-
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
     <div className={`home-hero-grid ${viewAccounts.length===0?'is-empty':'has-balance'}`}>
     <section className="hero-balance home-balance-card">
@@ -314,12 +284,55 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     </section>
     {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
     </div>
-
+    {viewAccounts.length>0&&<section className="home-30s" aria-labelledby="home-30s-title">
+      <div className="section-title">
+        <div>
+          <span className="section-kicker">{l('MEU MÊS EM 30 SEGUNDOS','MY MONTH IN 30 SECONDS','MI MES EN 30 SEGUNDOS')}</span>
+          <h2 id="home-30s-title">{l('O que importa agora','What matters now','Lo que importa ahora')}</h2>
+        </div>
+        <small>{homeCoverage==='high'
+          ? l('Baseado nos dados confirmados','Based on confirmed data','Basado en datos confirmados')
+          : l('Ainda há dados faltando','Some data is still missing','Todavía faltan datos')}</small>
+      </div>
+      <div className="home-30s-metrics">
+        <div><span>{t.availableNow}</span><strong>{formatMoney(snapshot.availableMinor)}</strong></div>
+        <div><span>{t.moneyToGo}</span><strong>{monthHasKnownData?formatMoney(snapshot.futureCommitmentsMinor):'—'}</strong></div>
+        <div><span>{l('Deve sobrar','Projected left','Debería quedar')}</span><strong>{monthHasKnownData?formatMoney(snapshot.projectedRemainderMinor):'—'}</strong></div>
+      </div>
+      {monthNarrative.length>0&&<div className="home-30s-story">{monthNarrative.map((item,index)=><p key={index}>{item}</p>)}</div>}
+      {homeCoverage==='partial'&&<p className="home-uncertainty-note">{partialInvoiceCount>0
+        ? l('Faixa de incerteza: o valor “deve sobrar” pode diminuir quando as faturas em revisão forem concluídas. Não inventamos um limite inferior sem dados.','Uncertainty: “projected left” may decrease when statements under review are completed. We do not invent a lower bound without data.','Incertidumbre: “debería quedar” puede disminuir cuando terminen los resúmenes en revisión. No inventamos un límite inferior sin datos.')
+        : l('A projeção ainda é parcial porque faltam movimentos ou compromissos conhecidos neste mês.','The forecast is still partial because known movements or commitments are missing this month.','La previsión todavía es parcial porque faltan movimientos o compromisos conocidos este mes.')}</p>}
+      <details className="home-personalization">
+        <summary>{l('Ajustar minha visão','Adjust my view','Ajustar mi vista')}</summary>
+        <div className="home-personalization-grid">
+          <label>
+            <span>{l('Como você usa este Lar?','How do you use this Household?','¿Cómo usas este Hogar?')}</span>
+            <select disabled={homePreferencesSaving} value={homePreferences.mode} onChange={event=>void changeHomePreferences({...homePreferences,mode:event.target.value as HomePreferences['mode']})}>
+              <option value="person">{l('Individual','Individual','Individual')}</option>
+              <option value="couple">{l('Casal','Couple','Pareja')}</option>
+              <option value="family">{l('Família','Family','Familia')}</option>
+            </select>
+          </label>
+          <label>
+            <span>{l('Renda costuma chegar','Income usually arrives','Los ingresos suelen llegar')}</span>
+            <select disabled={homePreferencesSaving} value={homePreferences.incomeFrequency} onChange={event=>void changeHomePreferences({...homePreferences,incomeFrequency:event.target.value as HomePreferences['incomeFrequency']})}>
+              <option value="monthly">{l('Uma vez por mês','Once a month','Una vez al mes')}</option>
+              <option value="biweekly">{l('A cada 15 dias','Every two weeks','Cada 15 días')}</option>
+              <option value="weekly">{l('Toda semana','Every week','Cada semana')}</option>
+              <option value="variable">{l('Varia','Varies','Varía')}</option>
+            </select>
+          </label>
+        </div>
+        <small>{l('Isso ajusta linguagem e prioridades; não altera nenhum cálculo ou registro financeiro.','This adjusts language and priorities; it does not change any financial calculation or record.','Esto ajusta el lenguaje y las prioridades; no cambia ningún cálculo ni registro financiero.')}</small>
+        {homePreferencesError&&<p className="error-copy" role="alert">{homePreferencesError}</p>}
+      </details>
+    </section>}
     {attentionItems.length>0&&<section className="attention-section" aria-labelledby="attention-title">
       <div className="section-title">
         <div>
-          <span className="section-kicker">{t.importantNow}</span>
-          <h2 id="attention-title">{t.onlyNeedsAttention}</h2>
+          <span className="section-kicker">{l('PRIORIDADES','PRIORITIES','PRIORIDADES')}</span>
+          <h2 id="attention-title">{l('Faça agora','Do now','Haz ahora')}</h2>
         </div>
         <small>{t.quietAttention}</small>
       </div>
@@ -342,45 +355,16 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       </div>
       {attentionError&&<p className="error-copy attention-error" role="alert">{attentionError}</p>}
     </section>}
-
-    {viewAccounts.length>0&&!hasData&&canContribute&&<section className="first-use-guide">
-      <div>
-        <span className="section-kicker">{l('PRÓXIMO PASSO','NEXT STEP','SIGUIENTE PASO')}</span>
-        <h2>{l('Agora deixe o NestBalance trabalhar por você.','Now let NestBalance start working for you.','Ahora deja que NestBalance empiece a trabajar por ti.')}</h2>
-        <p>{l(
-          'Seu saldo já está aqui. Traga uma conta, compra ou parcela do jeito mais fácil: escrevendo, colando um print ou falando.',
-          'Your balance is already here. Bring in a bill, purchase or installment in the easiest way: type it, paste a screenshot or speak.',
-          'Tu saldo ya está aquí. Agrega una cuenta, compra o cuota de la forma más fácil: escribiendo, pegando una captura o hablando.'
-        )}</p>
-      </div>
-      <div className="first-use-actions">
-        <Link className="primary-button" href="/add">{l('Enviar print, áudio ou texto','Send screenshot, audio, or text','Enviar captura, audio o texto')}</Link>
-        <Link className="ghost-button" href="/accounts">{l('Organizar contas e cartões','Organize accounts and cards','Organizar cuentas y tarjetas')}</Link>
-      </div>
-      <small>{l(
-        'Não precisa configurar tudo hoje. O NestBalance melhora conforme você usa.',
-        'You do not need to set everything up today. NestBalance gets better as you use it.',
-        'No necesitas configurar todo hoy. NestBalance mejora a medida que lo usas.'
-      )}</small>
-    </section>}
-
+    {viewAccounts.length>0&&!hasData&&canContribute&&<HomeFirstUseGuide/>}
     <MonthlyPayments householdId={householdId} commitments={viewCommitments} canContribute={canContribute} onChanged={()=>void refreshHome(true)} />
-
-    <section className="month-section">
-      <div className="section-title">
-        <div>
-          <h2>{t.month}</h2>
-          {!monthHasKnownData&&<span>{l('Ainda sem dados suficientes para resumir este mês.','Not enough data to summarize this month yet.','Aún no hay datos suficientes para resumir este mes.')}</span>}
-        </div>
-      </div>
-      <div className={monthHasKnownData?'month-grid':'month-grid month-grid-unknown'}>
-        <div><span>{t.moneyIn}</span><strong>{monthHasKnownData?formatMoney(monthTransactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)):'—'}</strong></div>
-        <div><span>{t.moneyOut}</span><strong>{monthHasKnownData?formatMoney(snapshot.paidExpenseMinor):'—'}</strong></div>
-        <div><span>{t.moneyToGo}</span><strong>{monthHasKnownData?formatMoney(snapshot.futureCommitmentsMinor):'—'}</strong></div>
-        <div className="projected"><span>{t.projectedLeft}{monthHasKnownData&&<small className="estimate-badge">{l('estimado','estimate','estimado')}</small>}</span><strong>{monthHasKnownData&&viewAccounts.length ? formatMoney(snapshot.projectedRemainderMinor) : '—'}</strong></div>
-      </div>
-    </section>
-
+    <HomeMonthSection
+      known={monthHasKnownData}
+      incomeMinor={monthTransactions.filter(item=>item.direction==='income').reduce((sum,item)=>sum+item.amountMinor,0)}
+      paidExpenseMinor={snapshot.paidExpenseMinor}
+      futureCommitmentsMinor={snapshot.futureCommitmentsMinor}
+      projectedRemainderMinor={snapshot.projectedRemainderMinor}
+      hasAccounts={viewAccounts.length>0}
+    />
     <CreditCardManager
       householdId={householdId}
       cards={viewCards}
@@ -390,30 +374,11 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       canManage={canManage}
       onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
     />
-
-    {hasData&&<section className="future-section">
-      <div className="section-title"><h2>{t.nextMonths}</h2><span>{t.committed}</span></div>
-      <div className="future-grid">
-        {futureMonths.map(item=>{
-          const label=monthName.format(new Date(item.year,item.monthIndex,1));
-          return <button key={item.key} className={expandedFuture===item.key?'future-card active':'future-card'} onClick={()=>setExpandedFuture(value=>value===item.key?null:item.key)}>
-            <span>{label.charAt(0).toUpperCase()+label.slice(1)}</span>
-            <strong>{formatMoney(item.totalMinor)}</strong>
-            <small>{item.itemCount ? l(`${item.itemCount} compromisso${item.itemCount>1?'s':''}`,`${item.itemCount} commitment${item.itemCount===1?'':'s'}`,`${item.itemCount} compromiso${item.itemCount===1?'':'s'}`) : t.nothingPlanned}</small>
-          </button>;
-        })}
-      </div>
-      {expandedProjection && <div className="future-breakdown" role="status">
-        <div><span>{t.installments}</span><strong>{formatMoney(expandedProjection.installmentsMinor)}</strong></div>
-        <div><span>{t.repeatingBills}</span><strong>{formatMoney(expandedProjection.fixedMinor)}</strong></div>
-        <p>{l('É uma projeção com o que já foi confirmado. O NestBalance não presume recorrência só porque existe uma data de vencimento.','This forecast uses only confirmed information. NestBalance does not assume recurrence just because a due date exists.','Esta previsión usa solo información confirmada. NestBalance no supone recurrencia solo porque exista una fecha de vencimiento.')}</p>
-      </div>}
-    </section>}
-
-    {hasData&&<section className="timeline-section">
-      <div className="section-title"><h2>{t.movements}</h2><span>{t.timeline}</span></div>
-      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?l('No cartão','On card','En tarjeta'):x.source==='credit_card_invoice_payment'?l('Fatura paga','Statement paid','Tarjeta pagada'):x.direction==='income'?t.moneyIn:x.direction==='transfer'?l('Transferência','Transfer','Transferencia'):l('Saiu','Money out','Salió')}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {formatMoney(x.amountMinor)}</b></article>)}</div>}
-    </section>}
-
-  </main>;
+    {hasData&&<HomeFutureSection
+      months={futureMonths}
+      expandedKey={expandedFuture}
+      onToggle={key=>setExpandedFuture(value=>value===key?null:key)}
+    />}
+    {hasData&&<HomeTimelineSection transactions={viewTransactions}/>}
+  </AppShell>;
 }

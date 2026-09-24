@@ -438,3 +438,70 @@
 @media(prefers-reduced-motion:reduce){
   .home-refreshing>span{animation:none}
 }
+
+
+/* Roadmap Phase 3 — Home understood in 30 seconds. */
+.home-context-actions{margin-left:auto;display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0}
+.home-privacy-toggle{
+  min-height:38px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--surface-strong);
+  color:var(--ink);
+  padding:0 12px;
+  font-size:12px;
+  font-weight:780;
+}
+.home-data-quality{display:grid;gap:1px;min-width:max-content}
+.home-data-quality span{font-size:12px;font-weight:800;color:var(--ink)}
+.home-data-quality small{font-size:11px;color:var(--muted)}
+.home-data-quality.partial span{color:#9a6a17}
+.home-data-quality.initial span{color:var(--muted)}
+.home-30s{
+  margin:28px 0 12px;
+  padding:clamp(20px,3vw,28px);
+  border:1px solid var(--line);
+  border-radius:26px;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--surface-strong) 97%,var(--iris) 3%),var(--surface-strong));
+  box-shadow:var(--shadow-sm);
+}
+.home-30s .section-title{margin-top:0}
+.home-30s-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:var(--line)}
+.home-30s-metrics>div{display:grid;gap:6px;padding:16px;background:var(--surface-strong)}
+.home-30s-metrics span{font-size:12px;color:var(--muted);font-weight:760}
+.home-30s-metrics strong{font-size:clamp(20px,3vw,30px);letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.home-30s-story{display:grid;gap:8px;margin-top:15px}
+.home-30s-story p{margin:0;padding-left:16px;position:relative;color:var(--ink);font-size:14px;line-height:1.5}
+.home-30s-story p::before{content:"";position:absolute;left:0;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--iris)}
+.home-uncertainty-note{margin:15px 0 0;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,#b1781a 8%,transparent);color:var(--muted);font-size:12px;line-height:1.5}
+.home-values-hidden .home-balance-card>strong,
+.home-values-hidden .home-balance-card>p,
+.home-values-hidden .balance-explanation-grid strong,
+.home-values-hidden .home-30s-metrics strong,
+.home-values-hidden .home-30s-story,
+.home-values-hidden .month-grid strong,
+.home-values-hidden .future-card strong,
+.home-values-hidden .future-breakdown strong,
+.home-values-hidden .timeline-row>b,
+.home-values-hidden .attention-card>p{
+  filter:blur(8px);
+  user-select:none;
+}
+@media(max-width:720px){
+  .home-context-actions{width:100%;margin:10px 0 0;justify-content:space-between}
+  .home-context-row{display:flex!important;flex-wrap:wrap}
+  .home-scope-copy{display:none!important}
+  .home-30s{margin-inline:-2px;padding:18px}
+  .home-30s-metrics{grid-template-columns:1fr}
+  .home-data-quality{margin-left:auto;text-align:right}
+}
+
+
+.home-personalization{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.home-personalization summary{cursor:pointer;width:max-content;max-width:100%;min-height:36px;display:flex;align-items:center;color:var(--muted);font-size:12px;font-weight:800}
+.home-personalization-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.home-personalization label{display:grid;gap:6px}
+.home-personalization label>span{font-size:12px;color:var(--muted);font-weight:760}
+.home-personalization select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:13px;background:var(--surface-strong);color:var(--ink);padding:0 12px;font-size:14px}
+.home-personalization>small{display:block;margin-top:10px;color:var(--muted);font-size:12px;line-height:1.45}
+@media(max-width:620px){.home-personalization-grid{grid-template-columns:1fr}}

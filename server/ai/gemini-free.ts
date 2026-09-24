@@ -1,6 +1,7 @@
 import { sanitizeGeminiFinancialExtraction } from '../../src/core/gemini-financial.js';
 
 const MODEL='gemini-2.5-flash-lite';
+export const geminiFreeModel=()=>MODEL;
 const API='https://generativelanguage.googleapis.com/v1beta/models';
 
 export function isGeminiFreeConfigured(){

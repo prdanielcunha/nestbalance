@@ -26,6 +26,7 @@ export type SessionState = {
   households: HouseholdSessionOption[];
   locale: AppLocale;
   currency: string;
+  firstValueStartedAtMs?: number;
 };
 
 export function AuthGate({ children }: { children: (ctx: SessionState) => React.ReactNode }) {
@@ -48,9 +49,17 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     setLoading(true);
     setSessionError('');
     try {
+      const bootstrapStartedAt=Date.now();
       if (forceRefresh) await user.getIdToken(true);
       const session = await bootstrapSession();
-      setState({ user, householdId: session.householdId, households: session.households || [], locale:session.locale, currency:session.currency });
+      setState({
+        user,
+        householdId: session.householdId,
+        households: session.households || [],
+        locale:session.locale,
+        currency:session.currency,
+        firstValueStartedAtMs:session.created?bootstrapStartedAt:undefined
+      });
     } catch (error) {
       setState(null);
       setSessionError(error instanceof Error ? error.message : 'SESSION_BOOTSTRAP_FAILED');

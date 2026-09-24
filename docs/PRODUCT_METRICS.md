@@ -12,7 +12,7 @@ The blueprint says to measure reduction of effort, not number of screens. NestBa
 | Weekly Household active | Existing member `lastSeenAt` values, aggregated by Household/week. |
 | Bill completion before due | Commitment payment timestamp vs due date/day. |
 | Import latency p50/p95 | Existing structured HTTP duration telemetry for evidence/import/AI endpoints; request bodies and financial values are excluded. |
-| Crash/error-free sessions | HTTP 5xx/error telemetry plus browser release smoke. A future client crash collector must redact financial content before adoption. |
+| Crash/error-free sessions | HTTP 5xx/error telemetry plus the first-party client crash collector. The collector emits only crash kind, coarse route and online state; it excludes messages, stacks, identifiers and financial content. |
 | Accessibility QA pass | Browser Quality + axe serious/critical gate on every release. |
 
 ## Data minimization rules
@@ -26,3 +26,40 @@ The blueprint says to measure reduction of effort, not number of screens. NestBa
 ## RC instrumentation posture
 
 The RC already has structured HTTP telemetry, audit events, dedup outcomes, member last-seen timestamps and release quality gates. That is sufficient to start measuring the blueprint metrics without introducing an invasive client analytics dependency.
+
+
+## Phase 0 field-performance baseline
+
+Starting with the roadmap execution cycle on 2026-09-24, the web client uses Next.js `useReportWebVitals` and sends only the following fixed fields to `/api/metrics/web-vital`:
+
+- metric name: CLS, FCP, FID, INP, LCP or TTFB;
+- rounded metric value;
+- coarse rating;
+- coarse route key;
+- navigation type.
+
+The payload deliberately excludes metric/page-load identifiers, user IDs, Household IDs, URLs with query strings, financial values and user-authored content. The endpoint reduces routes to a fixed allowlist before logging.
+
+This gives a field baseline for LCP/INP/CLS without introducing a third-party analytics SDK or a new cross-site identifier. Existing server request telemetry continues to provide API status and latency by endpoint.
+
+
+## Phase 0 capture funnel
+
+Universal Capture also emits a fixed, content-free funnel:
+
+- `capture_opened`
+- `capture_review_ready`
+- `capture_committed`
+- `capture_abandoned`
+- `capture_corrected` with one fixed reason: label field, value field, due day, direction, or source type
+
+Allowed dimensions are limited to coarse input type, elapsed milliseconds, total item count, review item count, fixed correction reason and coarse route key. Values, descriptions, extracted text, filenames, evidence IDs, user IDs and Household IDs are not accepted by the client contract or logged by the endpoint.
+
+This baseline is intended to answer: how long capture takes, where users leave, and how much review the machine creates. It is not intended to reconstruct what the user did financially.
+
+
+## Time to First Value
+
+For a Household created by the current session bootstrap, the client starts a local timer immediately before bootstrap and emits `first_value_observed` once the Home first contains useful financial information (a known account balance, movement, commitment, installment plan or imported invoice).
+
+Only elapsed milliseconds and the coarse Home route are sent. Existing Households do not emit this event, preventing old accounts from distorting the first-use baseline. The event is intentionally one-shot per freshly created session.

@@ -20,8 +20,11 @@ import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/
 import { PwaInstallCard } from '@/src/features/pwa/pwa-install-card';
 import { ThemeChoice } from '@/src/features/theme/theme-runtime';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
-
-
+import { AppShell } from '@/src/features/navigation/app-shell';
+import { householdRoleDescription, householdRoleName } from '@/src/features/household/household-copy';
+import { HouseholdPeoplePanel } from '@/src/features/household/household-people-panel';
+import { HouseholdActivityPanel } from '@/src/features/household/household-activity-panel';
+import { HouseholdCollaborationCard } from '@/src/features/household/household-collaboration-card';
 export function HouseholdSettings({
   householdId,
   sessionHouseholds,
@@ -49,39 +52,9 @@ export function HouseholdSettings({
   const [savingProactivity,setSavingProactivity]=useState(false);
   const {t,locale:activeLocale,formatDate}=useI18n();
   const l=(pt:string,en:string,es:string)=>activeLocale==='en'?en:activeLocale==='es'?es:pt;
-  const roleName=(role:HouseholdRole)=>({
-    owner:l('Titular','Owner','Titular'),
-    admin:l('Sócio · acesso total','Partner · full access','Socio · acceso total'),
-    manager:l('Gestor financeiro','Financial manager','Gestor financiero'),
-    member:l('Colaborador','Contributor','Colaborador'),
-    read_only:l('Visualizador','Viewer','Visualizador')
-  } as const)[role];
-
-  const roleDescription=(role:Exclude<HouseholdRole,'owner'>)=>({
-    admin:l(
-      'Pode alterar dados, contas, cartões, cofrinhos, configurações, conexões e acessos. Só não pode remover o Titular nem excluir o Lar.',
-      'Can change data, accounts, cards, savings pots, settings, connections, and access. The Owner remains protected, and only the Owner can delete the Household.',
-      'Puede cambiar datos, cuentas, tarjetas, alcancías, configuración, conexiones y accesos. El Titular queda protegido y solo el Titular puede borrar el Hogar.'
-    ),
-    manager:l(
-      'Pode organizar toda a parte financeira e conexões, mas não convida pessoas nem altera permissões ou configurações do Lar.',
-      'Can manage all financial data and connections, but cannot invite people or change permissions or Household settings.',
-      'Puede gestionar toda la parte financiera y conexiones, pero no invita personas ni cambia permisos o configuración del Hogar.'
-    ),
-    member:l(
-      'Pode adicionar e atualizar movimentos, contas recorrentes, documentos e cofrinhos compartilhados, sem administrar acessos.',
-      'Can add and update activities, recurring bills, documents, and shared savings pots without managing access.',
-      'Puede agregar y actualizar movimientos, cuentas recurrentes, documentos y alcancías compartidas sin administrar accesos.'
-    ),
-    read_only:l(
-      'Pode ver os dados compartilhados, saldos, contas e documentos, sem alterar nada.',
-      'Can view shared data, balances, bills, and documents without changing anything.',
-      'Puede ver datos compartidos, saldos, cuentas y documentos sin cambiar nada.'
-    )
-  } as const)[role];
-
+  const roleName=(role:HouseholdRole)=>householdRoleName(role,activeLocale);
+  const roleDescription=(role:Exclude<HouseholdRole,'owner'>)=>householdRoleDescription(role,activeLocale);
   const inviteRoles:Exclude<HouseholdRole,'owner'>[]=['admin','manager','member','read_only'];
-
   async function refresh(){
     setLoading(true);
     setError('');
@@ -97,12 +70,9 @@ export function HouseholdSettings({
       setLoading(false);
     }
   }
-
   useEffect(()=>{void refresh();},[householdId]);
-
   const canManage=data?canHouseholdRole(data.currentRole,'manage_household'):false;
   const currentSession=useMemo(()=>sessionHouseholds.find(item=>item.id===householdId),[sessionHouseholds,householdId]);
-
   async function switchHousehold(nextId:string){
     if(nextId===householdId) return;
     setError('');
@@ -113,7 +83,6 @@ export function HouseholdSettings({
       setError(l('Não conseguimos trocar de Lar agora.','We could not switch Household right now.','No pudimos cambiar de Hogar ahora.'));
     }
   }
-
   async function saveName(){
     if(!canManage||savingName||name.trim().length<2) return;
     setSavingName(true); setError('');
@@ -124,7 +93,6 @@ export function HouseholdSettings({
       setError(l('Não conseguimos atualizar o nome agora.','We could not update the name right now.','No pudimos actualizar el nombre ahora.'));
     }finally{setSavingName(false);}
   }
-
   async function saveLocale(){
     if(!canManage||savingLocale||!data||locale===data.household.locale) return;
     setSavingLocale(true); setError('');
@@ -136,61 +104,12 @@ export function HouseholdSettings({
       setLocale(data.household.locale);
     }finally{setSavingLocale(false);}
   }
-
   function personName(uid:string|null){
     if(!uid) return activeLocale==='en'?'NestBalance':activeLocale==='es'?'NestBalance':'NestBalance';
     if(uid===user.uid) return activeLocale==='en'?'You':activeLocale==='es'?'Tú':'Você';
     const member=data?.members.find(item=>item.uid===uid);
     return member?.displayName||member?.email||(activeLocale==='en'?'A household member':activeLocale==='es'?'Una persona del hogar':'Uma pessoa do Lar');
   }
-
-  function activityText(type:string,targetUid:string|null,scope:'household'|'personal'){
-    const target=personName(targetUid);
-    if(activeLocale==='en'){
-      if(type==='household.renamed') return 'updated the household name.';
-      if(type==='household.locale_changed') return 'changed the household language.';
-      if(type==='household.invite_created') return 'created a household invite.';
-      if(type==='household.invite_revoked') return 'cancelled a household invite.';
-      if(type==='household.member_role_changed') return `changed access for ${target}.`;
-      if(type==='household.member_removed') return `removed ${target} from the household.`;
-      if(type==='recurrence.confirmed') return 'confirmed a monthly recurring item.';
-      if(type==='member.proactivity_preferences_updated') return 'updated personal attention preferences.';
-      if(type.startsWith('capture.')) return scope==='personal'?'added a private financial record.':'added a household financial record.';
-      if(type.includes('payment')) return 'updated a payment.';
-      if(type.includes('invoice')) return 'updated a card statement.';
-      if(type.includes('account')) return 'updated an account.';
-      return 'made an important household update.';
-    }
-    if(activeLocale==='es'){
-      if(type==='household.renamed') return 'actualizó el nombre del hogar.';
-      if(type==='household.locale_changed') return 'cambió el idioma del hogar.';
-      if(type==='household.invite_created') return 'creó una invitación al hogar.';
-      if(type==='household.invite_revoked') return 'canceló una invitación al hogar.';
-      if(type==='household.member_role_changed') return `cambió el acceso de ${target}.`;
-      if(type==='household.member_removed') return `eliminó a ${target} del hogar.`;
-      if(type==='recurrence.confirmed') return 'confirmó un gasto mensual recurrente.';
-      if(type==='member.proactivity_preferences_updated') return 'actualizó sus preferencias personales de atención.';
-      if(type.startsWith('capture.')) return scope==='personal'?'agregó un registro financiero privado.':'agregó un registro financiero del hogar.';
-      if(type.includes('payment')) return 'actualizó un pago.';
-      if(type.includes('invoice')) return 'actualizó un resumen de tarjeta.';
-      if(type.includes('account')) return 'actualizó una cuenta.';
-      return 'hizo una actualización importante en el hogar.';
-    }
-    if(type==='household.renamed') return 'atualizou o nome do Lar.';
-    if(type==='household.locale_changed') return 'alterou o idioma do Lar.';
-    if(type==='household.invite_created') return 'criou um convite para o Lar.';
-    if(type==='household.invite_revoked') return 'cancelou um convite do Lar.';
-    if(type==='household.member_role_changed') return `alterou o acesso de ${target}.`;
-    if(type==='household.member_removed') return `removeu ${target} do Lar.`;
-    if(type==='recurrence.confirmed') return 'confirmou um item recorrente mensal.';
-    if(type==='member.proactivity_preferences_updated') return 'atualizou suas preferências pessoais de atenção.';
-    if(type.startsWith('capture.')) return scope==='personal'?'adicionou um registro financeiro pessoal.':'adicionou um registro financeiro do Lar.';
-    if(type.includes('payment')) return 'atualizou um pagamento.';
-    if(type.includes('invoice')) return 'atualizou uma fatura.';
-    if(type.includes('account')) return 'atualizou uma conta.';
-    return 'fez uma atualização importante no Lar.';
-  }
-
   async function toggleProactivity(key:keyof ProactivityPreferences){
     if(savingProactivity) return;
     const previous=proactivity;
@@ -212,7 +131,6 @@ export function HouseholdSettings({
       setSavingProactivity(false);
     }
   }
-
   async function copyInvite(link=inviteLink){
     if(!link) return;
     try{
@@ -223,7 +141,6 @@ export function HouseholdSettings({
       setInviteCopied(false);
     }
   }
-
   async function shareInvite(){
     if(!inviteLink) return;
     const title=l('Convite do NestBalance','NestBalance invitation','Invitación de NestBalance');
@@ -242,7 +159,6 @@ export function HouseholdSettings({
     }
     await copyInvite(inviteLink);
   }
-
   async function makeInvite(){
     if(!canManage||creatingInvite) return;
     setCreatingInvite(true); setError(''); setInviteLink(''); setInviteCopied(false);
@@ -263,7 +179,6 @@ export function HouseholdSettings({
         : l('Não conseguimos criar o convite.','We could not create the invite.','No pudimos crear la invitación.'));
     }finally{setCreatingInvite(false);}
   }
-
   async function changeRole(uid:string,role:Exclude<HouseholdRole,'owner'>){
     if(!canManage||workingMember) return;
     setWorkingMember(uid); setError('');
@@ -274,7 +189,6 @@ export function HouseholdSettings({
       setError(l('Não conseguimos atualizar esse acesso agora.','We could not update this access right now.','No pudimos actualizar este acceso ahora.'));
     }finally{setWorkingMember('');}
   }
-
   async function revokeInvite(inviteId:string){
     if(!canManage||workingInvite) return;
     setWorkingInvite(inviteId); setError('');
@@ -285,7 +199,6 @@ export function HouseholdSettings({
       setError(l('Não conseguimos cancelar esse convite agora.','We could not cancel this invite right now.','No pudimos cancelar esta invitación ahora.'));
     }finally{setWorkingInvite('');}
   }
-
   async function remove(uid:string){
     if(!canManage||workingMember) return;
     setWorkingMember(uid); setError('');
@@ -296,22 +209,19 @@ export function HouseholdSettings({
       setError(l('Não conseguimos remover esse membro agora.','We could not remove this member right now.','No pudimos eliminar este miembro ahora.'));
     }finally{setWorkingMember('');}
   }
-
-  return <main className="app-shell household-shell">
-    <header className="topbar">
-      <div>
-        <div className="eyebrow">NestBalance</div>
-        <span className="topbar-subtitle">{l('Compartilhar e acessos','Sharing & access','Compartir y accesos')}</span>
-      </div>
-      <Link href="/" className="household-back">{l('Voltar','Back','Volver')}</Link>
-    </header>
-
+  return <AppShell
+    className="household-shell"
+    subtitle={l('Compartilhar e acessos','Sharing & access','Compartir y accesos')}
+    canContribute={(currentSession?.role||'read_only')!=='read_only'}
+    householdLink="none"
+    headerActions={<Link href="/" className="household-back">{l('Voltar','Back','Volver')}</Link>}
+  >
     <section className="area-hero household-hero">
       <span>{l('Sua vida financeira pode ser compartilhada sem compartilhar senha.','Share your financial life without sharing a password.','Comparte tu vida financiera sin compartir contraseña.')}</span>
       <h1>{data?.household.name||currentSession?.name||l('Seu Lar','Your Household','Tu Hogar')}</h1>
       <p>{l('Cada pessoa entra com a própria conta. Nada de senha compartilhada, autoria perdida ou dúvida sobre quem fez o quê.','Each person signs in with their own account. No shared passwords, lost authorship, or uncertainty about who changed what.','Cada persona entra con su propia cuenta. Sin contraseñas compartidas, autoría perdida ni dudas sobre quién cambió qué.')}</p>
     </section>
-
+    <HouseholdCollaborationCard/>
     {sessionHouseholds.length>1&&<section className="household-switcher">
       <div className="section-title"><h2>{l('Seus espaços','Your spaces','Tus espacios')}</h2><span>{sessionHouseholds.length} {l('disponíveis','available','disponibles')}</span></div>
       <div className="household-choice-grid">
@@ -325,10 +235,8 @@ export function HouseholdSettings({
         </button>)}
       </div>
     </section>}
-
     {error&&<p className="error-copy" role="alert">{error}</p>}
     {loading&&<div className="home-loading-line" aria-label={l('Carregando Lar','Loading Household','Cargando Hogar')}/>} 
-
     {!loading&&data&&<>
       <section className="household-panel">
         <div className="section-title"><div><h2>{l('Identidade do Lar','Household identity','Identidad del Hogar')}</h2><span>{l('o nome que aparece para todos','the name everyone sees','el nombre que todos ven')}</span></div></div>
@@ -339,7 +247,6 @@ export function HouseholdSettings({
           </button>}
         </div>
       </section>
-
       <section className="household-panel">
         <div className="section-title"><div><h2>{t.language}</h2><span>{t.languageHint}</span></div></div>
         <div className="household-inline-form">
@@ -354,7 +261,6 @@ export function HouseholdSettings({
         </div>
         <p className="household-helper">{activeLocale==='en'?'Dates, money and the main navigation follow this language. Personal financial privacy does not change.':activeLocale==='es'?'Las fechas, el dinero y la navegación principal siguen este idioma. La privacidad financiera personal no cambia.':'Datas, dinheiro e a navegação principal seguem este idioma. A privacidade financeira pessoal não muda.'}</p>
       </section>
-
       <section className="household-panel">
         <div className="section-title">
           <div>
@@ -369,7 +275,6 @@ export function HouseholdSettings({
         )}</p>
         <ThemeChoice/>
       </section>
-
       <section className="household-panel proactivity-panel">
         <div className="section-title">
           <div>
@@ -406,40 +311,14 @@ export function HouseholdSettings({
           'Estas opciones ya controlan los destacados de tu Inicio. Las notificaciones del dispositivo, cuando se habiliten, usarán las mismas preferencias.'
         )}</small>
       </section>
-
-      <section className="household-panel">
-        <div className="section-title"><div><h2>{l('Pessoas','People','Personas')}</h2><span>{data.members.length} {data.members.length===1?l('membro','member','miembro'):l('membros','members','miembros')}</span></div></div>
-        <div className="member-list">
-          {data.members.map(member=><article className="member-row" key={member.uid}>
-            <div className="member-avatar">{(member.displayName||member.email||'?').slice(0,1).toUpperCase()}</div>
-            <div className="member-copy">
-              <strong>{member.uid===user.uid?l('Você','You','Tú'):member.displayName||member.email||l('Membro do Lar','Household member','Miembro del Hogar')}</strong>
-              <span>{member.email||l('Conta conectada','Connected account','Cuenta conectada')} · {roleName(member.role)}</span>
-            </div>
-            <div className="member-access">
-              {member.role==='owner'||!canManage
-                ? <span className="role-pill">{roleName(member.role)}</span>
-                : <select
-                    value={member.role}
-                    disabled={workingMember===member.uid}
-                    onChange={e=>void changeRole(member.uid,e.target.value as Exclude<HouseholdRole,'owner'>)}
-                    aria-label={l(`Acesso de ${member.displayName||member.email||'membro'}`,`Access for ${member.displayName||member.email||'member'}`,`Acceso de ${member.displayName||member.email||'miembro'}`)}
-                  >
-                    <option value="admin">{roleName('admin')}</option>
-                    <option value="manager">{roleName('manager')}</option>
-                    <option value="member">{roleName('member')}</option>
-                    <option value="read_only">{roleName('read_only')}</option>
-                  </select>}
-              {canManage&&member.role!=='owner'&&member.uid!==user.uid&&<button
-                className="member-remove"
-                disabled={workingMember===member.uid}
-                onClick={()=>void remove(member.uid)}
-              >{l('Remover','Remove','Eliminar')}</button>}
-            </div>
-          </article>)}
-        </div>
-      </section>
-
+      <HouseholdPeoplePanel
+        members={data.members}
+        userUid={user.uid}
+        canManage={canManage}
+        workingMember={workingMember}
+        onRoleChange={changeRole}
+        onRemove={remove}
+      />
       {canManage&&<section className="household-panel invite-panel">
         <div className="section-title"><div><h2>{l('Compartilhar este Lar','Share this Household','Compartir este Hogar')}</h2><span>{l('cada pessoa usa o próprio login','everyone uses their own sign-in','cada persona usa su propio acceso')}</span></div></div>
         <p className="household-helper">{l(
@@ -490,30 +369,13 @@ export function HouseholdSettings({
           </div>)}
         </div>}
       </section>}
-
-      <section className="household-panel household-activity-panel">
-        <div className="section-title"><div><h2>{t.recentActivity}</h2><span>{t.recentActivityHint}</span></div></div>
-        {data.activity.length===0
-          ? <p className="household-helper">{t.noRecentActivity}</p>
-          : <div className="household-activity-list">
-              {data.activity.map(item=><article className="household-activity-row" key={item.id}>
-                <div className="member-avatar">{personName(item.actorUid).slice(0,1).toUpperCase()}</div>
-                <div>
-                  <p><strong>{personName(item.actorUid)}</strong> {activityText(item.type,item.targetUid,item.scope)}</p>
-                  <span>{item.createdAtMs?formatDate(item.createdAtMs,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}{item.scope==='personal'?(activeLocale==='en'?' · private':activeLocale==='es'?' · privado':' · pessoal'):''}</span>
-                </div>
-              </article>)}
-            </div>}
-      </section>
-
+      <HouseholdActivityPanel activity={data.activity} personName={personName}/>
       <PwaInstallCard/>
-
       <section className="household-panel privacy-entry-card"><div><div className="eyebrow">{l('Privacidade','Privacy','Privacidad')}</div><h2>{l('Lar, Pessoal e seus dados','Household, Personal and your data','Hogar, Personal y tus datos')}</h2><p>{l('Veja o que é compartilhado, exporte seus dados ou controle exclusões.','See what is shared, export your data, or control deletions.','Consulta qué se comparte, exporta tus datos o controla eliminaciones.')}</p></div><Link href="/privacy" className="primary-button privacy-entry-link">{l('Abrir privacidade','Open privacy','Abrir privacidad')}</Link></section>
-
       <section className="household-safety-note">
         <strong>{l('Seu papel','Your role','Tu rol')}: {roleName(data.currentRole)}</strong>
         <p>{l('O servidor valida seu acesso em cada operação. Trocar botões na tela não concede permissão financeira.','The server validates your access on every operation. Changing controls in the interface never grants financial permission.','El servidor valida tu acceso en cada operación. Cambiar controles en la interfaz no concede permisos financieros.')}</p>
       </section>
     </>}
-  </main>;
+  </AppShell>;
 }

@@ -3,7 +3,8 @@ import type { Request, Response } from 'express';
 import { FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import { buildInvoiceVisionPreview } from '../src/core/invoice-vision.js';
 import { extractCardStatementImage } from './ai/card-statement-image.js';
-import { isOpenAiConfigured } from './ai/openai-client.js';
+import { isOpenAiConfigured, visionModel } from './ai/openai-client.js';
+import { runAiGateway } from './ai/gateway.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
@@ -153,7 +154,15 @@ export async function analyzeCreditCardInvoiceImage(req:Request,res:Response){
     },bytes);
     if(!verification.ok) throw Object.assign(new Error(`EVIDENCE_${verification.reason.toUpperCase()}`),{statusCode:409});
 
-    const result=await extractCardStatementImage(bytes,mimeType);
+    const result=await runAiGateway({
+      householdId,
+      userUid:user.uid,
+      provider:'openai',
+      task:'card_statement_image',
+      model:visionModel(),
+      promptVersion:ANALYSIS_VERSION,
+      fingerprint:String(resolved.data.sha256||resolved.evidenceId)+':'+cardId
+    },()=>extractCardStatementImage(bytes,mimeType));
     const preview=buildInvoiceVisionPreview({
       extraction:result.extraction,
       closingDay,
@@ -229,7 +238,9 @@ export async function analyzeCreditCardInvoiceImage(req:Request,res:Response){
       'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','PRIVACY_SCOPE_MISMATCH','AI_NOT_CONFIGURED',
       'INVOICE_IMAGE_TYPE_REQUIRED','INVOICE_IMAGE_TOO_LARGE','CARD_NOT_FOUND','CARD_NOT_ACTIVE',
       'CARD_CYCLE_INVALID','EVIDENCE_NOT_FOUND','EVIDENCE_STORAGE_UNAVAILABLE',
-      'EVIDENCE_INVALID_METADATA','EVIDENCE_SIZE_MISMATCH','EVIDENCE_SIGNATURE_MISMATCH','EVIDENCE_HASH_MISMATCH'
+      'EVIDENCE_INVALID_METADATA','EVIDENCE_SIZE_MISMATCH','EVIDENCE_SIGNATURE_MISMATCH','EVIDENCE_HASH_MISMATCH',
+      'AI_GATEWAY_DISABLED','AI_PROVIDER_DISABLED','AI_TASK_DISABLED','AI_PROMPT_DISABLED','AI_CIRCUIT_OPEN','AI_GATEWAY_TIMEOUT',
+      'AI_GLOBAL_REQUEST_CAP_REACHED','AI_GLOBAL_BUDGET_REACHED','AI_HOUSEHOLD_BUDGET_REACHED','AI_USER_BUDGET_REACHED'
     ];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'INVOICE_IMAGE_ANALYSIS_FAILED');
   }

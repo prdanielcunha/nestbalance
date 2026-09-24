@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "dataPolicy": "synthetic-or-anonymized-only",
+  "parserCases": [
+    {
+      "id": "pt-recurring-bill",
+      "input": "Internet 119,90 dia 10 todo mês",
+      "expected": {
+        "kind": "commitment",
+        "amountMinor": 11990,
+        "dueDay": 10,
+        "recurring": true
+      }
+    },
+    {
+      "id": "pt-transfer",
+      "input": "transferi 850 entre minhas contas",
+      "expected": {
+        "kind": "transaction",
+        "amountMinor": 85000,
+        "direction": "transfer"
+      }
+    },
+    {
+      "id": "en-recurring-bill",
+      "input": "paid 1,250.50 for internet every month due day 10",
+      "expected": {
+        "kind": "commitment",
+        "amountMinor": 125050,
+        "dueDay": 10,
+        "recurring": true,
+        "direction": "expense"
+      }
+    },
+    {
+      "id": "es-income",
+      "input": "recibí 2.500,00 de salario",
+      "expected": {
+        "kind": "transaction",
+        "amountMinor": 250000,
+        "direction": "income"
+      }
+    },
+    {
+      "id": "unknown-amount",
+      "input": "Internet dia 10 todo mês",
+      "expected": {
+        "kind": "commitment",
+        "amountMinor": 0,
+        "dueDay": 10,
+        "requiresReview": "amount"
+      }
+    }
+  ],
+  "redactionCases": [
+    {
+      "id": "card",
+      "input": "Cartão 4111 1111 1111 1234 limite mensal",
+      "mustNotContain": [
+        "4111 1111 1111"
+      ],
+      "mustContain": [
+        "•••• 1234"
+      ]
+    },
+    {
+      "id": "identity",
+      "input": "CPF 123.456.789-09 email pessoa@example.com telefone (43) 99999-8888",
+      "mustNotContain": [
+        "123.456.789-09",
+        "pessoa@example.com",
+        "99999-8888"
+      ],
+      "mustContain": [
+        "CPF_REDACTED",
+        "EMAIL_REDACTED"
+      ]
+    },
+    {
+      "id": "account-pix",
+      "input": "Agência 1234 Conta corrente 98765-4 Chave Pix: teste@example.com",
+      "mustNotContain": [
+        "98765-4",
+        "teste@example.com"
+      ],
+      "mustContain": [
+        "PIX_KEY_REDACTED"
+      ]
+    }
+  ]
+}

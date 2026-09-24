@@ -1,0 +1,4 @@
+/* Design tokens: semantic values only. Feature CSS must consume these variables. */
+:root{--night:#0b1020;--ink:#202635;--muted:#6d7484;--paper:#f6f7f9;--surface:rgba(255,255,255,.78);--surface-strong:#fff;--line:#e7eaf0;--iris:#5e6ad2;--mint:#0f9f8f;--danger:#c74855;--shadow:0 24px 80px rgba(23,30,52,.08);--radius-lg:28px;--radius-md:20px;--space:clamp(18px,3vw,32px)}
+html[data-theme="dark"]{color-scheme:dark;--paper:#090d18;--ink:#edf0f6;--muted:#9da5b7;--surface:rgba(20,25,40,.82);--surface-strong:#121725;--line:#252c3e;--night:#f4f6fb;--shadow:0 24px 80px rgba(0,0,0,.28)}
+html[data-theme="light"]{color-scheme:light}

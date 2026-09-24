@@ -1,0 +1,45 @@
+/* Phase 6 — couple/family collaboration */
+.together-shell{max-width:1180px}
+.together-hero{padding:22px 0 28px;max-width:760px}
+.together-hero>span{font-size:11px;letter-spacing:.13em;color:var(--iris);font-weight:800}
+.together-hero h1{font-size:clamp(36px,6vw,68px);letter-spacing:-.055em;margin:8px 0 10px}
+.together-hero p{color:var(--muted);line-height:1.6;margin:0}
+.together-loading{height:260px;border-radius:26px;background:var(--surface-strong)}
+.together-overview{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--line);margin-bottom:18px}
+.together-overview>div{display:grid;gap:5px;padding:16px;background:var(--surface-strong)}
+.together-overview span{font-size:12px;color:var(--muted)}.together-overview strong{font-size:26px}
+.together-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.together-panel{padding:20px;border:1px solid var(--line);border-radius:24px;background:var(--surface-strong);min-width:0}
+.together-panel .section-title{margin-top:0}
+.together-inline-form{display:grid;grid-template-columns:minmax(0,1fr) 150px auto;gap:8px;margin-bottom:14px}
+.together-inline-form input,.together-inline-form select,.comment-composer textarea,.comment-composer select,.split-form input,.ritual-panel textarea{min-height:44px;border:1px solid var(--line);border-radius:13px;background:var(--paper);color:var(--ink);padding:10px 11px;font:inherit}
+.together-inline-form button,.comment-composer button,.split-form>button,.split-list button,.ritual-actions button{min-height:44px;border:0;border-radius:13px;background:var(--ink);color:var(--paper);padding:0 13px;font-size:12px;font-weight:800}
+.shared-task-list{display:grid;gap:4px}
+.shared-task-list article{display:grid;grid-template-columns:38px 1fr;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.shared-task-list article>button{width:36px;height:36px;min-height:36px;border:1px solid var(--line);border-radius:50%;background:var(--paper);color:var(--ink)}
+.shared-task-list article.done strong{text-decoration:line-through;color:var(--muted)}
+.shared-task-list strong,.shared-task-list small{display:block}.shared-task-list strong{font-size:13px}.shared-task-list small{font-size:11px;color:var(--muted);margin-top:3px}
+.shared-task-list details summary{cursor:pointer;font-size:12px;color:var(--muted);padding:10px 0}
+.quiet-copy{font-size:13px;color:var(--muted)}
+.comment-list{max-height:330px;overflow:auto;display:grid;gap:12px;margin-bottom:12px}
+.comment-list article{display:grid;grid-template-columns:36px 1fr;gap:9px}
+.comment-list .member-avatar{width:34px;height:34px}
+.comment-list strong{font-size:12px}.comment-list p{margin:3px 0;font-size:13px;line-height:1.45}.comment-list small{font-size:10px;color:var(--iris)}
+.comment-composer{display:grid;gap:8px}.comment-composer textarea{resize:vertical}
+.comment-composer>div{display:flex;gap:8px;justify-content:flex-end}.comment-composer select{min-width:150px}
+.split-form{display:grid;gap:8px;margin-bottom:14px}
+.split-members{display:flex;flex-wrap:wrap;gap:7px}.split-members label{display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:999px;font-size:12px}
+.split-list{display:grid;gap:8px}.split-list article{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.split-list article>div{display:grid;gap:2px}.split-list strong{font-size:13px}.split-list span{font-weight:800}.split-list small{font-size:11px;color:var(--muted)}
+.ritual-panel>ol{padding-left:20px;color:var(--muted);font-size:13px;line-height:1.8}
+.ritual-panel>label{display:grid;gap:5px;margin-top:10px}.ritual-panel>label>span{font-size:12px;font-weight:750;color:var(--muted)}
+.ritual-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.ritual-actions button:first-child{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+@media(max-width:850px){.together-grid{grid-template-columns:1fr}.together-overview{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.together-inline-form{grid-template-columns:1fr}.together-overview{grid-template-columns:1fr 1fr}.comment-composer>div{display:grid}.comment-composer select{width:100%}}
+
+.linked-conversation-panel{margin-bottom:18px}
+.linked-entity-select{display:grid;gap:6px;margin-bottom:12px}.linked-entity-select>span{font-size:12px;font-weight:750;color:var(--muted)}
+.linked-entity-select select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:13px;background:var(--paper);color:var(--ink);padding:0 11px;font:inherit}
+.linked-comment-list{max-height:240px;padding:4px 0}
+.linked-conversation-loading{height:80px;border-radius:16px;background:var(--paper);margin:8px 0}
+.linked-privacy-note{display:block;margin-top:10px;color:var(--muted);font-size:11px}

@@ -6,7 +6,8 @@ import { parseFinancialList } from '../src/core/text-parser.js';
 import { extractFinancialImage } from './ai/financial-image.js';
 import { buildImportedMovements, type ImportedMovementList } from '../src/core/movement-import.js';
 import { transcribeFinancialAudio } from './ai/audio-transcription.js';
-import { isOpenAiConfigured } from './ai/openai-client.js';
+import { isOpenAiConfigured, transcriptionModel, visionModel } from './ai/openai-client.js';
+import { runAiGateway } from './ai/gateway.js';
 import { adminBucket, adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { verifyVaultPreviewBytes } from './vault-verifier.js';
@@ -121,7 +122,15 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
 
     let persisted:any;
     if(kind==='image'){
-      const result=await extractFinancialImage(bytes,mimeType);
+      const result=await runAiGateway({
+        householdId,
+        userUid:user.uid,
+        provider:'openai',
+        task:'financial_image',
+        model:visionModel(),
+        promptVersion:'vision-v2',
+        fingerprint:String(resolved.data.sha256||resolved.evidenceId)
+      },()=>extractFinancialImage(bytes,mimeType));
       const screenType=result.extraction.screen?.screenType;
       const cashMovementScreen=!['card_home','card_statement','retail_account'].includes(String(screenType||''));
       const screenMovements=cashMovementScreen?(result.extraction.screen?.movements||[]):[];
@@ -152,7 +161,15 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
         createdAt:FieldValue.serverTimestamp()
       };
     }else{
-      const result=await transcribeFinancialAudio(bytes,mimeType,String(resolved.data.originalName||'audio'));
+      const result=await runAiGateway({
+        householdId,
+        userUid:user.uid,
+        provider:'openai',
+        task:'audio_transcription',
+        model:transcriptionModel(),
+        promptVersion:'audio-v1',
+        fingerprint:String(resolved.data.sha256||resolved.evidenceId)
+      },()=>transcribeFinancialAudio(bytes,mimeType,String(resolved.data.originalName||'audio')));
       const parsedInterpretations=parseFinancialList(result.transcript).filter(item=>item.money.amountMinor>0);
       persisted={
         version:1,
@@ -218,7 +235,9 @@ export async function analyzeEvidenceWithAi(req:Request,res:Response){
       'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','AI_NOT_CONFIGURED',
       'AI_IMAGE_TYPE_REQUIRED','AI_IMAGE_TOO_LARGE','AI_AUDIO_TYPE_REQUIRED','AI_AUDIO_TOO_LARGE',
       'EVIDENCE_STORAGE_UNAVAILABLE','EVIDENCE_INVALID_METADATA','EVIDENCE_SIZE_MISMATCH',
-      'EVIDENCE_SIGNATURE_MISMATCH','EVIDENCE_HASH_MISMATCH'
+      'EVIDENCE_SIGNATURE_MISMATCH','EVIDENCE_HASH_MISMATCH',
+      'AI_GATEWAY_DISABLED','AI_PROVIDER_DISABLED','AI_TASK_DISABLED','AI_PROMPT_DISABLED','AI_CIRCUIT_OPEN','AI_GATEWAY_TIMEOUT',
+      'AI_GLOBAL_REQUEST_CAP_REACHED','AI_GLOBAL_BUDGET_REACHED','AI_HOUSEHOLD_BUDGET_REACHED','AI_USER_BUDGET_REACHED'
     ];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'AI_ANALYSIS_FAILED');
   }

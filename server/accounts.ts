@@ -6,8 +6,15 @@ import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { assertScopedAccess, scopeFields } from './privacy.js';
 
-function error(res:Response,status:number,code:string){
-  return res.status(status).json({ok:false,error:code});
+function error(res:Response,status:number,code:string,extra:Record<string,unknown>={}){
+  return res.status(status).json({ok:false,error:code,...extra});
+}
+
+function timestampMillis(value:any){
+  if(value&&typeof value.toMillis==='function') return Number(value.toMillis())||0;
+  if(value instanceof Date) return value.getTime();
+  if(typeof value==='number') return Number.isFinite(value)?value:0;
+  return 0;
 }
 
 export async function createAccount(req:Request,res:Response){
@@ -78,6 +85,7 @@ export async function updateAccountBalance(req:Request,res:Response){
     const householdId=String(req.body?.householdId||'');
     const accountId=String(req.body?.accountId||'');
     const balanceMinor=Number(req.body?.balanceMinor);
+    const expectedUpdatedAtMs=Number(req.body?.expectedUpdatedAtMs||0);
 
     await requireHouseholdMember(householdId,user.uid,'manage_finance');
     if(!/^[A-Za-z0-9_-]{6,128}$/.test(accountId)) return error(res,400,'INVALID_ACCOUNT');
@@ -98,6 +106,14 @@ export async function updateAccountBalance(req:Request,res:Response){
       if(data.status!=='active') throw Object.assign(new Error('ACCOUNT_NOT_ACTIVE'),{statusCode:409});
       const wasLegacySync=data.readOnlySync===true||data.source==='open_finance';
       previousBalanceMinor=Number(data.balanceMinor??data.amountMinor??0);
+      const currentUpdatedAtMs=timestampMillis(data.updatedAt||data.balanceAsOf||data.createdAt);
+      if(Number.isSafeInteger(expectedUpdatedAtMs)&&expectedUpdatedAtMs>0&&currentUpdatedAtMs!==expectedUpdatedAtMs){
+        throw Object.assign(new Error('ACCOUNT_BALANCE_CONFLICT'),{
+          statusCode:409,
+          currentBalanceMinor:previousBalanceMinor,
+          currentUpdatedAtMs
+        });
+      }
 
       tx.update(accountRef,{
         balanceMinor,
@@ -129,7 +145,13 @@ export async function updateAccountBalance(req:Request,res:Response){
 
     return res.json({ok:true,accountId,previousBalanceMinor,balanceMinor});
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','ACCOUNT_NOT_FOUND','ACCOUNT_NOT_ACTIVE','ACCOUNT_BALANCE_CONFLICT'];
+    if(err?.message==='ACCOUNT_BALANCE_CONFLICT'){
+      return error(res,409,'ACCOUNT_BALANCE_CONFLICT',{
+        currentBalanceMinor:Number(err.currentBalanceMinor)||0,
+        currentUpdatedAtMs:Number(err.currentUpdatedAtMs)||0
+      });
+    }
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'ACCOUNT_BALANCE_UPDATE_FAILED');
   }
 }

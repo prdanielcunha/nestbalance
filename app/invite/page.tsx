@@ -8,7 +8,8 @@ function InviteAcceptance(){
   const {locale}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const started=useRef(false);
-  const [status,setStatus]=useState<'working'|'error'>('working');
+  const [status,setStatus]=useState<'working'|'accepted'|'error'>('working');
+  const [acceptedRole,setAcceptedRole]=useState('member');
   const [message,setMessage]=useState(()=>l('Entrando no Lar…','Joining the Household…','Entrando al Hogar…'));
 
   useEffect(()=>{
@@ -28,8 +29,14 @@ function InviteAcceptance(){
     // Keep the one-time invite secret out of the visible URL/history once captured.
     window.history.replaceState(null,'','/invite');
 
-    void acceptHouseholdInvite(token).then(()=>{
-      window.location.assign('/household');
+    void acceptHouseholdInvite(token).then(result=>{
+      setAcceptedRole(result.role);
+      setStatus('accepted');
+      setMessage(l(
+        'Convite aceito. Antes de continuar, veja como seu acesso funciona.',
+        'Invite accepted. Before continuing, see how your access works.',
+        'Invitación aceptada. Antes de continuar, mira cómo funciona tu acceso.'
+      ));
     }).catch((err:any)=>{
       const code=String(err?.message||'');
       const copy:Record<string,string>={
@@ -47,14 +54,46 @@ function InviteAcceptance(){
     });
   },[]);
 
-  return <main className="center-shell"><section className="login-card">
+  const roleLabel=acceptedRole==='admin'
+    ? l('Sócio · acesso total','Partner · full access','Socio · acceso total')
+    : acceptedRole==='manager'
+      ? l('Gestor financeiro','Financial manager','Gestor financiero')
+      : acceptedRole==='read_only'
+        ? l('Visualizador','Viewer','Visualizador')
+        : l('Colaborador','Contributor','Colaborador');
+
+  return <main className="center-shell"><section className="login-card invite-first-use">
     <div>
       <div className="eyebrow">NestBalance</div>
       <h1>{status==='working'
         ? l('Abrindo seu Lar','Opening your Household','Abriendo tu Hogar')
-        : l('Convite indisponível','Invite unavailable','Invitación no disponible')}</h1>
+        : status==='accepted'
+          ? l('Você entrou no Lar','You joined the Household','Entraste al Hogar')
+          : l('Convite indisponível','Invite unavailable','Invitación no disponible')}</h1>
       <p>{message}</p>
+      {status==='accepted'&&<div className="invite-role-intro">
+        <div><span>{l('Seu papel','Your role','Tu rol')}</span><strong>{roleLabel}</strong></div>
+        <article>
+          <strong>{l('Lar','Household','Hogar')}</strong>
+          <p>{l(
+            'Aqui ficam apenas dados que alguém escolheu compartilhar com o grupo. Alterações mostram quem fez o quê.',
+            'Only data someone chose to share with the group appears here. Changes show who did what.',
+            'Aquí solo aparecen datos que alguien eligió compartir con el grupo. Los cambios muestran quién hizo qué.'
+          )}</p>
+        </article>
+        <article>
+          <strong>{l('Pessoal','Personal','Personal')}</strong>
+          <p>{l(
+            'Seus itens Pessoais continuam privados. Outros membros do Lar não veem valores, descrições nem documentos pessoais.',
+            'Your Personal items stay private. Other Household members cannot see private amounts, descriptions, or documents.',
+            'Tus elementos Personales siguen privados. Los demás miembros no ven valores, descripciones ni documentos personales.'
+          )}</p>
+        </article>
+      </div>}
     </div>
+    {status==='accepted'&&<button className="primary-button" onClick={()=>window.location.assign('/together?welcome=1')}>
+      {l('Entendi · abrir Central do Lar','Got it · open Household Center','Entendido · abrir Central del Hogar')}
+    </button>}
     {status==='error'&&<button className="primary-button" onClick={()=>window.location.assign('/')}>
       {l('Ir para o NestBalance','Go to NestBalance','Ir a NestBalance')}
     </button>}

@@ -1,4 +1,5 @@
 'use client';
+import { captureTraceHeaders } from '@/src/lib/capture-trace';
 import { auth } from '@/src/lib/firebase/client';
 
 function localIsoDate(){
@@ -12,7 +13,7 @@ async function api<T>(path:string,body:unknown):Promise<T>{
   if(!token) throw new Error('AUTH_REQUIRED');
   const response=await fetch(path,{
     method:'POST',
-    headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
+    headers:{'content-type':'application/json',authorization:`Bearer ${token}`,...captureTraceHeaders()},
     body:JSON.stringify(body),
     cache:'no-store'
   });

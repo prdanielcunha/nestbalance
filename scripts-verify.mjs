@@ -15,9 +15,10 @@ const accountsSource=read('./server/accounts.ts');
 const accountsScreen=read('./src/features/accounts/accounts-screen.tsx');
 const accountOnboarding=read('./src/features/onboarding/account-onboarding.tsx');
 const globalStyles=read('./app/globals.css');
+const foundationStyles=read('./app/foundation.css');
 const householdSettingsScreen=read('./src/features/household/household-settings.tsx');
 const savingsPotsSource=read('./server/savings-pots.ts');
-const savingsPotsScreen=read('./src/features/pots/pots-screen.tsx');
+const savingsPotsScreen=read('./src/features/pots/pots-screen.tsx')+read('./src/features/pots/pots-overview.tsx')+read('./src/features/pots/pot-editor-sheet.tsx')+read('./src/features/pots/pot-detail-sheet.tsx');
 const aiEvidence=read('./server/evidence-ai.ts');
 const aiClient=read('./server/ai/openai-client.ts');
 const aiImage=read('./server/ai/financial-image.ts');
@@ -49,7 +50,20 @@ const envExample=read('./.env.example');
 const serviceWorker=read('./public/sw.js');
 const manifestSource=read('./app/manifest.ts');
 const appNav=read('./src/features/navigation/app-nav.tsx');
+const appShell=read('./src/features/navigation/app-shell.tsx');
+const homeScreen=read('./src/features/home/home-screen.tsx');
+const movementsScreen=read('./src/features/movements/movements-screen.tsx');
+const assistantScreen=read('./src/features/assistant/assistant-screen.tsx');
+const vaultScreen=read('./src/features/vault/vault-screen.tsx');
+const privacyCenter=read('./src/features/privacy/privacy-center.tsx');
 const revisionServer=read('./server/revision.ts');
+const realtimeCore=read('./src/core/realtime.ts');
+const offlineMutationQueue=read('./src/lib/offline-mutation-queue.ts');
+const accountRepository=read('./src/lib/repositories/accounts.ts');
+const captureUndoRepository=read('./src/lib/repositories/capture-undo.ts');
+const toastViewport=read('./src/features/feedback/toast-viewport.tsx');
+const captureProgress=read('./src/features/capture/capture-progress.tsx');
+const homePreferencesServer=read('./server/home-preferences.ts');
 const authenticatedBrowserTest=read('./tests/e2e/authenticated-finance.spec.ts');
 const localCardReader=read('./src/lib/local-card-reader.ts');
 const localImageOcr=read('./src/lib/local-image-ocr.ts');
@@ -57,6 +71,10 @@ const localCardParser=read('./src/core/card-local-reader.ts');
 const geminiFree=read('./server/ai/gemini-free.ts');
 const geminiFallback=read('./server/gemini-fallback.ts');
 const financialRedaction=read('./src/core/financial-redaction.ts');
+const productMetrics=read('./server/product-metrics.ts');
+const productMetricsRuntime=read('./src/features/telemetry/product-metrics-runtime.tsx');
+const productEvents=read('./src/lib/product-events.ts');
+const universalCapture=read('./src/features/capture/universal-capture.tsx')+read('./src/lib/capture/use-universal-capture-controller.ts');
 
 assert.match(firestore,/match \/households\/\{hid\}/);
 assert.match(firestore,/allow read, write: if false;/);
@@ -90,6 +108,10 @@ assert.ok(accountOnboarding.includes("body.style.overflow='hidden'"));
 assert.ok(globalStyles.includes('body.nestbalance-modal-open .scope-view-switch'));
 assert.ok(globalStyles.includes('z-index:1000'));
 assert.ok(globalStyles.includes('.account-sheet{'));
+assert.match(foundationStyles,/--nb-control-font-min:12px/);
+assert.match(foundationStyles,/\.app-shell-nav\.desktop-inline/);
+assert.match(foundationStyles,/\.movement-filter-row button/);
+assert.match(foundationStyles,/\.assistant-starters button/);
 assert.ok(!householdSettingsScreen.includes('<PwaInstallCard/>\\n\\n'),'Literal escaped newlines must never render in Household settings UI.');
 assert.match(accountsSource,/convertedFromLegacySync/);
 assert.match(accountsSource,/source:'manual'/);
@@ -222,10 +244,64 @@ assert.match(browserWorkflow,/npm ci --no-audit --no-fund/);
 assert.ok(!browserWorkflow.includes('npm install --no-audit --no-fund'),'browserWorkflow must use npm ci.');
 assert.match(serviceWorker,/url\.pathname==='\/share-target'/);
 assert.match(cloudrun,/\/api\/household\/revision/);
+assert.match(cloudrun,/\/api\/household\/revision\/stream/);
+assert.match(revisionServer,/text\/event-stream/);
+assert.match(revisionServer,/syncDomainsForAuditType/);
+assert.ok(!revisionServer.includes('amountMinor'),'Realtime invalidation must not stream financial values.');
+assert.ok(!revisionServer.includes('description'),'Realtime invalidation must not stream descriptions.');
+assert.ok(!revisionServer.includes('sourceText'),'Realtime invalidation must not stream source text.');
+assert.match(realtimeCore,/SyncDomain/);
+assert.match(offlineMutationQueue,/indexedDB/);
+assert.match(offlineMutationQueue,/capture_commit/);
+assert.ok(!offlineMutationQueue.includes('localStorage'),'Offline financial commands must not use localStorage.');
+assert.match(accountsSource,/ACCOUNT_BALANCE_CONFLICT/);
+assert.match(accountRepository,/expectedUpdatedAtMs/);
+assert.match(cloudrun,/\/api\/capture\/undo/);
+assert.match(capture,/CAPTURE_UNDO_EXPIRED/);
+assert.match(capture,/data\.source!=='universal_capture'/);
+assert.match(captureUndoRepository,/\/api\/capture\/undo/);
+assert.match(toastViewport,/aria-live="polite"/);
+assert.match(captureProgress,/receiving.*reading.*understanding.*comparing.*ready/s);
+assert.match(cloudrun,/\/api\/member\/home-preferences/);
+assert.match(homePreferencesServer,/normalizeHomePreferences/);
+assert.match(cloudrun,/\/api\/metrics\/web-vital/);
+assert.match(productMetrics,/event:'product_web_vital'/);
+assert.match(productMetrics,/event:'product_funnel_event'/);
+assert.match(cloudrun,/\/api\/metrics\/product-event/);
+assert.match(productMetrics,/first_value_observed/);
+assert.match(productEvents,/first_value_observed/);
+assert.match(homeScreen,/first_value_observed/);
+assert.match(universalCapture,/capture_review_ready/);
+assert.match(universalCapture,/capture_committed/);
+assert.match(universalCapture,/capture_abandoned/);
+assert.ok(!productEvents.includes('householdId'),'Capture funnel telemetry must not send Household identifiers.');
+assert.ok(!productEvents.includes('uid'),'Capture funnel telemetry must not send user identifiers.');
+assert.ok(!productEvents.includes('amount'),'Capture funnel telemetry must not send financial amounts.');
+assert.ok(!productEvents.includes('description'),'Capture funnel telemetry must not send financial descriptions.');
+assert.ok(!productMetrics.includes('householdId'),'Product Web Vitals telemetry must not log Household identifiers.');
+assert.ok(!productMetrics.includes('userId'),'Product Web Vitals telemetry must not log user identifiers.');
+assert.ok(!productMetricsRuntime.includes('metric.id'),'Browser telemetry must not send the page-load metric identifier.');
+assert.ok(!productMetricsRuntime.includes('location.search'),'Browser telemetry must not send query strings.');
 assert.match(revisionServer,/collection\('auditEvents'\)/);
 assert.match(appNav,/nav-accounts/);
+assert.match(appShell,/app-shell-nav/);
+for(const [name,source] of [
+  ['Home',homeScreen],
+  ['Movements',movementsScreen],
+  ['Accounts',accountsScreen],
+  ['Cofrinhos',savingsPotsScreen],
+  ['Assistant',assistantScreen],
+  ['Documents',vaultScreen],
+  ['Household',householdSettingsScreen],
+  ['Privacy',privacyCenter]
+]){
+  assert.match(source,/AppShell/,name+' must use the shared AppShell.');
+  assert.ok(!source.includes("from '@/src/features/navigation/app-nav'"),name+' must not own primary navigation directly.');
+}
 assert.match(authenticatedBrowserTest,/320/);
+assert.match(authenticatedBrowserTest,/1024/);
 assert.match(authenticatedBrowserTest,/1440/);
+assert.match(authenticatedBrowserTest,/1920/);
 assert.match(authenticatedBrowserTest,/read_only/);
 assert.match(serviceWorker,/url\.pathname\.startsWith\('\/api\/'\)/);
 assert.match(productionWorkflow,/sw\.js/);

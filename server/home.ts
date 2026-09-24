@@ -6,9 +6,18 @@ import { categoryFromRecordAndRules, learnedCategoryRuleFromDoc, type LearnedCat
 import { normalizeProactivityPreferences } from '../src/core/proactivity.js';
 import { activeAttentionDismissals } from '../src/core/attention.js';
 import { normalizeSavingsPotAutomation } from '../src/core/savings-pot-automation.js';
+import { normalizeHomePreferences } from '../src/core/home-preferences.js';
+import { normalizeIntelligencePreferences } from '../src/core/intelligence-preferences.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
+}
+
+function timestampMillis(value:any){
+  if(value&&typeof value.toMillis==='function') return Number(value.toMillis())||0;
+  if(value instanceof Date) return value.getTime();
+  if(typeof value==='number') return Number.isFinite(value)?value:0;
+  return 0;
 }
 
 function accountDto(doc:any){
@@ -25,6 +34,7 @@ function accountDto(doc:any){
     balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
     currency:String(data.currency||'BRL'),
     status:String(data.status||'active'),
+    updatedAtMs:timestampMillis(data.updatedAt||data.balanceAsOf||data.createdAt)||null,
     scope:data.scope==='personal'?'personal':'household'
   };
 }
@@ -198,6 +208,8 @@ export async function getHomeData(req:Request,res:Response){
       savingsPots:visibleDocs(savingsPots.docs,user.uid).map(savingsPotDto),
       cardSnapshots:visibleDocs(cardSnapshots.docs,user.uid).map(cardSnapshotDto),
       proactivityPreferences:normalizeProactivityPreferences(currentMember.proactivityPreferences),
+      homePreferences:normalizeHomePreferences(currentMember.homePreferences),
+      intelligencePreferences:normalizeIntelligencePreferences(currentMember.intelligencePreferences),
       dismissedAttentionKeys:activeAttentionDismissals(attentionDismissalsSnap.docs.map(doc=>doc.data()),user.uid,Date.now()),
       dismissedRecurrenceKeys:visibleDocs(recurrenceDismissals.docs,user.uid)
         .map(doc=>{

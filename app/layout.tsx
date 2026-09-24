@@ -1,9 +1,23 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import './tokens.css';
+import './primitives.css';
+import './patterns.css';
 import './globals.css';
+import './foundation.css';
 import './home-premium.css';
+import './planning.css';
+import './pots.css';
+import './collaboration.css';
+import './commercial.css';
+import './inbox.css';
 import { PwaRuntime } from '@/src/features/pwa/pwa-runtime';
 import { ThemeRuntime } from '@/src/features/theme/theme-runtime';
+import { ProductMetricsRuntime } from '@/src/features/telemetry/product-metrics-runtime';
+import { OfflineMutationRuntime } from '@/src/features/offline/offline-mutation-runtime';
+import { ToastViewport } from '@/src/features/feedback/toast-viewport';
+import { CrashTelemetryRuntime } from '@/src/features/telemetry/crash-telemetry-runtime';
+import { BetaPulseRuntime } from '@/src/features/telemetry/beta-pulse-runtime';
 
 const inter=Inter({
   subsets:['latin'],
@@ -35,6 +49,6 @@ const themeBootScript=`(()=>{try{const saved=localStorage.getItem('nestbalance-t
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
   return <html lang="pt-BR" data-theme="dark" className={inter.variable} suppressHydrationWarning>
     <head><script dangerouslySetInnerHTML={{__html:themeBootScript}}/></head>
-    <body><PwaRuntime/><ThemeRuntime/>{children}</body>
+    <body><PwaRuntime/><ThemeRuntime/><ProductMetricsRuntime/><CrashTelemetryRuntime/><BetaPulseRuntime/><OfflineMutationRuntime/>{children}<ToastViewport/></body>
   </html>;
 }

@@ -5,6 +5,7 @@ import type { AiFinancialExtraction } from '@/src/core/ai-financial';
 import type { FinancialInterpretation } from '@/src/core/types';
 import type { ImportedMovementList } from '@/src/core/movement-import';
 import type { FinancialScope } from '@/src/core/privacy';
+import { captureTraceHeaders } from '@/src/lib/capture-trace';
 
 export type UploadProgress = { phase: 'uploading' | 'verifying'; percent: number };
 
@@ -12,7 +13,7 @@ async function api<T>(path: string, body: unknown): Promise<T> {
   const token = await auth?.currentUser?.getIdToken();
   if (!token) throw new Error('AUTH_REQUIRED');
   const response = await fetch(path, {
-    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify(body)
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...captureTraceHeaders() }, body: JSON.stringify(body)
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(json.error || 'REQUEST_FAILED');
@@ -34,6 +35,8 @@ export async function ingestEvidence(householdId: string, file: File, onProgress
     xhr.setRequestHeader('X-NestBalance-Household-Id',householdId);
     xhr.setRequestHeader('X-NestBalance-Evidence-Id',started.evidenceId);
     xhr.setRequestHeader('Content-Type',file.type||'application/octet-stream');
+    const traceHeaders=captureTraceHeaders();
+    if(traceHeaders['x-nestbalance-flow-id']) xhr.setRequestHeader('X-NestBalance-Flow-Id',traceHeaders['x-nestbalance-flow-id']);
     xhr.responseType='json';
     xhr.upload.onprogress=event=>{
       const percent=event.lengthComputable&&event.total>0?Math.round((event.loaded/event.total)*100):0;

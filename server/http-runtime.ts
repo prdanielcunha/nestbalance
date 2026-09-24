@@ -43,15 +43,28 @@ export function securityHeaders(_req:Request,res:Response,next:NextFunction){
   next();
 }
 
+function captureFlowStage(path:string){
+  if(path==='/api/evidence/start'||path==='/api/evidence/upload') return 'receiving';
+  if(path.includes('/evidence/analyze')) return 'reading';
+  if(path.includes('/ai/gemini')||path.includes('/financial-screen')) return 'understanding';
+  if(path.includes('/commitments/match-payment')) return 'comparing';
+  if(path==='/api/capture/commit') return 'confirmation';
+  return null;
+}
+
 export function requestTelemetry(req:Request,res:Response,next:NextFunction){
   const requestId=randomUUID();
   const started=process.hrtime.bigint();
   res.setHeader('X-Request-ID',requestId);
   res.on('finish',()=>{
     const durationMs=Number(process.hrtime.bigint()-started)/1_000_000;
+    const flowRaw=String(req.header('x-nestbalance-flow-id')||'');
+    const flowId=/^[0-9a-f-]{36}$/i.test(flowRaw)?flowRaw:null;
     console.log(JSON.stringify({
       event:'http_request',
       requestId,
+      flowId,
+      flowStage:flowId?captureFlowStage(req.path):null,
       method:req.method,
       path:req.path,
       status:res.statusCode,

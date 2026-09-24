@@ -1,9 +1,8 @@
 import type { Request, Response } from 'express';
-import { FieldValue } from 'firebase-admin/firestore';
 import { redactFinancialText } from '../src/core/financial-redaction.js';
-import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
-import { extractWithGeminiFree, isGeminiFreeConfigured } from './ai/gemini-free.js';
+import { extractWithGeminiFree, geminiFreeModel, isGeminiFreeConfigured } from './ai/gemini-free.js';
+import { aiGatewayLimits, runAiGateway } from './ai/gateway.js';
 
 const CONSENT_VERSION='gemini-free-redacted-text-v1';
 const DEFAULT_DAILY_CAP=100;
@@ -18,25 +17,6 @@ function dailyCap(){
   return Math.min(configured,500);
 }
 
-async function reserveDailyRequest(){
-  const date=new Date().toISOString().slice(0,10);
-  const ref=adminDb.collection('_nestbalanceRuntime').doc(`gemini-free-${date}`);
-  const cap=dailyCap();
-  await adminDb.runTransaction(async tx=>{
-    const snap=await tx.get(ref);
-    const count=Number(snap.data()?.count||0);
-    if(count>=cap) throw Object.assign(new Error('GEMINI_FREE_DAILY_CAP_REACHED'),{statusCode:429});
-    tx.set(ref,{
-      count:count+1,
-      cap,
-      date,
-      provider:'gemini_free_redacted_text',
-      updatedAt:FieldValue.serverTimestamp()
-    },{merge:true});
-  });
-  return {date,cap};
-}
-
 export async function getGeminiFallbackStatus(req:Request,res:Response){
   res.setHeader('Cache-Control','private, no-store');
   try{
@@ -47,10 +27,11 @@ export async function getGeminiFallbackStatus(req:Request,res:Response){
       ok:true,
       configured:isGeminiFreeConfigured(),
       provider:'gemini_free_redacted_text',
-      model:'gemini-2.5-flash-lite',
+      model:geminiFreeModel(),
       consentVersion:CONSENT_VERSION,
       imageSent:false,
-      dailyCap:dailyCap()
+      dailyCap:dailyCap(),
+      gateway:{enabled:process.env.NESTBALANCE_AI_GATEWAY_ENABLED!=='false',...aiGatewayLimits()}
     });
   }catch(err:any){
     return error(res,err.statusCode||500,['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED'].includes(err?.message)?err.message:'GEMINI_STATUS_FAILED');
@@ -76,8 +57,16 @@ export async function analyzeRedactedTextWithGemini(req:Request,res:Response){
     const redacted=redactFinancialText(source);
     if(redacted.text.length<3) return error(res,400,'GEMINI_FREE_TEXT_EMPTY_AFTER_REDACTION');
 
-    const quota=await reserveDailyRequest();
-    const result=await extractWithGeminiFree(redacted.text);
+    const result=await runAiGateway({
+      householdId,
+      userUid:user.uid,
+      provider:'gemini',
+      task:'redacted_text',
+      model:geminiFreeModel(),
+      promptVersion:'gemini-redacted-text-v1',
+      fingerprint:redacted.text,
+      maxGlobalRequests:dailyCap()
+    },()=>extractWithGeminiFree(redacted.text));
 
     return res.json({
       ok:true,
@@ -91,14 +80,16 @@ export async function analyzeRedactedTextWithGemini(req:Request,res:Response){
         truncated:redacted.truncated,
         consentVersion:CONSENT_VERSION
       },
-      quota:{dailyCap:quota.cap}
+      quota:{dailyCap:dailyCap()}
     });
   }catch(err:any){
     const safe=[
       'AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED',
       'GEMINI_FREE_NOT_CONFIGURED','GEMINI_FREE_CONSENT_REQUIRED',
       'GEMINI_FREE_TEXT_REQUIRED','GEMINI_FREE_TEXT_TOO_LARGE','GEMINI_FREE_TEXT_EMPTY_AFTER_REDACTION',
-      'GEMINI_FREE_DAILY_CAP_REACHED','GEMINI_FREE_QUOTA_EXHAUSTED'
+      'GEMINI_FREE_DAILY_CAP_REACHED','GEMINI_FREE_QUOTA_EXHAUSTED',
+      'AI_GATEWAY_DISABLED','AI_PROVIDER_DISABLED','AI_TASK_DISABLED','AI_PROMPT_DISABLED','AI_CIRCUIT_OPEN','AI_GATEWAY_TIMEOUT',
+      'AI_GLOBAL_REQUEST_CAP_REACHED','AI_GLOBAL_BUDGET_REACHED','AI_HOUSEHOLD_BUDGET_REACHED','AI_USER_BUDGET_REACHED'
     ];
     return error(res,err.statusCode||500,safe.includes(err?.message)?err.message:'GEMINI_FREE_FAILED');
   }
