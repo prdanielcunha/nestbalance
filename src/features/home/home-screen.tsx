@@ -20,6 +20,7 @@ import { reportProductEvent } from '@/src/lib/product-events';
 import { DEFAULT_HOME_PREFERENCES, type HomePreferences } from '@/src/core/home-preferences';
 import { saveHomePreferences } from '@/src/lib/repositories/home-preferences';
 import { deriveHomeAttentionItems, deriveHomeMonthNarrative } from '@/src/features/home/home-attention';
+import { HomeFutureSection, HomeTimelineSection } from '@/src/features/home/home-lower-sections';
 
 const AccountOnboarding=dynamic(
   ()=>import('@/src/features/onboarding/account-onboarding').then(module=>module.AccountOnboarding),
@@ -34,7 +35,6 @@ const CreditCardManager=dynamic(
 export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { householdId: string; role: HouseholdRole; firstValueStartedAtMs?:number }) {
   const {t,locale,intlLocale,formatMoney}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
-  const monthName=useMemo(()=>new Intl.DateTimeFormat(intlLocale,{month:'long'}),[intlLocale]);
   const canManage = canHouseholdRole(role,'manage_finance');
   const canContribute = role !== 'read_only';
   const [transactions, setTransactions] = useState<HomeRow[]>([]);
@@ -150,7 +150,6 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
   }, [cashAccounts, cashView]);
 
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
-  const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
   const hasFirstValue = hasData || viewAccounts.some(account=>account.balanceMinor!==null&&account.balanceMinor!==undefined);
 
@@ -426,29 +425,13 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
     />
 
-    {hasData&&<section className="future-section">
-      <div className="section-title"><h2>{t.nextMonths}</h2><span>{t.committed}</span></div>
-      <div className="future-grid">
-        {futureMonths.map(item=>{
-          const label=monthName.format(new Date(item.year,item.monthIndex,1));
-          return <button key={item.key} className={expandedFuture===item.key?'future-card active':'future-card'} onClick={()=>setExpandedFuture(value=>value===item.key?null:item.key)}>
-            <span>{label.charAt(0).toUpperCase()+label.slice(1)}</span>
-            <strong>{formatMoney(item.totalMinor)}</strong>
-            <small>{item.itemCount ? l(`${item.itemCount} compromisso${item.itemCount>1?'s':''}`,`${item.itemCount} commitment${item.itemCount===1?'':'s'}`,`${item.itemCount} compromiso${item.itemCount===1?'':'s'}`) : t.nothingPlanned}</small>
-          </button>;
-        })}
-      </div>
-      {expandedProjection && <div className="future-breakdown" role="status">
-        <div><span>{t.installments}</span><strong>{formatMoney(expandedProjection.installmentsMinor)}</strong></div>
-        <div><span>{t.repeatingBills}</span><strong>{formatMoney(expandedProjection.fixedMinor)}</strong></div>
-        <p>{l('É uma projeção com o que já foi confirmado. O NestBalance não presume recorrência só porque existe uma data de vencimento.','This forecast uses only confirmed information. NestBalance does not assume recurrence just because a due date exists.','Esta previsión usa solo información confirmada. NestBalance no supone recurrencia solo porque exista una fecha de vencimiento.')}</p>
-      </div>}
-    </section>}
+    {hasData&&<HomeFutureSection
+      months={futureMonths}
+      expandedKey={expandedFuture}
+      onToggle={key=>setExpandedFuture(value=>value===key?null:key)}
+    />}
+    {hasData&&<HomeTimelineSection transactions={viewTransactions}/>}
 
-    {hasData&&<section className="timeline-section">
-      <div className="section-title"><h2>{t.movements}</h2><span>{t.timeline}</span></div>
-      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?l('No cartão','On card','En tarjeta'):x.source==='credit_card_invoice_payment'?l('Fatura paga','Statement paid','Tarjeta pagada'):x.direction==='income'?t.moneyIn:x.direction==='transfer'?l('Transferência','Transfer','Transferencia'):l('Saiu','Money out','Salió')}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {formatMoney(x.amountMinor)}</b></article>)}</div>}
-    </section>}
 
   </AppShell>;
 }
