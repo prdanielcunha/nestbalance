@@ -41,3 +41,17 @@ Starting with the roadmap execution cycle on 2026-09-24, the web client uses Nex
 The payload deliberately excludes metric/page-load identifiers, user IDs, Household IDs, URLs with query strings, financial values and user-authored content. The endpoint reduces routes to a fixed allowlist before logging.
 
 This gives a field baseline for LCP/INP/CLS without introducing a third-party analytics SDK or a new cross-site identifier. Existing server request telemetry continues to provide API status and latency by endpoint.
+
+
+## Phase 0 capture funnel
+
+Universal Capture also emits a fixed, content-free funnel:
+
+- `capture_opened`
+- `capture_review_ready`
+- `capture_committed`
+- `capture_abandoned`
+
+Allowed dimensions are limited to coarse input type, elapsed milliseconds, total item count, review item count and coarse route key. Values, descriptions, extracted text, filenames, evidence IDs, user IDs and Household IDs are not accepted by the client contract or logged by the endpoint.
+
+This baseline is intended to answer: how long capture takes, where users leave, and how much review the machine creates. It is not intended to reconstruct what the user did financially.
