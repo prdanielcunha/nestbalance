@@ -10,7 +10,7 @@ This ledger intentionally follows the roadmap in order. A later phase may be res
 | --- | --- | --- |
 | 0 — Baseline e pesquisa real | IN PROGRESS | Baseline + 13 moderated participants + top 5 frictions + privacy-safe telemetry |
 | 1 — Fundação premium única | PREPARATORY IMPLEMENTATION; CANNOT CLOSE BEFORE PHASE 0 | Unified AppShell + typography/tokens/states + full visual/accessibility gate |
-| 2 — Sync em tempo real e resiliência | NOT STARTED | p95 < 2s + two-session concurrency + offline/reconnect safety |
+| 2 — Sync em tempo real e resiliência | IMPLEMENTATION IN PROGRESS | p95 < 2s + two-session concurrency + offline/reconnect safety |
 | 3 — Home orientada a decisões | NOT STARTED | 90% comprehension + priority action <= 10s + unknown != zero |
 | 4 — Captura sem atrito | NOT STARTED | 80% one-tap common items + p50 < 8s + exception-only review |
 | 5 — Inteligência explicável | NOT STARTED | insight precision + critical false positives < 5% + explain/mute |
@@ -104,3 +104,22 @@ Keep deterministic finance rules, local parsers/OCR and native document extracti
 
 ### Performance
 Do not add a generic analytics SDK in Phase 0. Use Next.js first-party Web Vitals reporting plus existing redacted server request telemetry. Bundle analysis and route budgets enter Phase 7, with early regression guards allowed sooner.
+
+
+## Phase 2 implementation evidence
+
+Implemented on the roadmap branch:
+- authenticated SSE invalidation channel emits only revision, coarse domains and timestamp;
+- domain-aware refresh for Home, movements, accounts/invoices and savings pots;
+- polling remains a 25-second fallback and backs off up to 120 seconds;
+- user-visible states for updating, offline, failed, pending, remote change and conflict;
+- IndexedDB queue for safe text-capture mutations only; original evidence/file uploads are never silently queued;
+- replay remains idempotent because the existing capture fingerprint is authoritative server-side;
+- account-balance edits carry the revision seen by the editor and return an explicit 409 conflict when another device changed the account;
+- authenticated API gate now opens a second-user revision stream, verifies the account invalidation arrives under 2 seconds in the emulator, and proves a stale manager edit cannot overwrite the owner's newer balance.
+
+Still required before formally closing Phase 2:
+- field p95 under realistic network conditions;
+- broader offline queue coverage only for mutations individually proven safe/idempotent;
+- browser UX coverage for pending/conflict states;
+- production/homologation verification on the exact promoted SHA.
