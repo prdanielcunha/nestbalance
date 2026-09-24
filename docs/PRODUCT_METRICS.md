@@ -26,3 +26,18 @@ The blueprint says to measure reduction of effort, not number of screens. NestBa
 ## RC instrumentation posture
 
 The RC already has structured HTTP telemetry, audit events, dedup outcomes, member last-seen timestamps and release quality gates. That is sufficient to start measuring the blueprint metrics without introducing an invasive client analytics dependency.
+
+
+## Phase 0 field-performance baseline
+
+Starting with the roadmap execution cycle on 2026-09-24, the web client uses Next.js `useReportWebVitals` and sends only the following fixed fields to `/api/metrics/web-vital`:
+
+- metric name: CLS, FCP, FID, INP, LCP or TTFB;
+- rounded metric value;
+- coarse rating;
+- coarse route key;
+- navigation type.
+
+The payload deliberately excludes metric/page-load identifiers, user IDs, Household IDs, URLs with query strings, financial values and user-authored content. The endpoint reduces routes to a fixed allowlist before logging.
+
+This gives a field baseline for LCP/INP/CLS without introducing a third-party analytics SDK or a new cross-site identifier. Existing server request telemetry continues to provide API status and latency by endpoint.
