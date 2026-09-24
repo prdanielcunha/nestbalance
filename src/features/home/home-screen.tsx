@@ -42,6 +42,8 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
   const [dismissedAttentionKeys,setDismissedAttentionKeys]=useState<string[]>([]);
   const [attentionWorking,setAttentionWorking]=useState('');
   const [attentionError,setAttentionError]=useState('');
+  const [refreshedAt,setRefreshedAt]=useState<string|null>(null);
+  const [hideValues,setHideValues]=useState(false);
   const firstValueReportedRef=useRef(false);
 
   async function refreshHome(silent=false){
@@ -56,6 +58,7 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       setInvoiceImports(data.invoiceImports||[]);
       setProactivity(data.proactivityPreferences||DEFAULT_PROACTIVITY_PREFERENCES);
       setDismissedAttentionKeys(data.dismissedAttentionKeys||[]);
+      setRefreshedAt(data.refreshedAt||new Date().toISOString());
       setHomeError('');
     }catch{
       setHomeError(l('Não conseguimos atualizar sua visão financeira agora.','We could not refresh your financial view right now.','No pudimos actualizar tu visión financiera ahora.'));
@@ -147,6 +150,65 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
   const viewLabel=view==='household'?l('do Lar','in Household','del Hogar'):view==='personal'?l('Pessoal','Personal','Personal'):l('na sua visão completa','in your full view','en tu vista completa');
   const spendingComparison=useMemo(()=>deriveSpendingComparison(viewTransactions,new Date()),[viewTransactions]);
   const anomalies=useMemo(()=>deriveFinancialAnomalies(viewTransactions,new Date()),[viewTransactions]);
+  const homeCoverage=viewAccounts.length===0
+    ? 'initial'
+    : !monthHasKnownData||partialInvoiceCount>0
+      ? 'partial'
+      : 'high';
+  const coverageLabel=homeCoverage==='high'
+    ? l('Dados bem cobertos','Well-covered data','Datos bien cubiertos')
+    : homeCoverage==='partial'
+      ? l('Visão parcial','Partial view','Vista parcial')
+      : l('Começando','Getting started','Empezando');
+  const refreshedLabel=refreshedAt
+    ? new Intl.DateTimeFormat(intlLocale,{hour:'2-digit',minute:'2-digit'}).format(new Date(refreshedAt))
+    : null;
+  const monthNarrative=useMemo(()=>{
+    const items:string[]=[];
+    if(viewAccounts.length){
+      if(snapshot.futureCommitmentsMinor>0){
+        items.push(l(
+          `${formatMoney(snapshot.futureCommitmentsMinor)} ainda estão comprometidos; com o que já sabemos, devem sobrar ${formatMoney(snapshot.projectedRemainderMinor)}.`,
+          `${formatMoney(snapshot.futureCommitmentsMinor)} is still committed; from what we know, about ${formatMoney(snapshot.projectedRemainderMinor)} should remain.`,
+          `${formatMoney(snapshot.futureCommitmentsMinor)} todavía está comprometido; con lo que sabemos, deberían quedar ${formatMoney(snapshot.projectedRemainderMinor)}.`
+        ));
+      }else{
+        items.push(l(
+          'Não há contas pendentes conhecidas nesta visão.',
+          'There are no known pending bills in this view.',
+          'No hay cuentas pendientes conocidas en esta vista.'
+        ));
+      }
+    }
+    if(spendingComparison.hasComparableData&&spendingComparison.deltaMinor!==0){
+      items.push(spendingComparison.deltaMinor>0
+        ? l(
+            `Os gastos conhecidos estão ${formatMoney(spendingComparison.deltaMinor)} acima do mês anterior.`,
+            `Known spending is ${formatMoney(spendingComparison.deltaMinor)} above last month.`,
+            `Los gastos conocidos están ${formatMoney(spendingComparison.deltaMinor)} por encima del mes anterior.`
+          )
+        : l(
+            `Os gastos conhecidos estão ${formatMoney(Math.abs(spendingComparison.deltaMinor))} abaixo do mês anterior.`,
+            `Known spending is ${formatMoney(Math.abs(spendingComparison.deltaMinor))} below last month.`,
+            `Los gastos conocidos están ${formatMoney(Math.abs(spendingComparison.deltaMinor))} por debajo del mes anterior.`
+          ));
+    }
+    if(partialInvoiceCount>0){
+      items.push(l(
+        `${partialInvoiceCount} fatura${partialInvoiceCount===1?' ainda pode':'s ainda podem'} mudar a projeção. O valor mostrado é um teto com os dados confirmados até agora.`,
+        `${partialInvoiceCount} statement${partialInvoiceCount===1?' may':'s may'} still change the forecast. The amount shown is an upper estimate based on confirmed data so far.`,
+        `${partialInvoiceCount} resumen${partialInvoiceCount===1?' todavía puede':'es todavía pueden'} cambiar la previsión. El valor mostrado es un máximo estimado con los datos confirmados hasta ahora.`
+      ));
+    }
+    if(!items.length&&hasData){
+      items.push(l(
+        'Nada importante mudou nos dados conhecidos deste mês.',
+        'Nothing important changed in the known data for this month.',
+        'Nada importante cambió en los datos conocidos de este mes.'
+      ));
+    }
+    return items.slice(0,3);
+  },[viewAccounts.length,snapshot.futureCommitmentsMinor,snapshot.projectedRemainderMinor,spendingComparison,partialInvoiceCount,hasData,formatMoney,locale]);
   const attentionItems=useMemo(()=>{
     const now=new Date();
     const today=now.getDate();
@@ -260,7 +322,7 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
 
 
   return <AppShell
-    className={`home-shell ${viewAccounts.length===0?'home-first-use':''}`.trim()}
+    className={`home-shell ${viewAccounts.length===0?'home-first-use':''} ${hideValues?'home-values-hidden':''}`.trim()}
     subtitle={t.brandTagline}
     canContribute={canContribute}
     householdLink="detailed"
@@ -269,7 +331,16 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     <div className="home-context-row">
       <div className="home-scope-copy"><span>{l('Visão','View','Vista')}</span><small>{l('Escolha o que entra nesta tela.','Choose what is included on this screen.','Elige qué aparece en esta pantalla.')}</small></div>
       <ScopeViewSwitch value={view} onChange={setView}/>
-      {loadingHome && <div className="home-refreshing" role="status"><span aria-hidden="true"/>{l('Atualizando seus dados…','Refreshing your data…','Actualizando tus datos…')}</div>}
+      <div className="home-context-actions">
+        <button type="button" className="home-privacy-toggle" aria-pressed={hideValues} onClick={()=>setHideValues(value=>!value)}>
+          {hideValues?l('Mostrar valores','Show values','Mostrar valores'):l('Ocultar valores','Hide values','Ocultar valores')}
+        </button>
+        {loadingHome
+          ? <div className="home-refreshing" role="status"><span aria-hidden="true"/>{l('Atualizando seus dados…','Refreshing your data…','Actualizando tus datos…')}</div>
+          : <div className={`home-data-quality ${homeCoverage}`} title={l('A qualidade indica quanto da visão vem de dados confirmados.','Quality indicates how much of this view comes from confirmed data.','La calidad indica cuánto de esta vista proviene de datos confirmados.')}>
+              <span>{coverageLabel}</span>{refreshedLabel&&<small>{l('atualizado','updated','actualizado')} {refreshedLabel}</small>}
+            </div>}
+      </div>
     </div>
 
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
@@ -324,11 +395,31 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
     </div>
 
+    {viewAccounts.length>0&&<section className="home-30s" aria-labelledby="home-30s-title">
+      <div className="section-title">
+        <div>
+          <span className="section-kicker">{l('MEU MÊS EM 30 SEGUNDOS','MY MONTH IN 30 SECONDS','MI MES EN 30 SEGUNDOS')}</span>
+          <h2 id="home-30s-title">{l('O que importa agora','What matters now','Lo que importa ahora')}</h2>
+        </div>
+        <small>{homeCoverage==='high'
+          ? l('Baseado nos dados confirmados','Based on confirmed data','Basado en datos confirmados')
+          : l('Ainda há dados faltando','Some data is still missing','Todavía faltan datos')}</small>
+      </div>
+      <div className="home-30s-metrics">
+        <div><span>{t.availableNow}</span><strong>{formatMoney(snapshot.availableMinor)}</strong></div>
+        <div><span>{t.moneyToGo}</span><strong>{monthHasKnownData?formatMoney(snapshot.futureCommitmentsMinor):'—'}</strong></div>
+        <div><span>{l('Deve sobrar','Projected left','Debería quedar')}</span><strong>{monthHasKnownData?formatMoney(snapshot.projectedRemainderMinor):'—'}</strong></div>
+      </div>
+      {monthNarrative.length>0&&<div className="home-30s-story">{monthNarrative.map((item,index)=><p key={index}>{item}</p>)}</div>}
+      {homeCoverage==='partial'&&<p className="home-uncertainty-note">{partialInvoiceCount>0
+        ? l('Faixa de incerteza: o valor “deve sobrar” pode diminuir quando as faturas em revisão forem concluídas. Não inventamos um limite inferior sem dados.','Uncertainty: “projected left” may decrease when statements under review are completed. We do not invent a lower bound without data.','Incertidumbre: “debería quedar” puede disminuir cuando terminen los resúmenes en revisión. No inventamos un límite inferior sin datos.')
+        : l('A projeção ainda é parcial porque faltam movimentos ou compromissos conhecidos neste mês.','The forecast is still partial because known movements or commitments are missing this month.','La previsión todavía es parcial porque faltan movimientos o compromisos conocidos este mes.')}</p>}
+    </section>}
     {attentionItems.length>0&&<section className="attention-section" aria-labelledby="attention-title">
       <div className="section-title">
         <div>
-          <span className="section-kicker">{t.importantNow}</span>
-          <h2 id="attention-title">{t.onlyNeedsAttention}</h2>
+          <span className="section-kicker">{l('PRIORIDADES','PRIORITIES','PRIORIDADES')}</span>
+          <h2 id="attention-title">{l('Faça agora','Do now','Haz ahora')}</h2>
         </div>
         <small>{t.quietAttention}</small>
       </div>
