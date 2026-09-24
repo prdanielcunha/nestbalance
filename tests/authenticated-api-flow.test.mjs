@@ -181,6 +181,28 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     assert.equal(duplicate.json.status,'duplicate');
     assert.equal(duplicate.json.id,householdExpense.json.id);
 
+    const undoCandidate=await post('/api/capture/commit',owner.token,{
+      householdId,
+      sourceText:'café de teste 12,34',
+      observedOn:'2026-09-20',
+      scope:'household'
+    });
+    assert.equal(undoCandidate.status,201);
+    const undoneCapture=await post('/api/capture/undo',owner.token,{
+      householdId,
+      items:[{id:undoCandidate.json.id,entityType:'transaction'}]
+    });
+    assert.equal(undoneCapture.json.undone,1);
+    const afterUndoCapture=await post('/api/home',owner.token,{householdId});
+    assert.equal(afterUndoCapture.json.transactions.some(item=>item.id===undoCandidate.json.id),false);
+    const recreatedAfterUndo=await post('/api/capture/commit',owner.token,{
+      householdId,
+      sourceText:'café de teste 12,34',
+      observedOn:'2026-09-20',
+      scope:'household'
+    });
+    assert.equal(recreatedAfterUndo.status,201);
+
     const privateExpense=await post('/api/capture/commit',owner.token,{
       householdId,
       sourceText:'livro 45,90',
@@ -223,6 +245,12 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     assert.equal(partnerHome.json.commitments.some(item=>/Internet Vivo/i.test(item.description)),true);
     assert.equal(partnerHome.json.transactions.some(item=>item.id===householdExpense.json.id),true);
     assert.equal(partnerHome.json.transactions.some(item=>item.id===privateExpense.json.id),false);
+
+    const partnerCannotUndoOwnerCapture=await post('/api/capture/undo',partner.token,{
+      householdId,
+      items:[{id:householdExpense.json.id,entityType:'transaction'}]
+    },403);
+    assert.equal(partnerCannotUndoOwnerCapture.json.error,'CAPTURE_UNDO_DENIED');
 
     const sharedAccount=ownerHome.json.accounts.find(item=>item.id===account.json.id);
     assert.ok(Number.isSafeInteger(sharedAccount?.updatedAtMs)&&sharedAccount.updatedAtMs>0);
