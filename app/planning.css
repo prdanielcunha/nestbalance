@@ -25,9 +25,9 @@
 .insight-card details small{font-size:11px;color:var(--muted)}
 .insight-actions a{display:inline-flex;min-height:38px;align-items:center;text-decoration:none;font-size:12px;font-weight:800;color:var(--iris)}
 .scenario-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.scenario-form label,.preference-select{display:grid;gap:5px}
+.scenario-form label,.preference-select{display:grid;gap:5px;min-width:0}
 .scenario-form label span,.preference-select span{font-size:12px;color:var(--muted);font-weight:750}
-.scenario-form input,.scenario-form select,.preference-select select{min-height:44px;border:1px solid var(--line);border-radius:13px;background:var(--paper);color:var(--ink);padding:0 11px;font-size:14px}
+.scenario-form input,.scenario-form select,.preference-select select{width:100%;min-width:0;max-width:100%;min-height:44px;border:1px solid var(--line);border-radius:13px;background:var(--paper);color:var(--ink);padding:0 11px;font-size:14px}
 .scenario-result{margin:14px 0;padding:15px;border-radius:16px;background:color-mix(in srgb,var(--iris) 8%,var(--paper));display:grid;gap:4px}
 .scenario-result span,.scenario-result small{font-size:12px;color:var(--muted)}
 .scenario-result strong{font-size:28px;font-variant-numeric:tabular-nums}
