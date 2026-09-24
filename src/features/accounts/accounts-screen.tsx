@@ -1,8 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AppNav } from '@/src/features/navigation/app-nav';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
@@ -10,6 +8,7 @@ import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding'
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditCard, type HomeInvoiceImport } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { AppShell } from '@/src/features/navigation/app-shell';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 
@@ -119,14 +118,12 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
     }
   }
 
-  return <main className="app-shell accounts-shell">
-    <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navAccounts}</span></div>
-      <div className="topbar-actions">
-        {canManage&&<AccountOnboarding householdId={householdId} variant="compact" defaultScope={defaultCreateScope} onCreated={refreshed}/>}
-        <HouseholdLink/>
-      </div>
-    </header>
+  return <AppShell
+    className="accounts-shell"
+    subtitle={t.navAccounts}
+    canContribute={role!=='read_only'}
+    headerActions={canManage?<AccountOnboarding householdId={householdId} variant="compact" defaultScope={defaultCreateScope} onCreated={refreshed}/>:null}
+  >
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="area-hero accounts-hero">
@@ -211,7 +208,6 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       onCreated={refreshed}
     />}
 
-    <AppNav canContribute={role!=='read_only'}/>
 
     {canManage&&editingAccount&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!savingBalance&&setEditingAccount(null)}>
       <section className="capture-sheet balance-update-sheet" role="dialog" aria-modal="true" aria-label={l('Atualizar saldo','Update balance','Actualizar saldo')}>
@@ -235,5 +231,5 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
         </div>
       </section>
     </div>}
-  </main>;
+  </AppShell>;
 }
