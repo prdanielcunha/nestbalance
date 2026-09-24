@@ -35,6 +35,7 @@ import type { FinancialScope } from '@/src/core/privacy';
 import { readImageTextLocally } from '@/src/lib/local-image-ocr';
 import { analyzeTextWithGeminiFallback, getGeminiFallbackStatus, type GeminiFallbackStatus } from '@/src/lib/repositories/gemini-fallback';
 import { consumeWebShareTarget } from '@/src/lib/pwa/share-target';
+import { reportProductEvent, type CaptureSourceKind } from '@/src/lib/product-events';
 
 type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
 type PendingAi={extraction:AiFinancialExtraction;amountMinor:number|null};
@@ -85,9 +86,24 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const recorderRef=useRef<MediaRecorder|null>(null);
   const recorderChunksRef=useRef<BlobPart[]>([]);
   const recorderStreamRef=useRef<MediaStream|null>(null);
+  const captureStartedAtRef=useRef<number|null>(null);
+  const reviewReportedRef=useRef(false);
 
   const working = saving || analyzing || recording || geminiWorking;
   const moneyInputValue=(minor:number)=>(minor/100).toLocaleString(intlLocale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
+
+  function captureSourceKind():CaptureSourceKind{
+    if(file?.type.startsWith('image/')) return 'image';
+    if(file?.type.startsWith('audio/')) return 'audio';
+    if(file&&/\.pdf$/i.test(file.name)) return 'pdf';
+    if(file&&/\.csv$/i.test(file.name)) return 'csv';
+    if(text.trim()) return 'text';
+    return 'other';
+  }
+
+  function captureDurationMs(){
+    return captureStartedAtRef.current===null?undefined:Math.max(0,performance.now()-captureStartedAtRef.current);
+  }
 
   function readEditedMoney(value:string,allowZero=false){
     const parsed=parseMoneyInputToMinor(value,locale);
@@ -101,7 +117,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !working) setOpen(false); };
+    if(captureStartedAtRef.current===null){
+      captureStartedAtRef.current=performance.now();
+      reviewReportedRef.current=false;
+      reportProductEvent('capture_opened');
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !working) reset(); };
     const onPaste=(e:ClipboardEvent)=>{
       const imageItem=Array.from(e.clipboardData?.items||[]).find(item=>item.type.startsWith('image/'));
       if(!imageItem) return;
@@ -178,6 +199,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setGeminiWorking(false);
     setGeminiUsed(false);
     setOpen(false);
+    captureStartedAtRef.current=null;
+    reviewReportedRef.current=false;
     onClose?.();
     setText('');
     setFile(null);
@@ -195,6 +218,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
   function reset() {
     if (working) return;
+    if(captureStartedAtRef.current!==null){
+      reportProductEvent('capture_abandoned',{
+        source:captureSourceKind(),
+        durationMs:captureDurationMs()
+      });
+    }
     clearAll();
   }
 
@@ -722,6 +751,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         paidOn:interpretations[0]?.occurredOn,
         evidenceId:preparedEvidenceId
       });
+      reportProductEvent('capture_committed',{
+        source:captureSourceKind(),
+        durationMs:captureDurationMs(),
+        itemCount:Math.max(1,interpretations.length),
+        reviewCount:interpretations.filter(item=>item.confidence!=='high'||item.needsReview.length>0).length
+      });
       clearAll();
       onCommitted?.();
     }catch{
@@ -785,6 +820,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         setUpload(null);
         return;
       }
+      reportProductEvent('capture_committed',{
+        source:captureSourceKind(),
+        durationMs:captureDurationMs(),
+        itemCount:Math.max(1,interpretations.length+(screenSnapshot?screenSnapshot.accounts.length+screenSnapshot.pots.length+screenSnapshot.cards.length+screenSnapshot.commitments.length:0)),
+        reviewCount
+      });
       clearAll();
       onCommitted?.();
     } catch {
@@ -810,6 +851,17 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     ? screenSnapshot.accounts.length+screenSnapshot.pots.length+screenSnapshot.cards.length+screenSnapshot.commitments.length
     : 0;
   const totalOrganizedCount=interpretations.length+screenResourceCount;
+  useEffect(()=>{
+    if(!open||totalOrganizedCount===0||reviewReportedRef.current) return;
+    reviewReportedRef.current=true;
+    reportProductEvent('capture_review_ready',{
+      source:captureSourceKind(),
+      durationMs:captureDurationMs(),
+      itemCount:totalOrganizedCount,
+      reviewCount
+    });
+  },[open,totalOrganizedCount,reviewCount,file,text]);
+
   const organizedLabel = interpretations.length === 0&&screenResourceCount
     ? l(`${screenResourceCount} item${screenResourceCount===1?'':'s'} da sua vida financeira`,`${screenResourceCount} item${screenResourceCount===1?'':'s'} from your financial life`,`${screenResourceCount} elemento${screenResourceCount===1?'':'s'} de tu vida financiera`)
     : interpretations.length === 1
