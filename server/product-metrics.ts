@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 const VITAL_NAMES=new Set(['CLS','FCP','FID','INP','LCP','TTFB']);
 const RATINGS=new Set(['good','needs-improvement','poor']);
 const NAVIGATION_TYPES=new Set(['navigate','reload','back-forward','prerender']);
-const PRODUCT_EVENTS=new Set(['capture_opened','capture_review_ready','capture_committed','capture_abandoned']);
+const PRODUCT_EVENTS=new Set(['first_value_observed','capture_opened','capture_review_ready','capture_committed','capture_abandoned']);
 const CAPTURE_SOURCES=new Set(['text','image','pdf','csv','audio','other']);
 
 function routeKey(pathname:unknown){
