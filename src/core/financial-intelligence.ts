@@ -202,7 +202,7 @@ export function deriveExplainableInsights(args:{
   for(const commitment of args.commitments){
     if(commitment.status==='cancelled'||commitment.paidThisMonth||!commitment.dueDay) continue;
     const delta=commitment.dueDay-day;
-    if(delta>3||delta<-3) continue;
+    if(delta>3) continue;
     insights.push({
       id:`due:${commitment.id}`,
       type:'due_bill',
