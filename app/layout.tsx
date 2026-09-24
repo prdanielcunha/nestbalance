@@ -7,6 +7,7 @@ import './globals.css';
 import './foundation.css';
 import './home-premium.css';
 import './planning.css';
+import './pots.css';
 import './collaboration.css';
 import './commercial.css';
 import './inbox.css';
