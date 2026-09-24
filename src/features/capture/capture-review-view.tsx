@@ -338,7 +338,9 @@ export function CaptureReviewView({c}:{c:UniversalCaptureController}){
                 ? l('Informe o banco ou origem acima','Enter the bank or source above','Indica el banco u origen arriba')
                 : paymentMatches.length>0&&!paymentMatchDismissed
                   ? l('Escolha a conta acima','Choose the bill above','Elige la cuenta de arriba')
-                  : l('Guardar','Save','Guardar')}</button>
+                  : totalOrganizedCount>1
+                    ? l(`Aprovar e guardar ${totalOrganizedCount}`,`Approve and save ${totalOrganizedCount}`,`Aprobar y guardar ${totalOrganizedCount}`)
+                    : l('Guardar','Save','Guardar')}</button>
           </div>
         </>;
 }
