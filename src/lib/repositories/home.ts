@@ -3,6 +3,7 @@ import { getBrowserAuthToken } from '@/src/lib/browser-auth-token';
 import type { SpendingCategory } from '@/src/core/insights';
 import type { ProactivityPreferences } from '@/src/core/proactivity';
 import type { SavingsPotAutomation } from '@/src/core/savings-pot-automation';
+import type { HomePreferences } from '@/src/core/home-preferences';
 
 export type HomeRow={
   id:string;
@@ -135,6 +136,7 @@ export async function loadHomeData(householdId:string){
     savingsPots:HomeSavingsPot[];
     cardSnapshots:HomeCardSnapshot[];
     proactivityPreferences:ProactivityPreferences;
+    homePreferences:HomePreferences;
     dismissedAttentionKeys:string[];
     dismissedRecurrenceKeys:string[];
     refreshedAt:string;
