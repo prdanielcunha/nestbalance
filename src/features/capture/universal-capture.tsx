@@ -39,6 +39,7 @@ import { reportProductEvent, type CaptureSourceKind } from '@/src/lib/product-ev
 import { CaptureProgress, type CaptureProgressStage } from '@/src/features/capture/capture-progress';
 import { undoCaptureBatch, type CaptureUndoItem } from '@/src/lib/repositories/capture-undo';
 import { publishToast } from '@/src/features/feedback/toast-store';
+import { endCaptureTrace, startCaptureTrace } from '@/src/lib/capture-trace';
 
 type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
 type PendingAi={extraction:AiFinancialExtraction;amountMinor:number|null};
@@ -91,6 +92,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const recorderStreamRef=useRef<MediaStream|null>(null);
   const captureStartedAtRef=useRef<number|null>(null);
   const reviewReportedRef=useRef(false);
+
+  useEffect(()=>{
+    if(!open) return;
+    startCaptureTrace();
+    return ()=>endCaptureTrace();
+  },[open]);
 
   const working = saving || analyzing || recording || geminiWorking;
   const moneyInputValue=(minor:number)=>(minor/100).toLocaleString(intlLocale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
