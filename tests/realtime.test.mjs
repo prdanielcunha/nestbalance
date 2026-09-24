@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { syncDomainIntersects, syncDomainsForAuditType } from '../.core-dist/realtime.js';
+import { syncDomainIntersects, syncDomainsForAuditType } from '../.core-dist/core/realtime.js';
 
 test('realtime domains never expose event content and route finance changes selectively',()=>{
   assert.deepEqual(syncDomainsForAuditType('commitment.paid'),['home','activity','movements','assistant']);
