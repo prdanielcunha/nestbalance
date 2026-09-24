@@ -5,6 +5,7 @@ import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { AppShell } from '@/src/features/navigation/app-shell';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { PlanningLab } from '@/src/features/planning/planning-lab';
 
 export function AssistantScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
   const {t,locale,formatMoney,formatDate}=useI18n();
@@ -154,6 +155,8 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
         </div>
       </div>
     </section>}
+
+    <PlanningLab householdId={householdId} role={role}/>
 
     <section className="assistant-trust-note">
       <strong>{l('Sem chute financeiro.','No financial guessing.','Sin adivinanzas financieras.')}</strong>
