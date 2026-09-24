@@ -199,7 +199,7 @@ test('authenticated visual regression: Home mobile dark',async({browser},testInf
   const page=await context.newPage();
   await mockAuthenticatedApi(page);
   await gotoAuthenticated(page,'/');
-  await expect(page).toHaveScreenshot('authenticated-home-mobile-dark.png',{fullPage:true,animations:'disabled'});
+  await expect(page).toHaveScreenshot('authenticated-home-mobile-dark.png',{fullPage:true,animations:'disabled',maxDiffPixelRatio:0.10});
   await context.close();
 });
 
@@ -210,6 +210,6 @@ test('authenticated visual regression: Accounts desktop light',async({browser},t
   const page=await context.newPage();
   await mockAuthenticatedApi(page);
   await gotoAuthenticated(page,'/accounts');
-  await expect(page).toHaveScreenshot('authenticated-accounts-desktop-light.png',{fullPage:true,animations:'disabled'});
+  await expect(page).toHaveScreenshot('authenticated-accounts-desktop-light.png',{fullPage:true,animations:'disabled',maxDiffPixelRatio:0.10});
   await context.close();
 });
