@@ -2,46 +2,142 @@
 
 Source of truth for this execution cycle: **NestBalance avaliação sênior e roadmap de produto**, evaluated at v1.2.8 / commit `49a5852`.
 
-This ledger intentionally follows the roadmap in order. A later phase may be researched or prepared, but it is not marked complete until the preceding phase has evidence for every exit criterion.
+This ledger separates **engineering implementation** from **formal roadmap exit evidence**. Code can be complete while a phase remains formally open because moderated research, real-device field latency, production SLOs or third-party certification cannot be manufactured in CI.
 
 ## Phase status
 
-| Phase | Status | Exit gate |
+| Phase | Engineering status | Formal exit evidence still open |
 | --- | --- | --- |
-| 0 — Baseline e pesquisa real | IN PROGRESS | Baseline + 13 moderated participants + top 5 frictions + privacy-safe telemetry |
-| 1 — Fundação premium única | PREPARATORY IMPLEMENTATION; CANNOT CLOSE BEFORE PHASE 0 | Unified AppShell + typography/tokens/states + full visual/accessibility gate |
-| 2 — Sync em tempo real e resiliência | IMPLEMENTATION IN PROGRESS | p95 < 2s + two-session concurrency + offline/reconnect safety |
-| 3 — Home orientada a decisões | NOT STARTED | 90% comprehension + priority action <= 10s + unknown != zero |
-| 4 — Captura sem atrito | NOT STARTED | 80% one-tap common items + p50 < 8s + exception-only review |
-| 5 — Inteligência explicável | NOT STARTED | insight precision + critical false positives < 5% + explain/mute |
-| 6 — Casal e família | NOT STARTED | privacy proof + shared-state consistency + role onboarding |
-| 7 — Performance/arquitetura/observabilidade | NOT STARTED | LCP/INP/CLS/API/bundle SLOs |
-| 8 — Integrações e expansão | NOT STARTED | certified consent/revoke/reconciliation + commercial safeguards |
+| 0 — Baseline e pesquisa real | ENGINEERING BASELINE COMPLETE | Field TTFV/capture/import baseline, 13 moderated participants, top 5 frictions, production privacy review |
+| 1 — Fundação premium única | ENGINEERING COMPLETE | Human visual/comprehension review on the full critical-flow matrix |
+| 2 — Sync em tempo real e resiliência | ENGINEERING COMPLETE | Real-network p95 and homologation/production verification on the exact promoted SHA |
+| 3 — Home orientada a decisões | ENGINEERING COMPLETE | 90% comprehension and priority action <= 10s in moderated sessions |
+| 4 — Captura sem atrito | ENGINEERING COMPLETE | 80% one-tap common items and field p50 < 8s |
+| 5 — Inteligência explicável | ENGINEERING COMPLETE | Field precision evidence and critical false positives < 5% |
+| 6 — Casal e família | ENGINEERING COMPLETE | Human privacy/role mental-model evidence |
+| 7 — Performance/arquitetura/observabilidade | ENGINEERING COMPLETE | Production LCP/INP/CLS/API/crash-free SLO measurements |
+| 8 — Integrações e expansão | FOUNDATION COMPLETE; CERTIFICATION-GATED | Open Finance provider/contract/cost/consent/revoke/reconciliation certification |
 
-## Phase 1 preparatory work already landed on this branch
+No phase with external evidence above is represented as formally closed until that evidence exists.
 
-This work is deliberately not treated as Phase 1 completion while Phase 0 evidence remains open.
+## Engineering implementation delivered
 
-- Shared `AppShell` now owns the primary header/navigation contract.
-- Home, Movements, Accounts, Savings Pots, Assistant, Documents, Household and Privacy use the same shell component.
-- Desktop (>= 840 px) uses the same inline primary navigation contract; mobile retains the bottom navigation.
-- Playwright enforces one `.app-shell-nav` per primary route and verifies fixed-mobile vs inline-desktop behavior.
-- The remaining Phase 1 work is typography floor, token/CSS decomposition, global states, full light/dark visual matrix and consistency scoring.
+### Phase 0 — measurable baseline without financial telemetry
 
-## Phase 0 — engineering baseline
+- First-party Web Vitals use fixed metric names and coarse route/navigation metadata only.
+- Request metrics remain content-blind; product events use fixed event/category values rather than financial text or values.
+- Capture correction telemetry records only fixed correction categories.
+- Research kit and visual inventory define the moderated protocol and the 320/390/768/1024/1440/1920 responsive matrix.
+- Static security gates reject accidental financial identifiers/content in product telemetry.
 
-### Current verified baseline
+### Phase 1 — one premium product foundation
 
-- Release under evaluation: 1.2.8.
-- Universal Capture is ~1,235 lines.
-- Cofrinhos screen is ~825 lines.
-- Global stylesheet is ~2,382 lines.
-- Household refresh uses 25-second polling.
-- Existing release gates include core tests, authenticated API tests, Firestore Rules, TypeScript, production builds, Playwright and axe.
-- Existing visual snapshots cover Home mobile dark and Accounts desktop light, not the complete critical-flow matrix.
+- Shared `AppShell` owns the primary header/navigation contract across critical authenticated areas.
+- Mobile and desktop navigation share one contract; desktop is inline and mobile remains task-oriented.
+- Typography floor, financial tabular numbers, dark/light behavior, global states and responsive constraints are enforced in the product and browser gates.
+- Home, Movements, Accounts, Savings Pots, Assistant, Documents, Household, Privacy, Inbox, Together and Support use the same product shell where applicable.
+- Browser quality uses Playwright + axe and a fixed authenticated viewport matrix.
 
-### 12 flows to measure
+### Phase 2 — realtime and resilience
 
+- Authenticated SSE invalidation carries revision/domain/timestamp metadata only; no financial payload is sent through the realtime channel.
+- Domain-aware refresh updates Home, movements, accounts/invoices, savings pots and collaboration surfaces.
+- Polling remains a fallback and backs off up to 120 seconds.
+- User-visible states cover updating, offline, failed, pending, remote change and conflict.
+- IndexedDB queues only mutations individually designed as safe/idempotent; evidence/file uploads are not silently queued.
+- Account edits carry the revision seen by the editor and reject stale writes with an explicit conflict.
+- Authenticated API tests prove two-session invalidation and stale-write protection in the emulator.
+
+### Phase 3 — Home oriented to decisions
+
+- Home separates available money, known commitments and projected remainder instead of presenting unknown values as zero.
+- Attention/next-action derivation is centralized and deterministic.
+- First-use, month narrative, future commitments and recent movement sections are explicit and reusable.
+- Heavy onboarding/card editors are deferred so the decision surface arrives first.
+
+### Phase 4 — universal capture with human review
+
+- Capture accepts text, audio, screenshots/images, PDF/CSV and paste flows from one entry point.
+- Local/native extraction runs before external AI fallback where supported.
+- Ambiguous amount/direction and low-confidence interpretations require human confirmation.
+- Review supports direct correction of description, value, due day and direction before saving.
+- Capture flow IDs are ephemeral and content-free; correction telemetry is categorical only.
+- The former monolith was split into a small composition wrapper, focused input/review views and a controller.
+
+### Phase 5 — explainable financial intelligence
+
+- Explainable rules cover possible duplicates, unusual increases, month-over-month change, recurring subscriptions, due bills and savings-pot suggestions.
+- Every surfaced signal has source IDs, a premise, confidence, urgency and a review action.
+- Users can mute intelligence topics and select a minimum urgency threshold.
+- Scenario simulation never mutates real data.
+- Monthly close requires explicit exception checks instead of pretending incomplete data is complete.
+
+### Phase 6 — couple and family collaboration
+
+- Together / Household Center adds shared tasks, authored comments/mentions, expense splits/settlement and a weekly ritual.
+- Personal-scope entities are rejected from shared collaboration paths.
+- Invite onboarding explicitly explains Household versus Personal visibility.
+- Realtime invalidation keeps shared state aligned while role permissions remain authoritative.
+
+### Phase 7 — performance, architecture and observability
+
+- `src/features` has a hard 400-line file budget with no legacy exceptions.
+- Home, Household, Savings Pots and Universal Capture were split to remove prior component debt.
+- Route bundle budgets understand Next 16 static export output and are CI-enforced.
+- Heavy OCR/editor code is deferred from the initial Home bundle.
+- Crash telemetry is redacted to crash kind, coarse route and online state; no stack/message/financial content is sent.
+- SLO/runbooks cover API availability/errors, sync latency, capture latency, crash-free sessions and Core Web Vitals.
+
+### Phase 8 — integration/commercial foundation
+
+- Importer registry covers universal text, generic CSV, native PDF, screenshots, card statements, account screens and savings-pot screens.
+- Financial Inbox provides one exception-first queue for documents, invoices, movements and commitments.
+- Universal Search finds only entities visible to the signed-in user and respects Personal visibility.
+- Accounting CSV export remains available for the user's own data independent of commercial plan.
+- Shared monthly reports are aggregate-only Household summaries with random hashed 7-day tokens and no individual descriptions/documents.
+- Plans are modeled, but commercial enforcement remains disabled during beta.
+- Support diagnostics expose technical state without financial content.
+- Family beta is explicit opt-in and records only weekly presence, not financial content.
+- Open Finance executable routes/UI remain deliberately **unexposed** until the certification gate is satisfied.
+
+## Release-gate contract
+
+Every promoted SHA must pass:
+- dependency audit;
+- core tests and static privacy/security invariants;
+- Firestore Rules emulator tests;
+- authenticated API emulator flow;
+- TypeScript;
+- production web build;
+- per-route bundle budgets;
+- Cloud Run API build;
+- Chromium responsive/accessibility/browser smoke.
+
+The CI result on the exact branch head is authoritative; this document does not override a failed workflow.
+
+## Field evidence still required before formal roadmap closure
+
+The following cannot be honestly produced by code or CI:
+
+- [ ] Time to First Value baseline from real use.
+- [ ] p50/p95 simple capture and import under realistic devices/networks.
+- [ ] Review abandonment/correction funnel from real sessions.
+- [ ] 13 moderated participants completed: 5 individuals, 5 couples and 3 families.
+- [ ] Top five frictions ranked by observed frequency x impact.
+- [ ] Production privacy inspection confirming zero financial content in telemetry/logging.
+- [ ] Phase 2 realtime p95 under realistic networks on the exact promoted SHA.
+- [ ] Phase 3 Home comprehension >= 90% and priority action <= 10 seconds.
+- [ ] Phase 4 one-tap success >= 80% for common capture items and p50 < 8 seconds.
+- [ ] Phase 5 measured insight precision and critical false positives < 5%.
+- [ ] Phase 6 moderated Household-vs-Personal and role mental-model validation.
+- [ ] Phase 7 production LCP p75 < 2.5s, INP p75 < 200ms, CLS < 0.1, API >= 99.9%, 5xx < 0.5%, sync p95 < 2s and crash-free sessions > 99.8%.
+- [ ] Open Finance provider, contract/cost, consent, revocation and reconciliation certification.
+
+## Research and privacy protocol
+
+For field flows record only duration, step count, success/failure, correction count and coarse error codes. Never record financial values, descriptions, document text, filenames, Assistant questions or raw user/Household identifiers.
+
+The 12 critical flows remain:
 1. Sign in -> Household ready.
 2. First account/balance -> first useful Home.
 3. Understand available / still-to-pay / projected remainder.
@@ -55,71 +151,4 @@ This work is deliberately not treated as Phase 1 completion while Phase 0 eviden
 11. Create/import/update a Savings Pot.
 12. Invite a second adult and use Household vs Personal safely.
 
-For each flow record only duration, step count, success/failure, correction count and coarse error code. Never record financial values, descriptions, document text, filenames, Assistant questions or raw identifiers.
-
-### Instrumentation contract
-
-The first implementation slice adds first-party Web Vitals telemetry:
-- fixed metric names only: CLS, FCP, FID, INP, LCP, TTFB;
-- route is reduced to a known route key;
-- no metric/page-load identifier is transmitted;
-- no Household/user identifier is transmitted;
-- query strings and hashes are discarded;
-- the API logs only metric, rounded value, coarse rating, coarse route and navigation type;
-- browser metric failures are silent and cannot block financial tasks.
-
-Existing server request telemetry remains the source for API latency/error baseline because it logs method/path/status/duration and does not inspect financial request bodies.
-
-### Human research protocol — required before Phase 0 exit
-
-Participants: 5 individual users, 5 couples and 3 families.
-
-Moderated sessions must run at least:
-- first use on phone;
-- first use on desktop;
-- one capture from each participant's familiar behavior;
-- "what do I need to do now?" interpretation of Home;
-- retrieval of an old proof/document;
-- for shared users, Household vs Personal mental-model test.
-
-Record task outcome and observation codes, not financial content. Use synthetic or participant-redacted examples whenever possible.
-
-### Phase 0 acceptance evidence still required
-
-- [ ] Field baseline for Time to First Value.
-- [ ] Field p50/p95 for simple capture and import.
-- [ ] Review abandonment/correction funnel using fixed event names only.
-- [ ] 13 moderated research participants completed.
-- [ ] Top five frictions ranked by frequency x impact.
-- [ ] Privacy inspection confirms zero financial content in telemetry.
-- [ ] Phase 0 evidence reviewed before Phase 1 is marked IN PROGRESS.
-
-## Architecture decisions queued for their roadmap phase
-
-### Realtime
-Keep the authenticated API as authority. The realtime channel will carry invalidation metadata only, never financial content. Polling remains a backoff fallback. SSE/WebSocket vs a tiny Firebase RTDB invalidation channel must be selected by a measured spike covering multi-instance behavior, p95 latency, reconnects, security rules and monthly cost.
-
-### AI
-Keep deterministic finance rules, local parsers/OCR and native document extraction first. Add an internal provider gateway before adding more providers. Raw financial data must not default to a free model tier. Provider/model selection is benchmark-driven and feature-flagged.
-
-### Performance
-Do not add a generic analytics SDK in Phase 0. Use Next.js first-party Web Vitals reporting plus existing redacted server request telemetry. Bundle analysis and route budgets enter Phase 7, with early regression guards allowed sooner.
-
-
-## Phase 2 implementation evidence
-
-Implemented on the roadmap branch:
-- authenticated SSE invalidation channel emits only revision, coarse domains and timestamp;
-- domain-aware refresh for Home, movements, accounts/invoices and savings pots;
-- polling remains a 25-second fallback and backs off up to 120 seconds;
-- user-visible states for updating, offline, failed, pending, remote change and conflict;
-- IndexedDB queue for safe text-capture mutations only; original evidence/file uploads are never silently queued;
-- replay remains idempotent because the existing capture fingerprint is authoritative server-side;
-- account-balance edits carry the revision seen by the editor and return an explicit 409 conflict when another device changed the account;
-- authenticated API gate now opens a second-user revision stream, verifies the account invalidation arrives under 2 seconds in the emulator, and proves a stale manager edit cannot overwrite the owner's newer balance.
-
-Still required before formally closing Phase 2:
-- field p95 under realistic network conditions;
-- broader offline queue coverage only for mutations individually proven safe/idempotent;
-- browser UX coverage for pending/conflict states;
-- production/homologation verification on the exact promoted SHA.
+The moderated sessions must cover phone and desktop first use, familiar capture behavior, Home interpretation, proof/document retrieval and Household-vs-Personal understanding for shared users.

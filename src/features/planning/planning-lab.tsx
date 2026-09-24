@@ -72,7 +72,7 @@ export function PlanningLab({householdId,role}:{householdId:string;role:Househol
         loadMonthlyClose(householdId,periodKey)
       ]);
       setHome(homeData);
-      setScenarios(scenarioData.scenarios);
+      setScenarios(Array.isArray(scenarioData.scenarios)?scenarioData.scenarios:[]);
       setCloseStatus(closeData.close?{periodKey:closeData.close.periodKey,status:closeData.close.status}:null);
       setPrefs(homeData.intelligencePreferences||DEFAULT_INTELLIGENCE_PREFERENCES);
     }catch{

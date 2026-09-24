@@ -51,9 +51,53 @@ const emptyHome={
 };
 
 async function mockAuthenticatedApi(page:Page,data:any=fullHome){
-  await page.route('**/api/home',async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)}));
-  await page.route('**/api/household/revision',async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,revision:'1:test'})}));
-  await page.route('**/api/savings-pots/automation/sync',async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,processed:0})}));
+  const fulfill=(route:any,body:unknown)=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+  await page.route('**/api/home',async route=>fulfill(route,data));
+  await page.route('**/api/household/revision',async route=>fulfill(route,{ok:true,revision:'1:test'}));
+  await page.route('**/api/savings-pots/automation/sync',async route=>fulfill(route,{ok:true,processed:0}));
+  await page.route('**/api/planning/scenarios/list',async route=>fulfill(route,{ok:true,scenarios:[]}));
+  await page.route('**/api/planning/month-close/get',async route=>fulfill(route,{ok:true,close:null}));
+  await page.route('**/api/inbox',async route=>fulfill(route,{
+    ok:true,
+    items:[
+      {id:'review-1',kind:'document',stage:'review',title:'Comprovante para conferir',secondary:'document_needs_review',href:'/documents',scope:'household',createdAtMs:Date.parse('2026-09-23T12:00:00Z')},
+      {id:'resolved-1',kind:'movement',stage:'resolved',title:'Mercado',secondary:'resolved',href:'/movements',scope:'household',createdAtMs:Date.parse('2026-09-22T12:00:00Z')}
+    ],
+    counts:{review:1,processing:0,resolved:1}
+  }));
+  await page.route('**/api/collaboration/load',async route=>fulfill(route,{
+    ok:true,
+    tasks:[],
+    splits:[],
+    members:[
+      {uid:'e2e-user',displayName:'Você',email:'e2e@example.test',role:'owner'},
+      {uid:'e2e-partner',displayName:'Parceiro',email:'partner@example.test',role:'editor'}
+    ]
+  }));
+  await page.route('**/api/collaboration/comments/list',async route=>fulfill(route,{ok:true,comments:[]}));
+  await page.route('**/api/collaboration/weekly/get',async route=>fulfill(route,{ok:true,ritual:null}));
+  await page.route('**/api/support/diagnostics',async route=>fulfill(route,{
+    ok:true,
+    diagnosticId:'diag-e2e',
+    environment:'e2e',
+    release:'1.2.8',
+    status:'operational',
+    capabilities:{},
+    openFinanceGate:{ready:false,exposed:false}
+  }));
+  await page.route('**/api/beta/status',async route=>fulfill(route,{ok:true,enrolled:false,consentVersion:'2026-09',enrolledAt:null}));
+  await page.route('**/api/session/bootstrap',async route=>fulfill(route,{
+    ok:true,
+    householdId:'e2e-household',
+    households:[{id:'e2e-household',name:'Lar de teste',role:'owner',locale:'pt-BR',currency:'BRL'}],
+    locale:'pt-BR',
+    currency:'BRL',
+    created:false
+  }));
+  await page.route('**/api/search',async route=>fulfill(route,{
+    ok:true,
+    results:[{id:'tx-2',type:'movement',label:'Mercado',secondary:'Saída confirmada',href:'/movements'}]
+  }));
 }
 
 async function gotoAuthenticated(page:Page,path='/',role='owner'){
@@ -199,13 +243,52 @@ test('200% text scaling keeps the authenticated Home operable',async({browser},t
   await context.close();
 });
 
+test('roadmap inbox, Household Center, support and universal search remain usable',async({page},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','Roadmap surface smoke is enforced once.');
+  await mockAuthenticatedApi(page);
+
+  await test.step('financial inbox',async()=>{
+    await gotoAuthenticated(page,'/inbox');
+    await expect(page.getByRole('heading',{name:'Confira só as exceções.'})).toBeVisible();
+    await expect(page.getByText('Comprovante para conferir',{exact:true})).toBeVisible();
+    await assertNoHorizontalOverflow(page);
+    await assertNoSeriousA11y(page);
+  });
+
+  await test.step('Household Center',async()=>{
+    await gotoAuthenticated(page,'/together');
+    await expect(page.getByRole('heading',{name:'Combinar sem invadir.'})).toBeVisible();
+    await expect(page.getByText('Pendências compartilhadas',{exact:true})).toBeVisible();
+    await assertNoHorizontalOverflow(page);
+    await assertNoSeriousA11y(page);
+  });
+
+  await test.step('privacy-safe support',async()=>{
+    await gotoAuthenticated(page,'/support');
+    await expect(page.getByRole('heading',{name:'Diagnóstico que não lê sua vida financeira.'})).toBeVisible();
+    await expect(page.getByText('diag-e2e',{exact:true})).toBeVisible();
+    await assertNoHorizontalOverflow(page);
+    await assertNoSeriousA11y(page);
+  });
+
+  await test.step('universal search',async()=>{
+    await gotoAuthenticated(page,'/');
+    await page.locator('.global-search-trigger').click();
+    const dialog=page.getByRole('dialog',{name:'Busca universal'});
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('textbox',{name:'Buscar'}).fill('Mercado');
+    await expect(dialog.getByText('Mercado',{exact:true})).toBeVisible();
+    await assertNoSeriousA11y(page);
+  });
+});
+
 test('authenticated visual regression: Home mobile dark',async({browser},testInfo)=>{
   test.skip(testInfo.project.name!=='desktop-chromium','Snapshots are generated on the stable desktop Chromium project.');
   const context=await browser.newContext({viewport:{width:390,height:844},colorScheme:'dark'});
   const page=await context.newPage();
   await mockAuthenticatedApi(page);
   await gotoAuthenticated(page,'/');
-  await expect(page).toHaveScreenshot('authenticated-home-mobile-dark.png',{fullPage:true,animations:'disabled',maxDiffPixelRatio:0.10});
+  expect(await screenshotHash(page)).toBe('5e8f57e1a7192523e07fceb53e7901732fd810b02c6578f7fa7790d98a7c2c1f');
   await context.close();
 });
 
@@ -216,6 +299,6 @@ test('authenticated visual regression: Accounts desktop light',async({browser},t
   const page=await context.newPage();
   await mockAuthenticatedApi(page);
   await gotoAuthenticated(page,'/accounts');
-  await expect(page).toHaveScreenshot('authenticated-accounts-desktop-light.png',{fullPage:true,animations:'disabled',maxDiffPixelRatio:0.10});
+  expect(await screenshotHash(page)).toBe('4adf916150a2671ae3577e4067a27a089c1b11d24c4457bf14454a404c9a11ac');
   await context.close();
 });

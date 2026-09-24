@@ -1,5 +1,5 @@
 'use client';
-import { auth } from '@/src/lib/firebase/client';
+import { getBrowserAuthToken } from '@/src/lib/browser-auth-token';
 import type { HouseholdRole } from '@/src/core/household';
 import { normalizeLocale, type AppLocale } from '@/src/core/locale';
 import { getNestBalanceDeviceContext } from '@/src/lib/device-context';
@@ -13,9 +13,7 @@ export type HouseholdSessionOption={
 };
 
 async function token(){
-  const value=await auth?.currentUser?.getIdToken();
-  if(!value) throw new Error('AUTH_REQUIRED');
-  return value;
+  return getBrowserAuthToken();
 }
 
 async function post(path:string,body?:Record<string,unknown>){
