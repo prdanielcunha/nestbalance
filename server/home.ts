@@ -7,6 +7,7 @@ import { normalizeProactivityPreferences } from '../src/core/proactivity.js';
 import { activeAttentionDismissals } from '../src/core/attention.js';
 import { normalizeSavingsPotAutomation } from '../src/core/savings-pot-automation.js';
 import { normalizeHomePreferences } from '../src/core/home-preferences.js';
+import { normalizeIntelligencePreferences } from '../src/core/intelligence-preferences.js';
 
 function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
@@ -208,6 +209,7 @@ export async function getHomeData(req:Request,res:Response){
       cardSnapshots:visibleDocs(cardSnapshots.docs,user.uid).map(cardSnapshotDto),
       proactivityPreferences:normalizeProactivityPreferences(currentMember.proactivityPreferences),
       homePreferences:normalizeHomePreferences(currentMember.homePreferences),
+      intelligencePreferences:normalizeIntelligencePreferences(currentMember.intelligencePreferences),
       dismissedAttentionKeys:activeAttentionDismissals(attentionDismissalsSnap.docs.map(doc=>doc.data()),user.uid,Date.now()),
       dismissedRecurrenceKeys:visibleDocs(recurrenceDismissals.docs,user.uid)
         .map(doc=>{
