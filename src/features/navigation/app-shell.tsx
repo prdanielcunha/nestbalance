@@ -47,6 +47,8 @@ export function AppShell({
   householdLink?:HouseholdLinkMode;
   navClassName?:string;
 }){
+  const {locale}=useI18n();
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const mainClass=['app-shell','app-shell-frame',className].filter(Boolean).join(' ');
   const navClass=['app-shell-nav',navClassName].filter(Boolean).join(' ');
 
@@ -57,7 +59,7 @@ export function AppShell({
         <span className="topbar-subtitle">{subtitle}</span>
       </div>
       <div className="topbar-actions app-shell-actions">
-        <Link className="inbox-shortcut" href="/inbox">Inbox</Link>
+        <Link className="inbox-shortcut" href="/inbox">{l('Caixa de entrada','Inbox','Bandeja')}</Link>
         <GlobalSearch/>
         <SyncStatusChip/>
         {headerActions}
