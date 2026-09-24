@@ -3,14 +3,14 @@ import type { Request, Response } from 'express';
 const VITAL_NAMES=new Set(['CLS','FCP','FID','INP','LCP','TTFB']);
 const RATINGS=new Set(['good','needs-improvement','poor']);
 const NAVIGATION_TYPES=new Set(['navigate','reload','back-forward','prerender']);
-const PRODUCT_EVENTS=new Set(['first_value_observed','capture_opened','capture_review_ready','capture_committed','capture_queued','capture_undone','capture_abandoned']);
+const PRODUCT_EVENTS=new Set(['session_observed','first_value_observed','capture_opened','capture_review_ready','capture_committed','capture_queued','capture_undone','capture_abandoned']);
 const CAPTURE_SOURCES=new Set(['text','image','pdf','csv','audio','other']);
 
 function routeKey(pathname:unknown){
   const raw=typeof pathname==='string'?pathname:'';
   if(raw==='/') return 'home';
   const segment=raw.split('?')[0].split('#')[0].split('/').filter(Boolean)[0]||'other';
-  return new Set(['movements','accounts','pots','assistant','add','vault','household','privacy','activity']).has(segment)
+  return new Set(['movements','accounts','pots','assistant','add','vault','household','privacy','activity','together']).has(segment)
     ? segment
     : 'other';
 }
@@ -74,5 +74,18 @@ export function recordProductEvent(req:Request,res:Response){
     reviewCount
   }));
 
+  return res.status(204).end();
+}
+
+
+export function recordClientCrash(req:Request,res:Response){
+  const kind=String(req.body?.kind||'');
+  if(kind!=='error'&&kind!=='unhandledrejection') return res.status(400).json({ok:false,error:'INVALID_CRASH_KIND'});
+  console.log(JSON.stringify({
+    event:'client_crash',
+    kind,
+    route:routeKey(req.body?.route),
+    online:req.body?.online===true
+  }));
   return res.status(204).end();
 }
