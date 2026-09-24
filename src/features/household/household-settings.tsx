@@ -321,7 +321,10 @@ export function HouseholdSettings({
           'Pendientes compartidas, decisiones, comentarios, división de gastos y un ritual semanal de cinco minutos — sin exponer tus elementos Personales.'
         )}</p>
       </div>
-      <Link className="primary-button" href="/together">{l('Abrir Central do Lar','Open Household Center','Abrir Central del Hogar')}</Link>
+      <div className="household-card-actions">
+        <Link className="primary-button" href="/together">{l('Abrir Central do Lar','Open Household Center','Abrir Central del Hogar')}</Link>
+        <Link className="ghost-button" href="/support">{l('Suporte e diagnóstico','Support & diagnostics','Soporte y diagnóstico')}</Link>
+      </div>
     </section>
 
     {sessionHouseholds.length>1&&<section className="household-switcher">
