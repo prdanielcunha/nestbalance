@@ -35,7 +35,7 @@ import type { FinancialScope } from '@/src/core/privacy';
 import { readImageTextLocally } from '@/src/lib/local-image-ocr';
 import { analyzeTextWithGeminiFallback, getGeminiFallbackStatus, type GeminiFallbackStatus } from '@/src/lib/repositories/gemini-fallback';
 import { consumeWebShareTarget } from '@/src/lib/pwa/share-target';
-import { reportProductEvent, type CaptureSourceKind } from '@/src/lib/product-events';
+import { reportProductEvent, type CaptureCorrectionReason, type CaptureSourceKind } from '@/src/lib/product-events';
 import { CaptureProgress, type CaptureProgressStage } from '@/src/features/capture/capture-progress';
 import { undoCaptureBatch, type CaptureUndoItem } from '@/src/lib/repositories/capture-undo';
 import { publishToast } from '@/src/features/feedback/toast-store';
@@ -92,6 +92,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const recorderStreamRef=useRef<MediaStream|null>(null);
   const captureStartedAtRef=useRef<number|null>(null);
   const reviewReportedRef=useRef(false);
+  const correctionReportedRef=useRef<Set<CaptureCorrectionReason>>(new Set());
 
   useEffect(()=>{
     if(!open) return;
@@ -113,6 +114,16 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
   function captureDurationMs(){
     return captureStartedAtRef.current===null?undefined:Math.max(0,performance.now()-captureStartedAtRef.current);
+  }
+
+  function reportCaptureCorrection(correction:CaptureCorrectionReason){
+    if(correctionReportedRef.current.has(correction)) return;
+    correctionReportedRef.current.add(correction);
+    reportProductEvent('capture_corrected',{
+      source:captureSourceKind(),
+      durationMs:captureDurationMs(),
+      correction
+    });
   }
 
   function readEditedMoney(value:string,allowZero=false){
@@ -211,6 +222,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     setOpen(false);
     captureStartedAtRef.current=null;
     reviewReportedRef.current=false;
+    correctionReportedRef.current.clear();
     onClose?.();
     setText('');
     setFile(null);
@@ -289,6 +301,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
   function reprocessLocalAs(kind:'recurring'|'pots'|'balance'){
     if(!localOcrText.trim()) return;
+    reportCaptureCorrection('source_type');
     const next=kind==='recurring'
       ? parseRecurringCommitmentsFromOcr(localOcrText)
       : kind==='pots'
@@ -726,6 +739,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   }
 
   function chooseAmount(amountMinor: number) {
+    reportCaptureCorrection('amount');
     if(pendingAi){
       prepareAiReview(pendingAi.extraction,amountMinor);
       return;
@@ -741,10 +755,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
   function chooseDirection(direction:ConfirmedDirection){
     if(!pendingAi?.amountMinor) return;
+    reportCaptureCorrection('direction');
     prepareAiReview(pendingAi.extraction,pendingAi.amountMinor,direction);
   }
 
   function chooseImportedDirection(index:number,direction:ConfirmedDirection){
+    reportCaptureCorrection('direction');
     setInterpretations(items=>items.map((item,itemIndex)=>
       itemIndex===index?resolveImportedMovementDirection(item,direction):item
     ));
@@ -1317,6 +1333,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   <input
                     value={interpretation.description}
                     maxLength={160}
+                    onBlur={()=>reportCaptureCorrection('description')}
                     onChange={event=>editInterpretation(index,current=>({
                       ...current,
                       description:event.target.value,
@@ -1334,6 +1351,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                     onBlur={event=>{
                       const amountMinor=readEditedMoney(event.currentTarget.value);
                       if(amountMinor===null) return;
+                      reportCaptureCorrection('amount');
                       editInterpretation(index,current=>({
                         ...current,
                         money:{...current.money,amountMinor},
@@ -1349,6 +1367,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                     inputMode="numeric"
                     value={interpretation.dueDay??''}
                     placeholder="—"
+                    onBlur={()=>reportCaptureCorrection('due_day')}
                     onChange={event=>{
                       const raw=event.target.value;
                       const parsed=Number(raw);
