@@ -24,24 +24,19 @@ import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-househo
 import { PotsOverview } from '@/src/features/pots/pots-overview';
 import { PotEditorSheet } from '@/src/features/pots/pot-editor-sheet';
 import { PotDetailSheet } from '@/src/features/pots/pot-detail-sheet';
-
 type MoveMode='reserve'|'withdraw';
-
 function todayKey(){
   return new Date().toISOString().slice(0,10);
 }
-
 export function PotsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
-  const {locale,intlLocale,formatMoney,formatDate}=useI18n();
+  const {locale,intlLocale}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const canContribute=role!=='read_only';
-
   const [pots,setPots]=useState<HomeSavingsPot[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
   const [view,setView]=useState<FinancialView>('household');
-
   const [editing,setEditing]=useState<HomeSavingsPot|null>(null);
   const [creating,setCreating]=useState(false);
   const [name,setName]=useState('');
@@ -56,7 +51,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   const [removeCover,setRemoveCover]=useState(false);
   const [saving,setSaving]=useState(false);
   const [formError,setFormError]=useState('');
-
   const [selected,setSelected]=useState<HomeSavingsPot|null>(null);
   const [activities,setActivities]=useState<SavingsPotActivity[]>([]);
   const [detailLoading,setDetailLoading]=useState(false);
@@ -65,7 +59,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   const [moveNote,setMoveNote]=useState('');
   const [moveWorking,setMoveWorking]=useState(false);
   const [detailError,setDetailError]=useState('');
-
   const [automationEditing,setAutomationEditing]=useState(false);
   const [automationEnabled,setAutomationEnabled]=useState(false);
   const [automationKind,setAutomationKind]=useState<SavingsPotAutomationKind>('frequency');
@@ -74,7 +67,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   const [automationStartDate,setAutomationStartDate]=useState('');
   const [automationValue,setAutomationValue]=useState('');
   const [automationWorking,setAutomationWorking]=useState(false);
-
   async function load(silent=false){
     if(!silent) setLoading(true);
     setError('');
@@ -95,9 +87,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       if(!silent) setLoading(false);
     }
   }
-
   useHouseholdRevisionRefresh(householdId,()=>load(true),25_000,['pots']);
-
   useEffect(()=>{
     void load();
     const onFocus=()=>void load(true);
@@ -106,9 +96,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     document.addEventListener('visibilitychange',onVisibility);
     return ()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisibility);};
   },[householdId]);
-
   useEffect(()=>()=>{if(coverPreview)URL.revokeObjectURL(coverPreview);},[coverPreview]);
-
   const visible=useMemo(()=>pots.filter(item=>inFinancialView(item.scope,view)),[pots,view]);
   const groups=useMemo(()=>groupSavingsPots(visible),[visible]);
   const total=useMemo(()=>groups.reduce((sum,item)=>sum+item.balanceMinor,0),[groups]);
@@ -116,11 +104,9 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   const remainingTotal=useMemo(()=>groups.reduce((sum,item)=>sum+Math.max(0,(item.goalMinor||0)-item.balanceMinor),0),[groups]);
   const reachedCount=useMemo(()=>groups.filter(item=>item.goalMinor&&item.balanceMinor>=item.goalMinor).length,[groups]);
   const institutionCount=useMemo(()=>new Set(visible.map(item=>item.institutionName||l('NestBalance','NestBalance','NestBalance'))).size,[visible,locale]);
-
   function formatInput(value:number){
     return (value/100).toLocaleString(intlLocale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
   }
-
   function resetEditorState(){
     setEditing(null);
     setCreating(false);
@@ -136,18 +122,15 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     setFormError('');
     setCoverPreview(current=>{if(current)URL.revokeObjectURL(current);return null;});
   }
-
   function closeEditor(){
     if(saving) return;
     resetEditorState();
   }
-
   function openNew(){
     resetEditorState();
     setCreating(true);
     setScope(view==='personal'?'personal':'household');
   }
-
   function openEdit(item:HomeSavingsPot){
     resetEditorState();
     setEditing(item);
@@ -159,7 +142,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     setInstitution(item.institutionName||'');
     setScope(item.scope==='personal'?'personal':'household');
   }
-
   function chooseCover(file:File|null){
     setFormError('');
     if(!file){
@@ -179,7 +161,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     setRemoveCover(false);
     setCoverPreview(current=>{if(current)URL.revokeObjectURL(current);return URL.createObjectURL(file);});
   }
-
   async function save(){
     if(saving) return;
     const cleanName=name.trim();
@@ -197,7 +178,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       setFormError(l('Digite uma meta válida ou deixe em branco.','Enter a valid goal or leave it blank.','Escribe una meta válida o déjala en blanco.'));
       return;
     }
-
     setSaving(true);
     setFormError('');
     setNotice('');
@@ -213,7 +193,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
         institutionName:institution.trim()||null,
         scope:editing?.scope==='personal'?'personal':editing?'household':scope
       });
-
       let photoProblem=false;
       try{
         if(removeCover&&editing?.hasCover) await deleteSavingsPotCover(householdId,result.potId);
@@ -221,7 +200,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       }catch{
         photoProblem=true;
       }
-
       resetEditorState();
       await load();
       setNotice(photoProblem
@@ -233,7 +211,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       setSaving(false);
     }
   }
-
   function configureAutomationFromPot(pot:HomeSavingsPot){
     const a=pot.automation;
     setAutomationEnabled(Boolean(a?.enabled));
@@ -249,7 +226,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       setAutomationValue('');
     }
   }
-
   async function openDetail(pot:HomeSavingsPot){
     setSelected(pot);
     setActivities([]);
@@ -269,7 +245,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       setDetailLoading(false);
     }
   }
-
   async function reloadSelected(){
     if(!selected) return;
     const data=await loadHomeData(householdId);
@@ -280,7 +255,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     const detail=await getSavingsPotDetail(householdId,selected.id);
     setActivities(detail.activities);
   }
-
   async function submitMove(){
     if(!selected||!moveMode||moveWorking) return;
     const amountMinor=parseMoneyInputToMinor(moveInput,locale);
@@ -308,14 +282,12 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       setMoveWorking(false);
     }
   }
-
   async function saveAutomation(){
     if(!selected||automationWorking) return;
     if(selected.source==='screen_import'){
       setDetailError(l('Cofrinhos importados do banco são atualizados pelo próximo print para evitar inventar movimentações.','Bank-imported savings pots are updated by the next screenshot so we do not invent movements.','Las alcancías importadas del banco se actualizan con la próxima captura para no inventar movimientos.'));
       return;
     }
-
     let automation:SavingsPotAutomation|null=null;
     if(automationEnabled){
       if(automationKind==='roundup'){
@@ -360,7 +332,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
         };
       }
     }
-
     setAutomationWorking(true);
     setDetailError('');
     try{
@@ -374,7 +345,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       setAutomationWorking(false);
     }
   }
-
   async function archiveSelected(){
     if(!selected||moveWorking) return;
     if(selected.balanceMinor!==0){
@@ -393,7 +363,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       setMoveWorking(false);
     }
   }
-
   const startMove=(mode:MoveMode,value='',moveNoteValue='')=>{
     setMoveMode(mode);
     setMoveInput(value);
@@ -404,53 +373,18 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     setAutomationEditing(false);
     if(selected) configureAutomationFromPot(selected);
   };
-
-  return <AppShell
-    className="accounts-shell pots-shell"
-    subtitle={l('Cofrinhos','Savings pots','Alcancías')}
-    canContribute={canContribute}
-    headerActions={<Link href="/documents" className="ghost-button">{l('Documentos','Documents','Documentos')}</Link>}
-  >
-    <PotsOverview
-      {...{householdId,canContribute,view,loading,groups,total,institutionCount,reachedCount,goalsTotal,remainingTotal,error,notice}}
-      onViewChange={setView}
-      onOpenNew={openNew}
-      onOpenDetail={openDetail}
-      onOpenEdit={openEdit}
-    />
+  return <AppShell className="accounts-shell pots-shell" subtitle={l('Cofrinhos','Savings pots','Alcancías')} canContribute={canContribute} headerActions={<Link href="/documents" className="ghost-button">{l('Documentos','Documents','Documentos')}</Link>}>
+    <PotsOverview {...{householdId,canContribute,view,loading,groups,total,institutionCount,reachedCount,goalsTotal,remainingTotal,error,notice}} onViewChange={setView} onOpenNew={openNew} onOpenDetail={openDetail} onOpenEdit={openEdit}/>
     <PotEditorSheet
       {...{householdId,creating,editing,scope,saving,coverPreview,removeCover,name,balanceInput,goalInput,targetDate,institution,note,formError}}
-      onClose={closeEditor}
-      onScopeChange={setScope}
-      onChooseCover={chooseCover}
-      onRemoveCover={()=>{chooseCover(null);setRemoveCover(true);}}
-      onNameChange={setName}
-      onBalanceChange={setBalanceInput}
-      onGoalChange={setGoalInput}
-      onTargetDateChange={setTargetDate}
-      onInstitutionChange={setInstitution}
-      onNoteChange={setNote}
-      onSave={save}
+      onClose={closeEditor} onScopeChange={setScope} onChooseCover={chooseCover} onRemoveCover={()=>{chooseCover(null);setRemoveCover(true);}}
+      onNameChange={setName} onBalanceChange={setBalanceInput} onGoalChange={setGoalInput} onTargetDateChange={setTargetDate} onInstitutionChange={setInstitution} onNoteChange={setNote} onSave={save}
     />
     {selected&&<PotDetailSheet
       {...{householdId,selected,canContribute,moveWorking,automationWorking,moveMode,moveInput,moveNote,detailError,automationEditing,automationEnabled,automationKind,automationMode,automationFrequency,automationStartDate,automationValue,activities,detailLoading}}
-      onClose={()=>setSelected(null)}
-      onEdit={()=>{setSelected(null);openEdit(selected);}}
-      onMoveInputChange={setMoveInput}
-      onMoveNoteChange={setMoveNote}
-      onStartMove={startMove}
-      onCancelMove={()=>setMoveMode(null)}
-      onSubmitMove={submitMove}
-      onAutomationEditingChange={setAutomationEditing}
-      onAutomationEnabledChange={setAutomationEnabled}
-      onAutomationKindChange={setAutomationKind}
-      onAutomationModeChange={setAutomationMode}
-      onAutomationFrequencyChange={setAutomationFrequency}
-      onAutomationStartDateChange={setAutomationStartDate}
-      onAutomationValueChange={setAutomationValue}
-      onCancelAutomation={cancelAutomation}
-      onSaveAutomation={saveAutomation}
-      onArchive={archiveSelected}
+      onClose={()=>setSelected(null)} onEdit={()=>{setSelected(null);openEdit(selected);}} onMoveInputChange={setMoveInput} onMoveNoteChange={setMoveNote} onStartMove={startMove} onCancelMove={()=>setMoveMode(null)} onSubmitMove={submitMove}
+      onAutomationEditingChange={setAutomationEditing} onAutomationEnabledChange={setAutomationEnabled} onAutomationKindChange={setAutomationKind} onAutomationModeChange={setAutomationMode} onAutomationFrequencyChange={setAutomationFrequency} onAutomationStartDateChange={setAutomationStartDate} onAutomationValueChange={setAutomationValue}
+      onCancelAutomation={cancelAutomation} onSaveAutomation={saveAutomation} onArchive={archiveSelected}
     />}
   </AppShell>;
 }
