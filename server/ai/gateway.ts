@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '../firebase-admin.js';
 
@@ -14,6 +14,7 @@ type GatewayContext={
   promptVersion:string;
   fingerprint:string;
   maxGlobalRequests?:number;
+  timeoutMs?:number;
 };
 
 const TASK_UNITS:Record<AiGatewayTask,number>={
@@ -49,6 +50,32 @@ function dayKey(){
   return new Date().toISOString().slice(0,10);
 }
 
+function estimatedCostMicros(context:GatewayContext){
+  const key='NESTBALANCE_AI_COST_MICROS_'+context.provider.toUpperCase()+'_'+context.task.toUpperCase();
+  const value=Number(process.env[key]||0);
+  return Number.isSafeInteger(value)&&value>=0?value:0;
+}
+
+function timeoutFor(context:GatewayContext){
+  const configured=Number(context.timeoutMs||process.env.NESTBALANCE_AI_TIMEOUT_MS||25_000);
+  if(!Number.isFinite(configured)) return 25_000;
+  return Math.max(1_000,Math.min(30_000,Math.round(configured)));
+}
+
+async function withTimeout<T>(promise:Promise<T>,timeoutMs:number){
+  let timer:NodeJS.Timeout|undefined;
+  try{
+    return await Promise.race([
+      promise,
+      new Promise<T>((_,reject)=>{
+        timer=setTimeout(()=>reject(Object.assign(new Error('AI_GATEWAY_TIMEOUT'),{statusCode:504})),timeoutMs);
+      })
+    ]);
+  }finally{
+    if(timer) clearTimeout(timer);
+  }
+}
+
 export function aiGatewayLimits(){
   return {
     globalUnits:integerEnv('NESTBALANCE_AI_DAILY_GLOBAL_UNITS',DEFAULT_GLOBAL_UNITS,20_000),
@@ -67,12 +94,17 @@ function assertEnabled(context:GatewayContext){
   if(disabledValues('NESTBALANCE_AI_DISABLED_TASKS').has(context.task)){
     throw Object.assign(new Error('AI_TASK_DISABLED'),{statusCode:503});
   }
+  const disabledPrompts=disabledValues('NESTBALANCE_AI_DISABLED_PROMPTS');
+  if(disabledPrompts.has(context.promptVersion.toLowerCase())||disabledPrompts.has((context.task+':'+context.promptVersion).toLowerCase())){
+    throw Object.assign(new Error('AI_PROMPT_DISABLED'),{statusCode:503});
+  }
 }
 
 async function reserve(context:GatewayContext){
   assertEnabled(context);
   const date=dayKey();
   const units=TASK_UNITS[context.task];
+  const costMicros=estimatedCostMicros(context);
   const limits=aiGatewayLimits();
   const actorKey=hash(context.userUid).slice(0,24);
   const householdKey=hash(context.householdId).slice(0,24);
@@ -92,8 +124,10 @@ async function reserve(context:GatewayContext){
 
     const globalRequests=Number(globalSnap.data()?.requests||0);
     const globalUnits=Number(globalSnap.data()?.units||0);
+    const globalCostMicros=Number(globalSnap.data()?.estimatedCostMicros||0);
     const userUnits=Number(userSnap.data()?.units||0);
     const householdUnits=Number(householdSnap.data()?.units||0);
+    const householdCostMicros=Number(householdSnap.data()?.estimatedCostMicros||0);
     if(context.maxGlobalRequests&&globalRequests>=context.maxGlobalRequests){
       throw Object.assign(new Error('AI_GLOBAL_REQUEST_CAP_REACHED'),{statusCode:429});
     }
@@ -106,18 +140,19 @@ async function reserve(context:GatewayContext){
       provider:context.provider,
       updatedAt:FieldValue.serverTimestamp()
     };
-    tx.set(globalRef,{...common,requests:globalRequests+1,units:globalUnits+units},{merge:true});
+    tx.set(globalRef,{...common,requests:globalRequests+1,units:globalUnits+units,estimatedCostMicros:globalCostMicros+costMicros},{merge:true});
     tx.set(userRef,{...common,units:userUnits+units},{merge:true});
     tx.set(householdRef,{
       date,
       task:context.task,
       provider:context.provider,
       units:householdUnits+units,
+      estimatedCostMicros:householdCostMicros+costMicros,
       updatedAt:FieldValue.serverTimestamp()
     },{merge:true});
   });
 
-  return {date,units,actorKey,householdKey,fingerprintHash,breakerRef};
+  return {date,units,costMicros,actorKey,householdKey,fingerprintHash,breakerRef};
 }
 
 async function recordOutcome(
@@ -126,13 +161,15 @@ async function recordOutcome(
   status:'success'|'failure',
   durationMs:number
 ){
-  const eventRef=adminDb.doc(`households/${context.householdId}/aiUsageEvents/${crypto.randomUUID()}`);
+  const eventRef=adminDb.doc(`households/${context.householdId}/aiUsageEvents/${randomUUID()}`);
   const payload={
     provider:context.provider,
     task:context.task,
     model:context.model.slice(0,120),
     promptVersion:context.promptVersion.slice(0,80),
     unitCount:reservation.units,
+    estimatedCostMicros:reservation.costMicros,
+    costEstimateConfigured:reservation.costMicros>0,
     status,
     durationMs:Math.max(0,Math.round(durationMs)),
     actorKey:reservation.actorKey,
@@ -170,7 +207,7 @@ export async function runAiGateway<T>(context:GatewayContext,operation:()=>Promi
   const reservation=await reserve(context);
   const started=Date.now();
   try{
-    const result=await operation();
+    const result=await withTimeout(operation(),timeoutFor(context));
     await recordOutcome(context,reservation,'success',Date.now()-started).catch(()=>undefined);
     return result;
   }catch(error){
