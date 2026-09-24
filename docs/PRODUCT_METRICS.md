@@ -51,8 +51,9 @@ Universal Capture also emits a fixed, content-free funnel:
 - `capture_review_ready`
 - `capture_committed`
 - `capture_abandoned`
+- `capture_corrected` with one fixed reason: description, amount, due day, direction, or source type
 
-Allowed dimensions are limited to coarse input type, elapsed milliseconds, total item count, review item count and coarse route key. Values, descriptions, extracted text, filenames, evidence IDs, user IDs and Household IDs are not accepted by the client contract or logged by the endpoint.
+Allowed dimensions are limited to coarse input type, elapsed milliseconds, total item count, review item count, fixed correction reason and coarse route key. Values, descriptions, extracted text, filenames, evidence IDs, user IDs and Household IDs are not accepted by the client contract or logged by the endpoint.
 
 This baseline is intended to answer: how long capture takes, where users leave, and how much review the machine creates. It is not intended to reconstruct what the user did financially.
 
