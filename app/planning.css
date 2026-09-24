@@ -1,0 +1,54 @@
+/* Phase 5 — explainable planning */
+.planning-lab{margin-top:28px;display:grid;gap:18px}
+.planning-loading{min-height:240px;border-radius:26px;background:linear-gradient(90deg,var(--surface-strong),var(--surface),var(--surface-strong));background-size:220% 100%;animation:shimmer 1.2s infinite}
+.planning-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,320px);gap:18px;align-items:end;padding:26px;border:1px solid var(--line);border-radius:28px;background:var(--surface-strong)}
+.planning-head>div:first-child>span,.planning-panel .section-title span{font-size:11px;letter-spacing:.12em;font-weight:800;color:var(--iris)}
+.planning-head h2{margin:7px 0 8px;font-size:clamp(25px,4vw,38px);letter-spacing:-.045em}
+.planning-head p{margin:0;color:var(--muted);line-height:1.55;max-width:720px}
+.planning-summary{padding:18px;border-radius:20px;background:var(--paper);border:1px solid var(--line);display:grid;gap:4px}
+.planning-summary span,.planning-summary small{font-size:12px;color:var(--muted)}
+.planning-summary strong{font-size:30px;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.planning-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:18px}
+.planning-grid.secondary{grid-template-columns:1fr 1fr}
+.planning-panel{padding:22px;border:1px solid var(--line);border-radius:24px;background:var(--surface-strong);min-width:0}
+.planning-panel .section-title{margin-top:0}
+.insight-feed{display:grid;gap:10px}
+.insight-card{padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--paper);display:grid;gap:8px}
+.insight-card.critical{border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
+.insight-card.high{border-color:color-mix(in srgb,#b1781a 35%,var(--line))}
+.insight-card-head{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted)}
+.insight-card-head b{font-weight:700;color:var(--muted)}
+.insight-card h4{margin:0;font-size:16px}
+.insight-card>strong{font-size:22px;font-variant-numeric:tabular-nums}
+.insight-card details summary{cursor:pointer;font-size:12px;font-weight:750;color:var(--muted)}
+.insight-card details p{font-size:12px;line-height:1.5;color:var(--muted);margin:8px 0 4px}
+.insight-card details small{font-size:11px;color:var(--muted)}
+.insight-actions a{display:inline-flex;min-height:38px;align-items:center;text-decoration:none;font-size:12px;font-weight:800;color:var(--iris)}
+.scenario-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.scenario-form label,.preference-select{display:grid;gap:5px}
+.scenario-form label span,.preference-select span{font-size:12px;color:var(--muted);font-weight:750}
+.scenario-form input,.scenario-form select,.preference-select select{min-height:44px;border:1px solid var(--line);border-radius:13px;background:var(--paper);color:var(--ink);padding:0 11px;font-size:14px}
+.scenario-result{margin:14px 0;padding:15px;border-radius:16px;background:color-mix(in srgb,var(--iris) 8%,var(--paper));display:grid;gap:4px}
+.scenario-result span,.scenario-result small{font-size:12px;color:var(--muted)}
+.scenario-result strong{font-size:28px;font-variant-numeric:tabular-nums}
+.saved-scenarios{margin-top:14px;display:grid;gap:8px}
+.saved-scenarios article{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-top:1px solid var(--line)}
+.saved-scenarios article>div{display:grid;gap:2px;min-width:0}
+.saved-scenarios span,.saved-scenarios small{font-size:11px;color:var(--muted)}
+.saved-scenarios button{min-height:38px;border:0;background:transparent;color:var(--muted);font-size:12px}
+.close-checklist{display:grid;gap:8px;margin-bottom:14px}
+.close-checklist>div{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.close-checklist>div>span{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--paper);font-weight:800}
+.close-checklist>div.done>span{color:var(--mint)}
+.close-checklist>div.attention>span{color:var(--danger)}
+.close-checklist strong,.close-checklist small{display:block}
+.close-checklist strong{font-size:13px}.close-checklist small{font-size:11px;color:var(--muted);margin-top:2px}
+.intelligence-options{display:grid;gap:7px;margin-bottom:14px}
+.intelligence-options button{min-height:44px;border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);display:flex;justify-content:space-between;align-items:center;padding:0 12px;font-size:12px}
+.intelligence-options button.active{border-color:color-mix(in srgb,var(--iris) 34%,var(--line))}
+.intelligence-options button b{font-size:11px;color:var(--muted)}
+.planning-disclaimer{font-size:11px;color:var(--muted);line-height:1.55;margin:12px 0 0}
+.empty-state.compact{padding:20px 0 8px}
+.empty-state.compact h4{margin:0 0 5px}.empty-state.compact p{font-size:13px}
+@media(max-width:900px){.planning-head,.planning-grid,.planning-grid.secondary{grid-template-columns:1fr}.planning-summary{max-width:none}}
+@media(max-width:520px){.planning-panel{padding:17px}.scenario-form{grid-template-columns:1fr}.planning-head{padding:20px}}
