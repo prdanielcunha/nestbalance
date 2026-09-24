@@ -25,6 +25,7 @@ import { updateProactivityPreferences } from './server/proactivity.js';
 import { dismissAttention } from './server/attention.js';
 import { listSecurityDevices, revokeNestBalanceSessions } from './server/security.js';
 import { getHouseholdRevision, streamHouseholdRevision } from './server/revision.js';
+import { updateHomePreferences } from './server/home-preferences.js';
 import { recordProductEvent, recordWebVital } from './server/product-metrics.js';
 
 const app = express();
@@ -78,6 +79,7 @@ app.post('/api/recurrences/confirm', confirmRecurringSuggestion);
 app.post('/api/recurrences/dismiss', dismissRecurringSuggestion);
 app.post('/api/categories/transaction', updateTransactionCategory);
 app.post('/api/member/proactivity-preferences', updateProactivityPreferences);
+app.post('/api/member/home-preferences', updateHomePreferences);
 app.post('/api/attention/dismiss', sensitiveLimit, dismissAttention);
 app.post('/api/evidence/start', startEvidence);
 app.post('/api/evidence/finalize', finalizeEvidence);
