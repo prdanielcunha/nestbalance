@@ -3,8 +3,9 @@ import type { Request, Response } from 'express';
 const VITAL_NAMES=new Set(['CLS','FCP','FID','INP','LCP','TTFB']);
 const RATINGS=new Set(['good','needs-improvement','poor']);
 const NAVIGATION_TYPES=new Set(['navigate','reload','back-forward','prerender']);
-const PRODUCT_EVENTS=new Set(['session_observed','first_value_observed','capture_opened','capture_review_ready','capture_committed','capture_queued','capture_undone','capture_abandoned']);
+const PRODUCT_EVENTS=new Set(['session_observed','first_value_observed','capture_opened','capture_review_ready','capture_committed','capture_queued','capture_undone','capture_abandoned','capture_corrected']);
 const CAPTURE_SOURCES=new Set(['text','image','pdf','csv','audio','other']);
+const CAPTURE_CORRECTIONS=new Set(['description','amount','due_day','direction','source_type']);
 
 function routeKey(pathname:unknown){
   const raw=typeof pathname==='string'?pathname:'';
@@ -63,6 +64,8 @@ export function recordProductEvent(req:Request,res:Response){
   const durationMs=boundedInteger(req.body?.durationMs,30*60_000);
   const itemCount=boundedInteger(req.body?.itemCount,500);
   const reviewCount=boundedInteger(req.body?.reviewCount,500);
+  const correctionRaw=String(req.body?.correction||'');
+  const correction=CAPTURE_CORRECTIONS.has(correctionRaw)?correctionRaw:null;
 
   console.log(JSON.stringify({
     event:'product_funnel_event',
@@ -71,7 +74,8 @@ export function recordProductEvent(req:Request,res:Response){
     source,
     durationMs,
     itemCount,
-    reviewCount
+    reviewCount,
+    correction
   }));
 
   return res.status(204).end();
