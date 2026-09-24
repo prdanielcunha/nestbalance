@@ -24,7 +24,7 @@ import { updateTransactionCategory } from './server/categories.js';
 import { updateProactivityPreferences } from './server/proactivity.js';
 import { dismissAttention } from './server/attention.js';
 import { listSecurityDevices, revokeNestBalanceSessions } from './server/security.js';
-import { getHouseholdRevision } from './server/revision.js';
+import { getHouseholdRevision, streamHouseholdRevision } from './server/revision.js';
 import { recordProductEvent, recordWebVital } from './server/product-metrics.js';
 
 const app = express();
@@ -50,6 +50,7 @@ app.post('/api/session/bootstrap', bootstrapSession);
 app.post('/api/session/select-household', selectHousehold);
 app.post('/api/household/settings', getHouseholdSettings);
 app.post('/api/household/revision', getHouseholdRevision);
+app.post('/api/household/revision/stream', streamHouseholdRevision);
 app.post('/api/household/rename', renameHousehold);
 app.post('/api/household/locale', updateHouseholdLocale);
 app.post('/api/household/invite', sensitiveLimit, createHouseholdInvite);
