@@ -9,7 +9,7 @@ export function CaptureInputView({c}:{c:UniversalCaptureController}){
     t,l,formatMoney,working,file,scope,setScope,preparedEvidenceId,recording,saving,analyzing,startRecording,stopRecording,
     imageInputRef,fileInputRef,textRef,pasteImageFromClipboard,selectFile,interpret,localOcrText,reprocessLocalAs,text,setText,
     setFile,setPreparedEvidenceId,setAnalysis,setAiAnalysis,setNotice,upload,localOcrPercent,analysis,amountChoices,chooseAmount,
-    directionChoice,chooseDirection,geminiUsed,aiAnalysis,geminiStatus,screenSnapshot,geminiWorking,runGeminiFallback,notice,error,reset,
+    directionChoice,chooseDirection,geminiUsed,aiAnalysis,geminiStatus,screenSnapshot,interpretations,geminiWorking,runGeminiFallback,notice,error,reset,
     captureStage,captureStageLabels
   }=c;
   return <>
