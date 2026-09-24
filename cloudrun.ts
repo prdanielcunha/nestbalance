@@ -31,6 +31,7 @@ import { loadCollaboration, createSharedTask, updateSharedTask, listComments, cr
 import { recordProductEvent, recordWebVital, recordClientCrash } from './server/product-metrics.js';
 import { exportAccountingCsv, createSharedMonthlyReport, viewSharedMonthlyReport } from './server/reports.js';
 import { getSupportDiagnostics } from './server/support.js';
+import { universalSearch } from './server/search.js';
 import { getBetaStatus, enrollBeta, pulseBeta } from './server/beta.js';
 
 const app = express();
@@ -105,6 +106,7 @@ app.post('/api/reports/accounting/export', sensitiveLimit, exportAccountingCsv);
 app.post('/api/reports/monthly/share', sensitiveLimit, createSharedMonthlyReport);
 app.post('/api/reports/monthly/view', rateLimit({windowMs:60_000,max:30,namespace:'shared-report'}), viewSharedMonthlyReport);
 app.post('/api/support/diagnostics', getSupportDiagnostics);
+app.post('/api/search', universalSearch);
 app.post('/api/beta/status', getBetaStatus);
 app.post('/api/beta/enroll', sensitiveLimit, enrollBeta);
 app.post('/api/beta/pulse', pulseBeta);
