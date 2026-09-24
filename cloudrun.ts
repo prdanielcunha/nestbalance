@@ -25,6 +25,7 @@ import { updateProactivityPreferences } from './server/proactivity.js';
 import { dismissAttention } from './server/attention.js';
 import { listSecurityDevices, revokeNestBalanceSessions } from './server/security.js';
 import { getHouseholdRevision } from './server/revision.js';
+import { recordWebVital } from './server/product-metrics.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -43,6 +44,7 @@ const aiFreeLimit=rateLimit({windowMs:60_000,max:6,namespace:'gemini-free'});
 app.post('/api/evidence/upload', express.raw({ type: '*/*', limit: '20mb' }), uploadEvidence);
 app.post('/api/savings-pots/cover/upload', express.raw({ type: ['image/jpeg','image/png','image/webp'], limit: '5mb' }), uploadSavingsPotCover);
 app.use(express.json({ limit: '128kb' }));
+app.post('/api/metrics/web-vital', rateLimit({windowMs:60_000,max:30,namespace:'web-vitals'}), recordWebVital);
 app.post('/api/session/bootstrap', bootstrapSession);
 app.post('/api/session/select-household', selectHousehold);
 app.post('/api/household/settings', getHouseholdSettings);
