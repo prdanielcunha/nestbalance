@@ -12,7 +12,7 @@ The blueprint says to measure reduction of effort, not number of screens. NestBa
 | Weekly Household active | Existing member `lastSeenAt` values, aggregated by Household/week. |
 | Bill completion before due | Commitment payment timestamp vs due date/day. |
 | Import latency p50/p95 | Existing structured HTTP duration telemetry for evidence/import/AI endpoints; request bodies and financial values are excluded. |
-| Crash/error-free sessions | HTTP 5xx/error telemetry plus browser release smoke. A future client crash collector must redact financial content before adoption. |
+| Crash/error-free sessions | HTTP 5xx/error telemetry plus the first-party client crash collector. The collector emits only crash kind, coarse route and online state; it excludes messages, stacks, identifiers and financial content. |
 | Accessibility QA pass | Browser Quality + axe serious/critical gate on every release. |
 
 ## Data minimization rules
