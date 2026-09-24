@@ -56,6 +56,7 @@ export function AppShell({
         <span className="topbar-subtitle">{subtitle}</span>
       </div>
       <div className="topbar-actions app-shell-actions">
+        <Link className="inbox-shortcut" href="/inbox">Inbox</Link>
         <GlobalSearch/>
         <SyncStatusChip/>
         {headerActions}
