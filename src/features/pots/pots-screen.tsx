@@ -1,8 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AppNav } from '@/src/features/navigation/app-nav';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { SavingsPotCover } from '@/src/features/pots/pot-cover';
 import type { HouseholdRole } from '@/src/core/household';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
@@ -23,6 +21,7 @@ import {
   type SavingsPotActivity
 } from '@/src/lib/repositories/savings-pots';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { AppShell } from '@/src/features/navigation/app-shell';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
@@ -420,18 +419,12 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
 
   const selectedPace=selected?savingsPotGoalPace(selected.balanceMinor,selected.goalMinor,selected.targetDate):null;
 
-  return <main className="app-shell accounts-shell pots-shell">
-    <header className="topbar">
-      <div>
-        <div className="eyebrow">NestBalance</div>
-        <span className="topbar-subtitle">{l('Cofrinhos','Savings pots','Alcancías')}</span>
-      </div>
-      <div className="topbar-actions">
-        <Link href="/documents" className="ghost-button">{l('Documentos','Documents','Documentos')}</Link>
-        <HouseholdLink/>
-      </div>
-    </header>
-
+  return <AppShell
+    className="accounts-shell pots-shell"
+    subtitle={l('Cofrinhos','Savings pots','Alcancías')}
+    canContribute={canContribute}
+    headerActions={<Link href="/documents" className="ghost-button">{l('Documentos','Documents','Documentos')}</Link>}
+  >
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="area-hero accounts-hero pots-hero">
@@ -574,7 +567,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       )}</p>
     </section>
 
-    <AppNav canContribute={canContribute}/>
 
     {(creating||editing)&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&closeEditor()}>
       <section className="capture-sheet pot-editor-sheet" role="dialog" aria-modal="true" aria-label={creating?l('Criar cofrinho','Create savings pot','Crear alcancía'):l('Editar cofrinho','Edit savings pot','Editar alcancía')}>
@@ -820,5 +812,5 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
         </div>
       </section>
     </div>}
-  </main>;
+  </AppShell>;
 }
