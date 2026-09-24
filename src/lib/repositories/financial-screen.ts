@@ -2,6 +2,7 @@
 import { auth } from '@/src/lib/firebase/client';
 import type { FinancialScope } from '@/src/core/privacy';
 import type { AiFinancialScreenSnapshot } from '@/src/core/ai-financial';
+import { captureTraceHeaders } from '@/src/lib/capture-trace';
 
 export type FinancialScreenCommitResult={
   ok:true;
@@ -31,7 +32,7 @@ export async function commitFinancialScreen(input:{
 
   const response=await fetch('/api/financial-screen/commit',{
     method:'POST',
-    headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
+    headers:{'content-type':'application/json',authorization:`Bearer ${token}`,...captureTraceHeaders()},
     body:JSON.stringify(input),
     cache:'no-store'
   });
