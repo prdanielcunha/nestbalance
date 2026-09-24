@@ -896,6 +896,10 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     comparing:l('Comparando','Comparing','Comparando'),
     ready:l('Pronto','Ready','Listo')
   };
+  function editInterpretation(index:number,update:(current:FinancialInterpretation)=>FinancialInterpretation){
+    setInterpretations(current=>current.map((item,itemIndex)=>itemIndex===index?update(item):item));
+  }
+
   const indexedInterpretations=interpretations.map((item,index)=>({item,index}));
   const attentionInterpretations=indexedInterpretations.filter(({item})=>item.confidence!=='high'||item.needsReview.includes('direction'));
   const readyInterpretations=indexedInterpretations.filter(({item})=>item.confidence==='high'&&!item.needsReview.includes('direction'));
@@ -1291,7 +1295,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <div className={attentionInterpretations.length?'attention':''}><strong>{attentionInterpretations.length}</strong><span>{l('para conferir','to review','para revisar')}</span></div>
           </div>}
 
-          <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
+          <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`capture-review-${index}`}>
             <div><strong>{interpretation.description}</strong><b>{formatMoney(interpretation.money.amountMinor)}</b></div>
             <span>{interpretation.kind === 'commitment'
               ? (interpretation.recurring ? l(`Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}`,`Every month${interpretation.dueDay ? ` · day ${interpretation.dueDay}` : ''}`,`Cada mes${interpretation.dueDay ? ` · día ${interpretation.dueDay}` : ''}`) : l('Conta para pagar','Bill to pay','Cuenta por pagar'))
@@ -1305,6 +1309,61 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               {interpretation.occurredOn?` · ${formatDate(new Date(interpretation.occurredOn+'T12:00:00'),{day:'2-digit',month:'2-digit'})}`:''}
             </span>
             {interpretation.installment && <span>{l(`Parcela ${interpretation.installment.current} de ${interpretation.installment.total}`,`Installment ${interpretation.installment.current} of ${interpretation.installment.total}`,`Cuota ${interpretation.installment.current} de ${interpretation.installment.total}`)}</span>}
+            <details className="inline-capture-edit">
+              <summary>{l('Corrigir este item','Correct this item','Corregir este elemento')}</summary>
+              <div className="inline-capture-edit-grid">
+                <label>
+                  <span>{l('Descrição','Description','Descripción')}</span>
+                  <input
+                    value={interpretation.description}
+                    maxLength={160}
+                    onChange={event=>editInterpretation(index,current=>({
+                      ...current,
+                      description:event.target.value,
+                      confidence:current.needsReview.includes('direction')?'medium':'high',
+                      needsReview:current.needsReview.filter(reason=>reason!=='document_review')
+                    }))}
+                  />
+                </label>
+                <label>
+                  <span>{l('Valor','Amount','Valor')}</span>
+                  <input
+                    key={`capture-amount-${index}-${interpretation.money.amountMinor}`}
+                    inputMode="decimal"
+                    defaultValue={moneyInputValue(interpretation.money.amountMinor)}
+                    onBlur={event=>{
+                      const amountMinor=readEditedMoney(event.currentTarget.value);
+                      if(amountMinor===null) return;
+                      editInterpretation(index,current=>({
+                        ...current,
+                        money:{...current.money,amountMinor},
+                        confidence:current.needsReview.includes('direction')?'medium':'high',
+                        needsReview:current.needsReview.filter(reason=>!['amount','amount_positive','document_review'].includes(reason))
+                      }));
+                    }}
+                  />
+                </label>
+                {interpretation.kind==='commitment'&&<label>
+                  <span>{l('Dia do vencimento','Due day','Día de vencimiento')}</span>
+                  <input
+                    inputMode="numeric"
+                    value={interpretation.dueDay??''}
+                    placeholder="—"
+                    onChange={event=>{
+                      const raw=event.target.value;
+                      const parsed=Number(raw);
+                      const dueDay=raw===''?undefined:Number.isInteger(parsed)&&parsed>=1&&parsed<=31?parsed:interpretation.dueDay;
+                      editInterpretation(index,current=>({...current,dueDay}));
+                    }}
+                  />
+                </label>}
+              </div>
+              <small>{l(
+                'A correção que você confirmar aqui prevalece sobre o parser. Nada é alterado silenciosamente depois.',
+                'The correction you confirm here overrides the parser. Nothing is silently changed afterward.',
+                'La corrección que confirmes aquí prevalece sobre el parser. Nada se cambia silenciosamente después.'
+              )}</small>
+            </details>
             {interpretation.needsReview.includes('direction')
               ? <div className="inline-direction-choice">
                   <button type="button" onClick={()=>chooseImportedDirection(index,'expense')}>{l('Eu paguei','I paid','Yo pagué')}</button>
