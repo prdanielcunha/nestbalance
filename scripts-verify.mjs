@@ -74,7 +74,7 @@ const financialRedaction=read('./src/core/financial-redaction.ts');
 const productMetrics=read('./server/product-metrics.ts');
 const productMetricsRuntime=read('./src/features/telemetry/product-metrics-runtime.tsx');
 const productEvents=read('./src/lib/product-events.ts');
-const universalCapture=read('./src/features/capture/universal-capture.tsx');
+const universalCapture=read('./src/features/capture/universal-capture.tsx')+read('./src/lib/capture/use-universal-capture-controller.ts');
 
 assert.match(firestore,/match \/households\/\{hid\}/);
 assert.match(firestore,/allow read, write: if false;/);
