@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
@@ -210,8 +209,6 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       suggestedCards={viewSnapshots}
       onCreated={refreshed}
     />}
-
-    <AppNav canContribute={role!=='read_only'}/>
 
     {canManage&&editingAccount&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!savingBalance&&setEditingAccount(null)}>
       <section className="capture-sheet balance-update-sheet" role="dialog" aria-modal="true" aria-label={l('Atualizar saldo','Update balance','Actualizar saldo')}>
