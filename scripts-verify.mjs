@@ -49,6 +49,12 @@ const envExample=read('./.env.example');
 const serviceWorker=read('./public/sw.js');
 const manifestSource=read('./app/manifest.ts');
 const appNav=read('./src/features/navigation/app-nav.tsx');
+const appShell=read('./src/features/navigation/app-shell.tsx');
+const homeScreen=read('./src/features/home/home-screen.tsx');
+const movementsScreen=read('./src/features/movements/movements-screen.tsx');
+const assistantScreen=read('./src/features/assistant/assistant-screen.tsx');
+const vaultScreen=read('./src/features/vault/vault-screen.tsx');
+const privacyCenter=read('./src/features/privacy/privacy-center.tsx');
 const revisionServer=read('./server/revision.ts');
 const authenticatedBrowserTest=read('./tests/e2e/authenticated-finance.spec.ts');
 const localCardReader=read('./src/lib/local-card-reader.ts');
@@ -243,6 +249,20 @@ assert.ok(!productMetricsRuntime.includes('metric.id'),'Browser telemetry must n
 assert.ok(!productMetricsRuntime.includes('location.search'),'Browser telemetry must not send query strings.');
 assert.match(revisionServer,/collection\('auditEvents'\)/);
 assert.match(appNav,/nav-accounts/);
+assert.match(appShell,/app-shell-nav/);
+for(const [name,source] of [
+  ['Home',homeScreen],
+  ['Movements',movementsScreen],
+  ['Accounts',accountsScreen],
+  ['Cofrinhos',savingsPotsScreen],
+  ['Assistant',assistantScreen],
+  ['Documents',vaultScreen],
+  ['Household',householdSettingsScreen],
+  ['Privacy',privacyCenter]
+]){
+  assert.match(source,/AppShell/,name+' must use the shared AppShell.');
+  assert.ok(!source.includes("from '@/src/features/navigation/app-nav'"),name+' must not own primary navigation directly.');
+}
 assert.match(authenticatedBrowserTest,/320/);
 assert.match(authenticatedBrowserTest,/1024/);
 assert.match(authenticatedBrowserTest,/1440/);
