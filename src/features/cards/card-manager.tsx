@@ -72,7 +72,6 @@ export function CreditCardManager({
   useEffect(()=>{if(!open)setScope(defaultScope);},[defaultScope,open]);
   const [invoiceCard,setInvoiceCard]=useState<HomeCreditCard|null>(null);
   const [paymentTarget,setPaymentTarget]=useState<{card:HomeCreditCard;invoice:HomeInvoiceImport}|null>(null);
-
   function moneyInput(minor:number){
     return (minor/100).toLocaleString(intlLocale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
   }
