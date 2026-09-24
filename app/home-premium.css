@@ -495,3 +495,13 @@
   .home-30s-metrics{grid-template-columns:1fr}
   .home-data-quality{margin-left:auto;text-align:right}
 }
+
+
+.home-personalization{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+.home-personalization summary{cursor:pointer;width:max-content;max-width:100%;min-height:36px;display:flex;align-items:center;color:var(--muted);font-size:12px;font-weight:800}
+.home-personalization-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.home-personalization label{display:grid;gap:6px}
+.home-personalization label>span{font-size:12px;color:var(--muted);font-weight:760}
+.home-personalization select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:13px;background:var(--surface-strong);color:var(--ink);padding:0 12px;font-size:14px}
+.home-personalization>small{display:block;margin-top:10px;color:var(--muted);font-size:12px;line-height:1.45}
+@media(max-width:620px){.home-personalization-grid{grid-template-columns:1fr}}
