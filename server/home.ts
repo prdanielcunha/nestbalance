@@ -11,6 +11,13 @@ function error(res:Response,status:number,code:string){
   return res.status(status).json({ok:false,error:code});
 }
 
+function timestampMillis(value:any){
+  if(value&&typeof value.toMillis==='function') return Number(value.toMillis())||0;
+  if(value instanceof Date) return value.getTime();
+  if(typeof value==='number') return Number.isFinite(value)?value:0;
+  return 0;
+}
+
 function accountDto(doc:any){
   const data=doc.data();
   return {
@@ -25,6 +32,7 @@ function accountDto(doc:any){
     balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
     currency:String(data.currency||'BRL'),
     status:String(data.status||'active'),
+    updatedAtMs:timestampMillis(data.updatedAt||data.balanceAsOf||data.createdAt)||null,
     scope:data.scope==='personal'?'personal':'household'
   };
 }
