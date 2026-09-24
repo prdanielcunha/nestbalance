@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
 import { parseFinancialText } from '../src/core/text-parser.js';
+import { applyReviewedInterpretation } from '../src/core/capture-review.js';
 import { adminDb } from './firebase-admin.js';
 import { requireFirebaseUser, requireHouseholdMember } from './auth.js';
 import { assertScopedAccess, scopeFields } from './privacy.js';
@@ -19,7 +20,10 @@ export async function commitCapture(req: Request, res: Response) {
     const sourceText = String(req.body?.sourceText || '').trim();
     if (!sourceText || sourceText.length > 8000) return error(res, 400, 'INVALID_CAPTURE_TEXT');
     const observedOn = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body?.observedOn || '')) ? String(req.body.observedOn) : new Date().toISOString().slice(0,10);
-    const interpretation = parseFinancialText(sourceText);
+    const parsedInterpretation = parseFinancialText(sourceText);
+    const reviewed=applyReviewedInterpretation(parsedInterpretation,req.body?.reviewed);
+    if(!reviewed.ok) return error(res,400,reviewed.reason);
+    const interpretation=reviewed.value;
     if (interpretation.needsReview.includes('amount') || interpretation.needsReview.includes('amount_positive')) return error(res, 400, 'AMOUNT_CONFIRMATION_REQUIRED');
 
     let evidenceId = req.body?.evidenceId ? String(req.body.evidenceId) : null;
@@ -68,6 +72,7 @@ export async function commitCapture(req: Request, res: Response) {
         sourceText,
         confidence: interpretation.confidence,
         needsReview: interpretation.needsReview,
+        humanReviewed:Boolean(req.body?.reviewed),
         interpretation: { parserVersion: interpretation.parserVersion, fieldConfidence: interpretation.fieldConfidence },
         evidenceIds: evidenceId ? [evidenceId] : [],
         createdBy: user.uid,
