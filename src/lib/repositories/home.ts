@@ -39,6 +39,7 @@ export type HomeAccount={
   balanceMinor:number;
   currency:string;
   status:string;
+  updatedAtMs:number|null;
   scope?:'household'|'personal';
 };
 
