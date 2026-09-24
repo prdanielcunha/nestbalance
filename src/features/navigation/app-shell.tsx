@@ -18,9 +18,13 @@ function SyncStatusChip(){
     ? l('Sem conexão','Offline','Sin conexión')
     : status==='failed'
       ? l('Sync pausado','Sync paused','Sync pausado')
-      : status==='remote-change'
-        ? l('Mudou em outro aparelho','Changed on another device','Cambió en otro dispositivo')
-        : l('Atualizando…','Updating…','Actualizando…');
+      : status==='pending'
+        ? l('Alteração pendente','Pending change','Cambio pendiente')
+        : status==='conflict'
+          ? l('Conflito para revisar','Conflict to review','Conflicto para revisar')
+          : status==='remote-change'
+            ? l('Mudou em outro aparelho','Changed on another device','Cambió en otro dispositivo')
+            : l('Atualizando…','Updating…','Actualizando…');
   return <span className={`sync-status-chip ${status}`} role="status" aria-live="polite"><i aria-hidden="true"/>{label}</span>;
 }
 
