@@ -32,7 +32,7 @@ export function syncDomainsForAuditType(value:unknown):SyncDomain[]{
   if(/evidence|vault|document/.test(type)){
     add(domains,'documents');
   }
-  if(/household|member|invite|role|privacy|security|session/.test(type)){
+  if(/household|member|invite|role|privacy|security|session|collaboration|planning/.test(type)){
     add(domains,'household');
   }
   if(/attention|proactivity|assistant|insight/.test(type)){
