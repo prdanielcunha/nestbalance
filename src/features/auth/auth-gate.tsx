@@ -8,6 +8,8 @@ import { normalizeLocale, type AppLocale } from '@/src/core/locale';
 import { LocaleProvider } from '@/src/i18n/locale-provider';
 import { nestBalanceE2eAuthMode } from '@/src/lib/browser-auth-token';
 import { normalizeHouseholdRole } from '@/src/core/household';
+import { AuthenticatedShell } from '@/src/features/navigation/authenticated-shell';
+import { BrandLockup } from '@/src/features/brand/brand-lockup';
 
 function prefersRedirectSignIn(){
   if(typeof window==='undefined'||typeof navigator==='undefined') return false;
@@ -119,10 +121,10 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
       locale:'pt-BR',
       currency:'BRL'
     };
-    return <LocaleProvider locale="pt-BR" currency="BRL">{children(e2eState)}</LocaleProvider>;
+    return <LocaleProvider locale="pt-BR" currency="BRL"><AuthenticatedShell canContribute={e2eRole!=='read_only'}>{children(e2eState)}</AuthenticatedShell></LocaleProvider>;
   }
 
-  if (!firebaseConfigured) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="setup-card"><div className="brand-mark">N</div><h1>NestBalance</h1><p>{t.setupMissing}</p></section></main></LocaleProvider>;
+  if (!firebaseConfigured) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="setup-card"><div><BrandLockup compact className="auth-symbol"/><h1 className="sr-only">NestBalance</h1></div><p>{t.setupMissing}</p></section></main></LocaleProvider>;
   if (loading) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><div className="skeleton-card" role="status"><span className="sr-only">{t.loading}</span></div></main></LocaleProvider>;
 
   const authenticatedUser = auth?.currentUser ?? null;
@@ -130,7 +132,8 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="login-card">
       <div>
         <div className="eyebrow">MillionsNest</div>
-        <h1>NestBalance</h1>
+        <BrandLockup className="auth-logo"/>
+        <h1 className="sr-only">NestBalance</h1>
         <p>{t.authSessionProblem}</p>
       </div>
       <div className="sheet-actions">
@@ -140,8 +143,9 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     </section></main></LocaleProvider>;
   }
 
-  if (!state) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="login-card"><div><div className="eyebrow">MillionsNest</div><h1>NestBalance</h1><p>{t.brandTagline}</p>{sessionError && <p className="error-copy" role="alert">{t.authSignInProblem}</p>}</div><button className="primary-button" disabled={signingIn} onClick={() => void startGoogleSignIn()}>{signingIn ? t.signingIn : t.signIn}</button></section></main></LocaleProvider>;
-  return <LocaleProvider locale={state.locale} currency={state.currency}>{children(state)}</LocaleProvider>;
+  if (!state) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="login-card"><div><div className="eyebrow">MillionsNest</div><BrandLockup className="auth-logo"/><h1 className="sr-only">NestBalance</h1><p>{t.brandTagline}</p>{sessionError && <p className="error-copy" role="alert">{t.authSignInProblem}</p>}</div><button className="primary-button" disabled={signingIn} onClick={() => void startGoogleSignIn()}>{signingIn ? t.signingIn : t.signIn}</button></section></main></LocaleProvider>;
+  const activeRole=normalizeHouseholdRole(state.households.find(item=>item.id===state.householdId)?.role||'read_only');
+  return <LocaleProvider locale={state.locale} currency={state.currency}><AuthenticatedShell canContribute={activeRole!=='read_only'}>{children(state)}</AuthenticatedShell></LocaleProvider>;
 }
 
 export function AuthOnlyGate({ children }: { children: (user: User) => React.ReactNode }) {
@@ -195,12 +199,13 @@ export function AuthOnlyGate({ children }: { children: (user: User) => React.Rea
     }
   }
 
-  if(!firebaseConfigured) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><section className="setup-card"><div className="brand-mark">N</div><h1>NestBalance</h1><p>{t.setupMissing}</p></section></main></LocaleProvider>;
+  if(!firebaseConfigured) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><section className="setup-card"><div><BrandLockup compact className="auth-symbol"/><h1 className="sr-only">NestBalance</h1></div><p>{t.setupMissing}</p></section></main></LocaleProvider>;
   if(loading) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><div className="skeleton-card" role="status"><span className="sr-only">{t.loading}</span></div></main></LocaleProvider>;
   if(!user) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><section className="login-card">
     <div>
       <div className="eyebrow">MillionsNest</div>
-      <h1>NestBalance</h1>
+      <BrandLockup className="auth-logo"/>
+      <h1 className="sr-only">NestBalance</h1>
       <p>{t.brandTagline}</p>
       {authError&&<p className="error-copy" role="alert">{t.authSignInProblem}</p>}
     </div>
