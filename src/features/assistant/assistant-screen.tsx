@@ -1,7 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
-import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, type FinancialView } from '@/src/features/privacy/scope-view-switch';
@@ -171,7 +170,5 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
         'Esta capa calcula con tus propios registros. Las comparaciones y alertas usan reglas locales y explicables; un valor diferente o posible duplicado es una invitación a revisar, no una acusación.'
       )}</p>
     </section>
-
-    <AppNav canContribute={role!=='read_only'}/>
   </main>;
 }
