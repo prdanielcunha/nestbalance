@@ -104,3 +104,71 @@ export async function commitCapture(req: Request, res: Response) {
     return error(res, err.statusCode || 500, ['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED'].includes(err.message) ? err.message : 'CAPTURE_COMMIT_FAILED');
   }
 }
+
+function timestampMillis(value:any){
+  if(value&&typeof value.toMillis==='function') return Number(value.toMillis())||0;
+  if(value instanceof Date) return value.getTime();
+  if(typeof value==='number') return Number.isFinite(value)?value:0;
+  return 0;
+}
+
+export async function undoCapture(req:Request,res:Response){
+  res.setHeader('Cache-Control','private, no-store');
+  try{
+    const user=await requireFirebaseUser(req);
+    const householdId=String(req.body?.householdId||'');
+    await requireHouseholdMember(householdId,user.uid,'contribute');
+    const rawItems=Array.isArray(req.body?.items)?req.body.items:[];
+    const items=rawItems.slice(0,50).map((item:any)=>({
+      id:String(item?.id||''),
+      entityType:item?.entityType==='commitment'?'commitment':'transaction'
+    }));
+    if(!items.length||items.some(item=>!/^[A-Za-z0-9_-]{6,128}$/.test(item.id))) return error(res,400,'INVALID_CAPTURE_UNDO');
+
+    const household=adminDb.collection('households').doc(householdId);
+    const entries=items.map(item=>({
+      ...item,
+      ref:household.collection(item.entityType==='commitment'?'commitments':'transactions').doc(item.id)
+    }));
+    const auditRef=household.collection('auditEvents').doc();
+    let undone=0;
+
+    await adminDb.runTransaction(async tx=>{
+      const records:Array<{entry:(typeof entries)[number];data:any}>=[];
+      for(const entry of entries){
+        const snap=await tx.get(entry.ref);
+        if(!snap.exists) continue;
+        const data=snap.data()||{};
+        if(data.source!=='universal_capture'||data.createdBy!==user.uid) throw Object.assign(new Error('CAPTURE_UNDO_DENIED'),{statusCode:403});
+        const createdAtMs=timestampMillis(data.createdAt);
+        if(!createdAtMs||Date.now()-createdAtMs>10*60_000) throw Object.assign(new Error('CAPTURE_UNDO_EXPIRED'),{statusCode:409});
+        records.push({entry,data});
+      }
+
+      for(const {entry,data} of records){
+        const scope=data.scope==='personal'?'personal':'household';
+        const ownerUid=scope==='personal'?String(data.ownerUid||user.uid):'';
+        const fingerprint=String(data.fingerprint||'');
+        tx.delete(entry.ref);
+        if(fingerprint){
+          const fingerprintId=createHash('sha256').update(scope+'|'+ownerUid+'|'+fingerprint).digest('hex');
+          tx.delete(household.collection('captureFingerprints').doc(fingerprintId));
+        }
+        undone++;
+      }
+
+      tx.create(auditRef,{
+        type:'capture.undone',
+        actorUid:user.uid,
+        entityType:'capture_batch',
+        entityIds:records.map(record=>record.entry.id),
+        createdAt:FieldValue.serverTimestamp()
+      });
+    });
+
+    return res.json({ok:true,undone});
+  }catch(err:any){
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','CAPTURE_UNDO_DENIED','CAPTURE_UNDO_EXPIRED'];
+    return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'CAPTURE_UNDO_FAILED');
+  }
+}
