@@ -67,7 +67,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     }
   }
 
-  useHouseholdRevisionRefresh(householdId,()=>load(true));
+  useHouseholdRevisionRefresh(householdId,()=>load(true),25_000,['movements']);
 
   useEffect(()=>{
     void load();
