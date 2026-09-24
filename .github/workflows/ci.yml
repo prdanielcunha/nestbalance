@@ -57,5 +57,8 @@ jobs:
       - name: Build web
         run: npm run build
 
+      - name: Route bundle budgets
+        run: npm run budget:bundle
+
       - name: Build Cloud Run API
         run: npm run build:cloudrun
