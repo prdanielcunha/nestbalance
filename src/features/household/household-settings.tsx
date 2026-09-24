@@ -22,6 +22,7 @@ import { ThemeChoice } from '@/src/features/theme/theme-runtime';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { AppShell } from '@/src/features/navigation/app-shell';
 import { householdActivityText, householdRoleDescription, householdRoleName } from '@/src/features/household/household-copy';
+import { HouseholdPeoplePanel } from '@/src/features/household/household-people-panel';
 
 
 export function HouseholdSettings({
@@ -352,38 +353,14 @@ export function HouseholdSettings({
         )}</small>
       </section>
 
-      <section className="household-panel">
-        <div className="section-title"><div><h2>{l('Pessoas','People','Personas')}</h2><span>{data.members.length} {data.members.length===1?l('membro','member','miembro'):l('membros','members','miembros')}</span></div></div>
-        <div className="member-list">
-          {data.members.map(member=><article className="member-row" key={member.uid}>
-            <div className="member-avatar">{(member.displayName||member.email||'?').slice(0,1).toUpperCase()}</div>
-            <div className="member-copy">
-              <strong>{member.uid===user.uid?l('Você','You','Tú'):member.displayName||member.email||l('Membro do Lar','Household member','Miembro del Hogar')}</strong>
-              <span>{member.email||l('Conta conectada','Connected account','Cuenta conectada')} · {roleName(member.role)}</span>
-            </div>
-            <div className="member-access">
-              {member.role==='owner'||!canManage
-                ? <span className="role-pill">{roleName(member.role)}</span>
-                : <select
-                    value={member.role}
-                    disabled={workingMember===member.uid}
-                    onChange={e=>void changeRole(member.uid,e.target.value as Exclude<HouseholdRole,'owner'>)}
-                    aria-label={l(`Acesso de ${member.displayName||member.email||'membro'}`,`Access for ${member.displayName||member.email||'member'}`,`Acceso de ${member.displayName||member.email||'miembro'}`)}
-                  >
-                    <option value="admin">{roleName('admin')}</option>
-                    <option value="manager">{roleName('manager')}</option>
-                    <option value="member">{roleName('member')}</option>
-                    <option value="read_only">{roleName('read_only')}</option>
-                  </select>}
-              {canManage&&member.role!=='owner'&&member.uid!==user.uid&&<button
-                className="member-remove"
-                disabled={workingMember===member.uid}
-                onClick={()=>void remove(member.uid)}
-              >{l('Remover','Remove','Eliminar')}</button>}
-            </div>
-          </article>)}
-        </div>
-      </section>
+      <HouseholdPeoplePanel
+        members={data.members}
+        userUid={user.uid}
+        canManage={canManage}
+        workingMember={workingMember}
+        onRoleChange={changeRole}
+        onRemove={remove}
+      />
 
       {canManage&&<section className="household-panel invite-panel">
         <div className="section-title"><div><h2>{l('Compartilhar este Lar','Share this Household','Compartir este Hogar')}</h2><span>{l('cada pessoa usa o próprio login','everyone uses their own sign-in','cada persona usa su propio acceso')}</span></div></div>
