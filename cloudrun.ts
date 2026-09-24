@@ -27,6 +27,7 @@ import { listSecurityDevices, revokeNestBalanceSessions } from './server/securit
 import { getHouseholdRevision, streamHouseholdRevision } from './server/revision.js';
 import { updateHomePreferences } from './server/home-preferences.js';
 import { listPlanningScenarios, savePlanningScenario, deletePlanningScenario, getMonthlyClose, completeMonthlyClose, updateIntelligencePreferences } from './server/planning.js';
+import { loadCollaboration, createSharedTask, updateSharedTask, listComments, createComment, createExpenseSplit, settleExpenseSplit, getWeeklyRitual, saveWeeklyRitual } from './server/collaboration.js';
 import { recordProductEvent, recordWebVital } from './server/product-metrics.js';
 
 const app = express();
@@ -87,6 +88,15 @@ app.post('/api/planning/scenarios/save', savePlanningScenario);
 app.post('/api/planning/scenarios/delete', deletePlanningScenario);
 app.post('/api/planning/month-close/get', getMonthlyClose);
 app.post('/api/planning/month-close/complete', completeMonthlyClose);
+app.post('/api/collaboration/load', loadCollaboration);
+app.post('/api/collaboration/task/create', createSharedTask);
+app.post('/api/collaboration/task/update', updateSharedTask);
+app.post('/api/collaboration/comments/list', listComments);
+app.post('/api/collaboration/comments/create', createComment);
+app.post('/api/collaboration/split/create', createExpenseSplit);
+app.post('/api/collaboration/split/settle', settleExpenseSplit);
+app.post('/api/collaboration/weekly/get', getWeeklyRitual);
+app.post('/api/collaboration/weekly/save', saveWeeklyRitual);
 app.post('/api/attention/dismiss', sensitiveLimit, dismissAttention);
 app.post('/api/evidence/start', startEvidence);
 app.post('/api/evidence/finalize', finalizeEvidence);
