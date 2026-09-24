@@ -5,6 +5,7 @@ import './foundation.css';
 import './home-premium.css';
 import './planning.css';
 import './collaboration.css';
+import './commercial.css';
 import { PwaRuntime } from '@/src/features/pwa/pwa-runtime';
 import { ThemeRuntime } from '@/src/features/theme/theme-runtime';
 import { ProductMetricsRuntime } from '@/src/features/telemetry/product-metrics-runtime';
