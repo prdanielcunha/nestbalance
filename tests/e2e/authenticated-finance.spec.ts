@@ -1,4 +1,5 @@
 import { test, expect, type Browser, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
 
 const fullHome={
@@ -65,6 +66,11 @@ async function assertNoSeriousA11y(page:Page){
   const results=await new AxeBuilder({page}).analyze();
   const severe=results.violations.filter(item=>item.impact==='serious'||item.impact==='critical');
   expect(severe,severe.map(item=>item.id+': '+item.help).join('\n')).toEqual([]);
+}
+
+async function screenshotHash(page:Page){
+  const png=await page.screenshot({fullPage:true,animations:'disabled'});
+  return createHash('sha256').update(png).digest('hex');
 }
 
 async function assertNoHorizontalOverflow(page:Page){
