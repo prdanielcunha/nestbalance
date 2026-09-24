@@ -4,6 +4,7 @@ import type { SpendingCategory } from '@/src/core/insights';
 import type { ProactivityPreferences } from '@/src/core/proactivity';
 import type { SavingsPotAutomation } from '@/src/core/savings-pot-automation';
 import type { HomePreferences } from '@/src/core/home-preferences';
+import type { IntelligencePreferences } from '@/src/core/intelligence-preferences';
 
 export type HomeRow={
   id:string;
@@ -137,6 +138,7 @@ export async function loadHomeData(householdId:string){
     cardSnapshots:HomeCardSnapshot[];
     proactivityPreferences:ProactivityPreferences;
     homePreferences:HomePreferences;
+    intelligencePreferences:IntelligencePreferences;
     dismissedAttentionKeys:string[];
     dismissedRecurrenceKeys:string[];
     refreshedAt:string;
