@@ -1,11 +1,10 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AppNav } from '@/src/features/navigation/app-nav';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { AppShell } from '@/src/features/navigation/app-shell';
 import { SPENDING_CATEGORIES, categoryLabel, deriveRecurringCandidates, recurringPatternKey, resolvedSpendingCategory, type SpendingCategory } from '@/src/core/insights';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
@@ -167,11 +166,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     {value:'transfer',label:l('Entre contas','Between accounts','Entre cuentas')}
   ];
 
-  return <main className="app-shell movements-shell">
-    <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navMovements}</span></div>
-      <HouseholdLink/>
-    </header>
+  return <AppShell className="movements-shell" subtitle={t.navMovements} canContribute={role!=='read_only'}>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="area-hero">
@@ -288,6 +283,5 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
             </article>)}
           </section>}
 
-    <AppNav canContribute={role!=='read_only'}/>
-  </main>;
+  </AppShell>;
 }
