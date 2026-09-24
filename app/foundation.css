@@ -188,3 +188,8 @@ html[data-theme="dark"] .app-shell-nav.desktop-inline .app-nav-add span{color:#1
 .global-search-results>a:hover,.global-search-results>a:focus-visible{background:var(--paper);outline:none}
 .global-search-results>a>span,.global-search-results>a>small{font-size:11px;color:var(--muted)}.global-search-results>a>strong{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:620px){.global-search-trigger{width:40px;padding:0;justify-content:center}.global-search-trigger>span{font-size:0}.global-search-trigger>span::after{content:"⌕";font-size:20px}.global-search-trigger kbd{display:none}.global-search-results>a{grid-template-columns:80px minmax(0,1fr)}.global-search-results>a>small{grid-column:2}}
+
+.role-confirmation{margin-top:14px;padding:16px;border:1px solid color-mix(in srgb,var(--iris) 28%,var(--line));border-radius:18px;background:color-mix(in srgb,var(--iris) 6%,var(--surface-strong));display:grid;gap:8px}
+.role-confirmation>div:first-child{display:grid;gap:4px}.role-confirmation>div:first-child span{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--iris)}.role-confirmation>div:first-child strong{font-size:14px}
+.role-confirmation p,.role-confirmation small{margin:0;color:var(--muted);line-height:1.5}.role-confirmation p{font-size:13px}.role-confirmation small{font-size:12px}
+.role-confirmation>div:last-child{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
