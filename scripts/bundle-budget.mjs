@@ -1,14 +1,6 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 
-const manifestPath='.next/app-build-manifest.json';
-if(!existsSync(manifestPath)){
-  console.error('[bundle-budget] Missing .next/app-build-manifest.json. Run npm run build first.');
-  process.exit(1);
-}
-
-const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
-const pages=manifest.pages||{};
 const defaultBudget=950_000;
 const budgets={
   '/':650_000,
@@ -25,28 +17,81 @@ const budgets={
   '/privacy':750_000
 };
 
-function routeFromKey(key){
+function routeBudget(route){
+  return budgets[route]||defaultBudget;
+}
+
+function routeFromHtml(path){
+  let name=relative('out',path).split(sep).join('/');
+  if(name==='index.html') return '/';
+  if(name.endsWith('/index.html')) name=name.slice(0,-'/index.html'.length);
+  else if(name.endsWith('.html')) name=name.slice(0,-'.html'.length);
+  return '/'+name.replace(/^\/+|\/+$/g,'');
+}
+
+function walkHtml(dir){
+  const files=[];
+  for(const entry of readdirSync(dir,{withFileTypes:true})){
+    const path=join(dir,entry.name);
+    if(entry.isDirectory()) files.push(...walkHtml(path));
+    else if(entry.isFile()&&entry.name.endsWith('.html')) files.push(path);
+  }
+  return files;
+}
+
+function reportFromStaticExport(){
+  if(!existsSync('out')) return null;
+  const report=[];
+  for(const htmlPath of walkHtml('out')){
+    const html=readFileSync(htmlPath,'utf8');
+    const assets=new Set();
+    for(const match of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+\.js(?:\?[^"']*)?)["'][^>]*>/gi)){
+      const raw=match[1].split('?')[0];
+      if(!raw.startsWith('/_next/')) continue;
+      assets.add(join('out',raw.slice(1)));
+    }
+    const bytes=[...assets].reduce((sum,path)=>sum+(existsSync(path)?statSync(path).size:0),0);
+    report.push({route:routeFromHtml(htmlPath),bytes,budget:routeBudget(routeFromHtml(htmlPath))});
+  }
+  return report;
+}
+
+function routeFromManifestKey(key){
   let route=String(key).replace(/\/page$/,'')||'/';
   route=route.replace(/\/\([^/]+\)/g,'');
   return route||'/';
 }
 
-let failed=false;
-const report=[];
-for(const [key,files] of Object.entries(pages)){
-  const route=routeFromKey(key);
-  const js=[...new Set((Array.isArray(files)?files:[]).filter(file=>String(file).endsWith('.js')))];
-  const bytes=js.reduce((sum,file)=>{
-    const path=join('.next',String(file));
-    return sum+(existsSync(path)?statSync(path).size:0);
-  },0);
-  const budget=budgets[route]||defaultBudget;
-  report.push({route,bytes,budget});
-  if(bytes>budget) failed=true;
+function reportFromLegacyManifest(){
+  const candidates=['.next/app-build-manifest.json','.next/server/app-build-manifest.json'];
+  const manifestPath=candidates.find(existsSync);
+  if(!manifestPath) return null;
+  const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
+  const pages=manifest.pages||{};
+  const report=[];
+  for(const [key,files] of Object.entries(pages)){
+    const route=routeFromManifestKey(key);
+    const js=[...new Set((Array.isArray(files)?files:[]).filter(file=>String(file).endsWith('.js')))];
+    const bytes=js.reduce((sum,file)=>{
+      const path=join('.next',String(file));
+      return sum+(existsSync(path)?statSync(path).size:0);
+    },0);
+    report.push({route,bytes,budget:routeBudget(route)});
+  }
+  return report;
 }
+
+const report=reportFromStaticExport()||reportFromLegacyManifest();
+if(!report||report.length===0){
+  console.error('[bundle-budget] No route bundle source found. Run npm run build first.');
+  process.exit(1);
+}
+
+let failed=false;
 report.sort((a,b)=>b.bytes-a.bytes);
 for(const item of report){
   console.log('[bundle-budget] '+item.route.padEnd(18)+' '+Math.round(item.bytes/1024)+' KiB / '+Math.round(item.budget/1024)+' KiB');
+  if(item.bytes>item.budget) failed=true;
 }
 if(failed){
   console.error('[bundle-budget] Route bundle budget exceeded. A justified budget update must be reviewed explicitly.');
