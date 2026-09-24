@@ -1,6 +1,6 @@
 'use client';
 
-export type SyncStatus='synced'|'updating'|'offline'|'failed'|'remote-change';
+export type SyncStatus='synced'|'updating'|'offline'|'failed'|'remote-change'|'pending'|'conflict';
 
 const EVENT_NAME='nestbalance:sync-status';
 
