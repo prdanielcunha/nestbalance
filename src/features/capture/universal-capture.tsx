@@ -36,6 +36,9 @@ import { readImageTextLocally } from '@/src/lib/local-image-ocr';
 import { analyzeTextWithGeminiFallback, getGeminiFallbackStatus, type GeminiFallbackStatus } from '@/src/lib/repositories/gemini-fallback';
 import { consumeWebShareTarget } from '@/src/lib/pwa/share-target';
 import { reportProductEvent, type CaptureSourceKind } from '@/src/lib/product-events';
+import { CaptureProgress, type CaptureProgressStage } from '@/src/features/capture/capture-progress';
+import { undoCaptureBatch, type CaptureUndoItem } from '@/src/lib/repositories/capture-undo';
+import { publishToast } from '@/src/features/feedback/toast-store';
 
 type ConfirmedDirection=Exclude<AiFinancialDirection,'unknown'>;
 type PendingAi={extraction:AiFinancialExtraction;amountMinor:number|null};
@@ -790,6 +793,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       }
 
       let created = 0;
+      const createdEntities:CaptureUndoItem[]=[];
       if(screenSnapshot&&finalEvidenceId){
         await commitFinancialScreen({
           householdId,
@@ -814,9 +818,15 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         });
         if (result.status === 'duplicate') duplicates++;
         else if(result.status === 'queued') queued++;
-        else created++;
+        else{
+          created++;
+          createdEntities.push({
+            id:result.id,
+            entityType:interpretations[i].kind==='commitment'?'commitment':'transaction'
+          });
+        }
       }
-      if (duplicates && !created) {
+      if (duplicates && !created && !queued) {
         setNotice(l('Isso já parece estar registrado. Não criamos uma cópia.','This already appears to be recorded. We did not create a copy.','Esto ya parece estar registrado. No creamos una copia.'));
         setSaving(false);
         setUpload(null);
@@ -828,6 +838,29 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         itemCount:Math.max(1,interpretations.length+(screenSnapshot?screenSnapshot.accounts.length+screenSnapshot.pots.length+screenSnapshot.cards.length+screenSnapshot.commitments.length:0)),
         reviewCount
       });
+      if(createdEntities.length>0&&!screenSnapshot&&queued===0){
+        const undoItems=[...createdEntities];
+        publishToast({
+          message:l(
+            createdEntities.length===1?'Item salvo.':'Itens salvos.',
+            createdEntities.length===1?'Item saved.':'Items saved.',
+            createdEntities.length===1?'Elemento guardado.':'Elementos guardados.'
+          ),
+          actionLabel:l('Desfazer','Undo','Deshacer'),
+          onAction:async()=>{
+            try{
+              await undoCaptureBatch(householdId,undoItems);
+              reportProductEvent('capture_undone',{
+                source:captureSourceKind(),
+                itemCount:undoItems.length
+              });
+              publishToast({message:l('Desfeito.','Undone.','Deshecho.'),durationMs:3500});
+            }catch{
+              publishToast({message:l('Não conseguimos desfazer agora.','We could not undo that right now.','No pudimos deshacerlo ahora.'),durationMs:5000});
+            }
+          }
+        });
+      }
       clearAll();
       onCommitted?.();
     } catch {
@@ -837,6 +870,24 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     }
   }
 
+  const captureStage:CaptureProgressStage=upload
+    ? 'receiving'
+    : localOcrPercent>0
+      ? 'reading'
+      : matchingPayments
+        ? 'comparing'
+        : analyzing||geminiWorking
+          ? 'understanding'
+          : interpretations.length||screenSnapshot
+            ? 'ready'
+            : 'receiving';
+  const captureStageLabels:Record<CaptureProgressStage,string>={
+    receiving:l('Recebendo','Receiving','Recibiendo'),
+    reading:l('Lendo','Reading','Leyendo'),
+    understanding:l('Entendendo','Understanding','Entendiendo'),
+    comparing:l('Comparando','Comparing','Comparando'),
+    ready:l('Pronto','Ready','Listo')
+  };
   const indexedInterpretations=interpretations.map((item,index)=>({item,index}));
   const attentionInterpretations=indexedInterpretations.filter(({item})=>item.confidence!=='high'||item.needsReview.includes('direction'));
   const readyInterpretations=indexedInterpretations.filter(({item})=>item.confidence==='high'&&!item.needsReview.includes('direction'));
@@ -885,6 +936,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           <div className="eyebrow">{l('Jogue aqui. A gente organiza.','Drop it here. We organize it.','Déjalo aquí. Lo organizamos.')}</div>
           <h2>{l('O que aconteceu?','What happened?','¿Qué pasó?')}</h2>
           <p>{l('Escreva, fale, mande um print ou um arquivo. Você não precisa decidir antes se foi dinheiro que entrou, saiu ou uma conta para pagar.','Write, speak, send a screenshot or a file. You do not need to decide first whether money came in, went out, or is a bill to pay.','Escribe, habla, envía una captura o un archivo. No necesitas decidir antes si entró dinero, salió o es una cuenta por pagar.')}</p>
+
+          {(working||file)&&<CaptureProgress stage={captureStage} labels={captureStageLabels}/>}
 
           <ScopeChoice value={scope} onChange={setScope} disabled={working||Boolean(preparedEvidenceId)}/>
 
@@ -1015,6 +1068,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         </> : <>
           <div className="sheet-handle" />
           <div className="eyebrow">{t.understood}</div>
+          <CaptureProgress stage={captureStage} labels={captureStageLabels}/>
           <h2>{interpretations.length === 1&&screenResourceCount===0
             ? interpretations[0].description
             : `Encontrei ${totalOrganizedCount} item${totalOrganizedCount===1?'':'s'} nesta tela`}</h2>
