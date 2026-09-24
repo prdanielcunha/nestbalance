@@ -46,7 +46,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
     }
   }
 
-  useHouseholdRevisionRefresh(householdId,()=>load(true));
+  useHouseholdRevisionRefresh(householdId,()=>load(true),25_000,['accounts','invoices']);
 
   useEffect(()=>{
     void load();
