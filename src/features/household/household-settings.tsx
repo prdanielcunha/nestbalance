@@ -20,6 +20,7 @@ import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/
 import { PwaInstallCard } from '@/src/features/pwa/pwa-install-card';
 import { ThemeChoice } from '@/src/features/theme/theme-runtime';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
+import { AppShell } from '@/src/features/navigation/app-shell';
 
 
 export function HouseholdSettings({
@@ -297,15 +298,13 @@ export function HouseholdSettings({
     }finally{setWorkingMember('');}
   }
 
-  return <main className="app-shell household-shell">
-    <header className="topbar">
-      <div>
-        <div className="eyebrow">NestBalance</div>
-        <span className="topbar-subtitle">{l('Compartilhar e acessos','Sharing & access','Compartir y accesos')}</span>
-      </div>
-      <Link href="/" className="household-back">{l('Voltar','Back','Volver')}</Link>
-    </header>
-
+  return <AppShell
+    className="household-shell"
+    subtitle={l('Compartilhar e acessos','Sharing & access','Compartir y accesos')}
+    canContribute={(currentSession?.role||'read_only')!=='read_only'}
+    householdLink="none"
+    headerActions={<Link href="/" className="household-back">{l('Voltar','Back','Volver')}</Link>}
+  >
     <section className="area-hero household-hero">
       <span>{l('Sua vida financeira pode ser compartilhada sem compartilhar senha.','Share your financial life without sharing a password.','Comparte tu vida financiera sin compartir contraseña.')}</span>
       <h1>{data?.household.name||currentSession?.name||l('Seu Lar','Your Household','Tu Hogar')}</h1>
@@ -515,5 +514,5 @@ export function HouseholdSettings({
         <p>{l('O servidor valida seu acesso em cada operação. Trocar botões na tela não concede permissão financeira.','The server validates your access on every operation. Changing controls in the interface never grants financial permission.','El servidor valida tu acceso en cada operación. Cambiar controles en la interfaz no concede permisos financieros.')}</p>
       </section>
     </>}
-  </main>;
+  </AppShell>;
 }
