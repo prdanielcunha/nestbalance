@@ -147,3 +147,8 @@ html[data-theme="dark"] .app-shell-nav.desktop-inline .app-nav-add span{color:#1
   .sync-status-chip{position:fixed;z-index:40;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);box-shadow:var(--shadow-sm)}
 }
 @media(prefers-reduced-motion:reduce){.sync-status-chip.remote-change i,.sync-status-chip.updating i{animation:none}}
+
+
+.sync-status-chip.pending i{background:#b1781a;box-shadow:0 0 0 4px color-mix(in srgb,#b1781a 12%,transparent)}
+.sync-status-chip.conflict{border-color:color-mix(in srgb,var(--danger) 34%,var(--line));color:var(--ink)}
+.sync-status-chip.conflict i{background:var(--danger);box-shadow:0 0 0 4px color-mix(in srgb,var(--danger) 14%,transparent)}
