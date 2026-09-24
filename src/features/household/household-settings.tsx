@@ -24,6 +24,7 @@ import { AppShell } from '@/src/features/navigation/app-shell';
 import { householdRoleDescription, householdRoleName } from '@/src/features/household/household-copy';
 import { HouseholdPeoplePanel } from '@/src/features/household/household-people-panel';
 import { HouseholdActivityPanel } from '@/src/features/household/household-activity-panel';
+import { HouseholdCollaborationCard } from '@/src/features/household/household-collaboration-card';
 
 
 export function HouseholdSettings({
@@ -239,21 +240,7 @@ export function HouseholdSettings({
       <p>{l('Cada pessoa entra com a própria conta. Nada de senha compartilhada, autoria perdida ou dúvida sobre quem fez o quê.','Each person signs in with their own account. No shared passwords, lost authorship, or uncertainty about who changed what.','Cada persona entra con su propia cuenta. Sin contraseñas compartidas, autoría perdida ni dudas sobre quién cambió qué.')}</p>
     </section>
 
-    <section className="household-panel household-collaboration-card">
-      <div>
-        <span className="section-kicker">{l('CASAL E FAMÍLIA','COUPLE & FAMILY','PAREJA Y FAMILIA')}</span>
-        <h2>{l('Central do Lar','Household Center','Central del Hogar')}</h2>
-        <p>{l(
-          'Pendências compartilhadas, decisões, comentários, divisão de despesas e um ritual semanal de cinco minutos — sem expor seus itens Pessoais.',
-          'Shared tasks, decisions, comments, expense splitting, and a five-minute weekly check-in — without exposing Personal items.',
-          'Pendientes compartidas, decisiones, comentarios, división de gastos y un ritual semanal de cinco minutos — sin exponer tus elementos Personales.'
-        )}</p>
-      </div>
-      <div className="household-card-actions">
-        <Link className="primary-button" href="/together">{l('Abrir Central do Lar','Open Household Center','Abrir Central del Hogar')}</Link>
-        <Link className="ghost-button" href="/support">{l('Suporte e diagnóstico','Support & diagnostics','Soporte y diagnóstico')}</Link>
-      </div>
-    </section>
+    <HouseholdCollaborationCard/>
 
     {sessionHouseholds.length>1&&<section className="household-switcher">
       <div className="section-title"><h2>{l('Seus espaços','Your spaces','Tus espacios')}</h2><span>{sessionHouseholds.length} {l('disponíveis','available','disponibles')}</span></div>
