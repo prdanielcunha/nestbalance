@@ -832,8 +832,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         setUpload(null);
         return;
       }
+      const committedSourceKind=captureSourceKind();
       reportProductEvent(queued>0?'capture_queued':'capture_committed',{
-        source:captureSourceKind(),
+        source:committedSourceKind,
         durationMs:captureDurationMs(),
         itemCount:Math.max(1,interpretations.length+(screenSnapshot?screenSnapshot.accounts.length+screenSnapshot.pots.length+screenSnapshot.cards.length+screenSnapshot.commitments.length:0)),
         reviewCount
@@ -851,7 +852,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             try{
               await undoCaptureBatch(householdId,undoItems);
               reportProductEvent('capture_undone',{
-                source:captureSourceKind(),
+                source:committedSourceKind,
                 itemCount:undoItems.length
               });
               publishToast({message:l('Desfeito.','Undone.','Deshecho.'),durationMs:3500});
