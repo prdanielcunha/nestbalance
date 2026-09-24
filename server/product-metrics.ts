@@ -10,7 +10,7 @@ function routeKey(pathname:unknown){
   const raw=typeof pathname==='string'?pathname:'';
   if(raw==='/') return 'home';
   const segment=raw.split('?')[0].split('#')[0].split('/').filter(Boolean)[0]||'other';
-  return new Set(['movements','accounts','pots','assistant','add','vault','household','privacy','activity','together']).has(segment)
+  return new Set(['movements','accounts','pots','assistant','add','vault','household','privacy','activity','together','inbox','support']).has(segment)
     ? segment
     : 'other';
 }
