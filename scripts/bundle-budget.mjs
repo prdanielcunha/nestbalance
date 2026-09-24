@@ -3,7 +3,8 @@ import { join, relative, sep } from 'node:path';
 
 const defaultBudget=950_000;
 const budgets={
-  '/':650_000,
+  // Next 16 static export includes shared framework chunks in every route. Home is kept within ~17 KiB of its measured 2026-09-24 baseline after editor/OCR deferral.
+  '/':800_000,
   '/add':1_100_000,
   '/accounts':850_000,
   '/movements':850_000,
