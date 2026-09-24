@@ -259,6 +259,8 @@ test('roadmap inbox, Household Center, support and universal search remain usabl
     await gotoAuthenticated(page,'/together');
     await expect(page.getByRole('heading',{name:'Combinar sem invadir.'})).toBeVisible();
     await expect(page.getByText('Pendências compartilhadas',{exact:true})).toBeVisible();
+    await expect(page.getByRole('heading',{name:'Conversas ligadas às finanças'})).toBeVisible();
+    await expect(page.getByLabel('Conversar sobre')).toBeVisible();
     await assertNoHorizontalOverflow(page);
     await assertNoSeriousA11y(page);
   });

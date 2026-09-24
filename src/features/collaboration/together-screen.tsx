@@ -23,6 +23,7 @@ import { loadHomeData } from '@/src/lib/repositories/home';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 import { AppShell } from '@/src/features/navigation/app-shell';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { LinkedConversationPanel } from '@/src/features/collaboration/linked-conversation-panel';
 
 function mondayKey(now=new Date()){
   const date=new Date(now);
@@ -200,6 +201,8 @@ export function TogetherScreen({householdId,role,uid}:{householdId:string;role:H
           {canContribute&&<div className="comment-composer"><textarea value={comment} onChange={e=>setComment(e.target.value)} maxLength={800} rows={3} placeholder={l('Registre uma decisão, dúvida ou combinado…','Record a decision, question, or agreement…','Registra una decisión, duda o acuerdo…')}/><div><select aria-label={l('Mencionar pessoa do Lar','Mention Household member','Mencionar persona del Hogar')} value={mentionUid} onChange={e=>setMentionUid(e.target.value)}><option value="">{l('Sem menção','No mention','Sin mención')}</option>{members.filter(item=>item.uid!==uid).map(member=><option key={member.uid} value={member.uid}>{nameFor(member.uid)}</option>)}</select><button disabled={working||!comment.trim()} onClick={()=>void addComment()}>{l('Enviar','Send','Enviar')}</button></div></div>}
         </section>
       </div>
+
+      <LinkedConversationPanel householdId={householdId} uid={uid} members={members} canContribute={canContribute}/>
 
       <div className="together-grid">
         <section className="together-panel split-panel">
