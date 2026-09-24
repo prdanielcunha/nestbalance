@@ -64,7 +64,7 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     }
   }
 
-  useHouseholdRevisionRefresh(householdId,()=>refreshHome(true));
+  useHouseholdRevisionRefresh(householdId,()=>refreshHome(true),25_000,['home','movements','accounts','invoices','pots']);
 
   useEffect(() => {
     void refreshHome();
