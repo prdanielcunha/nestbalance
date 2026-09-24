@@ -1,6 +1,9 @@
 import { test, expect, type Browser, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
+
+const visualMatrixBaselines=JSON.parse(readFileSync('tests/e2e/visual-hashes.json','utf8')) as Record<string,string>;
 
 const fullHome={
   ok:true,
@@ -282,6 +285,33 @@ test('roadmap inbox, Household Center, support and universal search remain usabl
     await expect(dialog.getByText('Mercado',{exact:true})).toBeVisible();
     await assertNoSeriousA11y(page);
   });
+});
+
+test('authenticated critical routes have light/dark mobile/desktop visual regression baselines',async({browser},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','The visual matrix is generated from the stable Chromium project.');
+  const routes=[
+    ['home','/'],['movements','/movements'],['accounts','/accounts'],['pots','/pots'],
+    ['assistant','/assistant'],['inbox','/inbox'],['together','/together'],['support','/support']
+  ] as const;
+  const actual:Record<string,string>={};
+  for(const theme of ['dark','light'] as const){
+    for(const viewport of [{name:'mobile',width:390,height:844},{name:'desktop',width:1440,height:1000}] as const){
+      const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},colorScheme:theme});
+      await context.addInitScript(selected=>localStorage.setItem('nestbalance-theme',selected),theme);
+      const page=await context.newPage();
+      await mockAuthenticatedApi(page);
+      for(const [name,path] of routes){
+        await gotoAuthenticated(page,path);
+        await expect(page.locator('.planning-loading,.together-loading,.inbox-loading,.support-skeleton')).toHaveCount(0,{timeout:10_000}).catch(()=>undefined);
+        await assertNoHorizontalOverflow(page);
+        const key=`${name}|${theme}|${viewport.name}`;
+        actual[key]=await screenshotHash(page);
+      }
+      await context.close();
+    }
+  }
+  console.log('[visual-matrix-hashes] '+JSON.stringify(actual));
+  expect(actual).toEqual(visualMatrixBaselines);
 });
 
 test('authenticated visual regression: Home mobile dark',async({browser},testInfo)=>{
