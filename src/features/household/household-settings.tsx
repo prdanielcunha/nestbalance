@@ -21,8 +21,9 @@ import { PwaInstallCard } from '@/src/features/pwa/pwa-install-card';
 import { ThemeChoice } from '@/src/features/theme/theme-runtime';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { AppShell } from '@/src/features/navigation/app-shell';
-import { householdActivityText, householdRoleDescription, householdRoleName } from '@/src/features/household/household-copy';
+import { householdRoleDescription, householdRoleName } from '@/src/features/household/household-copy';
 import { HouseholdPeoplePanel } from '@/src/features/household/household-people-panel';
+import { HouseholdActivityPanel } from '@/src/features/household/household-activity-panel';
 
 
 export function HouseholdSettings({
@@ -117,10 +118,6 @@ export function HouseholdSettings({
     if(uid===user.uid) return activeLocale==='en'?'You':activeLocale==='es'?'Tú':'Você';
     const member=data?.members.find(item=>item.uid===uid);
     return member?.displayName||member?.email||(activeLocale==='en'?'A household member':activeLocale==='es'?'Una persona del hogar':'Uma pessoa do Lar');
-  }
-
-  function activityText(type:string,targetUid:string|null,scope:'household'|'personal'){
-    return householdActivityText(type,personName(targetUid),scope,activeLocale);
   }
 
   async function toggleProactivity(key:keyof ProactivityPreferences){
@@ -413,20 +410,7 @@ export function HouseholdSettings({
         </div>}
       </section>}
 
-      <section className="household-panel household-activity-panel">
-        <div className="section-title"><div><h2>{t.recentActivity}</h2><span>{t.recentActivityHint}</span></div></div>
-        {data.activity.length===0
-          ? <p className="household-helper">{t.noRecentActivity}</p>
-          : <div className="household-activity-list">
-              {data.activity.map(item=><article className="household-activity-row" key={item.id}>
-                <div className="member-avatar">{personName(item.actorUid).slice(0,1).toUpperCase()}</div>
-                <div>
-                  <p><strong>{personName(item.actorUid)}</strong> {activityText(item.type,item.targetUid,item.scope)}</p>
-                  <span>{item.createdAtMs?formatDate(item.createdAtMs,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}{item.scope==='personal'?(activeLocale==='en'?' · private':activeLocale==='es'?' · privado':' · pessoal'):''}</span>
-                </div>
-              </article>)}
-            </div>}
-      </section>
+      <HouseholdActivityPanel activity={data.activity} personName={personName}/>
 
       <PwaInstallCard/>
 
