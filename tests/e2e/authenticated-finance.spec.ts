@@ -98,6 +98,30 @@ test('authenticated finance screens stay usable from 320px to desktop',async({br
   }
 });
 
+test('primary finance routes use one responsive AppShell contract',async({browser},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','Responsive shell contract is exercised once.');
+  const routes=['/','/movements','/accounts','/pots','/assistant'];
+
+  for(const viewport of [{width:390,height:844},{width:1024,height:900},{width:1440,height:1000}]){
+    const context=await browser.newContext({viewport,colorScheme:'dark'});
+    const page=await context.newPage();
+    await mockAuthenticatedApi(page);
+
+    for(const path of routes){
+      await gotoAuthenticated(page,path);
+      const nav=page.locator('.app-shell-nav');
+      await expect(nav).toBeVisible();
+      await expect(nav).toHaveCount(1);
+      const position=await nav.evaluate(element=>getComputedStyle(element).position);
+      if(viewport.width>=840) expect(position).toBe('relative');
+      else expect(position).toBe('fixed');
+      await assertNoHorizontalOverflow(page);
+    }
+
+    await context.close();
+  }
+});
+
 test('authenticated light and dark modes preserve contrast and layout',async({browser},testInfo)=>{
   test.skip(testInfo.project.name!=='desktop-chromium','Theme matrix is created explicitly.');
   for(const theme of ['dark','light'] as const){
