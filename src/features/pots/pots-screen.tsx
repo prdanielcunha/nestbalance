@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { SavingsPotCover } from '@/src/features/pots/pot-cover';
 import type { HouseholdRole } from '@/src/core/household';
@@ -573,8 +572,6 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
         'Reservar o retirar aquí actualiza tu organización en NestBalance. En alcancías importadas, la próxima captura puede sincronizar el saldo real. Nunca tratamos un movimiento entre tus propios fondos como un gasto o ingreso nuevo.'
       )}</p>
     </section>
-
-    <AppNav canContribute={canContribute}/>
 
     {(creating||editing)&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&closeEditor()}>
       <section className="capture-sheet pot-editor-sheet" role="dialog" aria-modal="true" aria-label={creating?l('Criar cofrinho','Create savings pot','Crear alcancía'):l('Editar cofrinho','Edit savings pot','Editar alcancía')}>
