@@ -1,10 +1,9 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
-import { AppNav } from '@/src/features/navigation/app-nav';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { AppShell } from '@/src/features/navigation/app-shell';
 import { useI18n } from '@/src/i18n/locale-provider';
 
 export function AssistantScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
@@ -60,14 +59,7 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
       ? l('O Assistente usa somente os seus itens Pessoais.','The Assistant uses only your private items.','El Asistente usa solo tus elementos privados.')
       : l('O Assistente combina o Lar com os seus itens Pessoais, sem incluir dados pessoais de outras pessoas.','The Assistant combines Household data with your private items, without including anyone else’s private data.','El Asistente combina los datos del Hogar con tus elementos privados, sin incluir datos privados de otras personas.');
 
-  return <main className="app-shell assistant-shell">
-    <header className="topbar">
-      <div>
-        <div className="eyebrow">NestBalance</div>
-        <span className="topbar-subtitle">{t.navAssistant}</span>
-      </div>
-      <HouseholdLink/>
-    </header>
+  return <AppShell className="assistant-shell" subtitle={t.navAssistant} canContribute={role!=='read_only'}>
     <ScopeViewSwitch value={view} onChange={next=>{setView(next);setResult(null);setError('');}}/>
 
     <section className="assistant-hero">
@@ -172,6 +164,5 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
       )}</p>
     </section>
 
-    <AppNav canContribute={role!=='read_only'}/>
-  </main>;
+  </AppShell>;
 }
