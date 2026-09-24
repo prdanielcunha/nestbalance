@@ -3,12 +3,7 @@ import { join } from 'node:path';
 
 const roots=['src/features'];
 const hardLimit=400;
-const legacy={
-  'src/features/capture/universal-capture.tsx':1700,
-  'src/features/pots/pots-screen.tsx':900,
-  'src/features/household/household-settings.tsx':900,
-  'src/features/home/home-screen.tsx':700
-};
+const legacy={};
 
 function files(root){
   if(!existsSync(root)) return [];
