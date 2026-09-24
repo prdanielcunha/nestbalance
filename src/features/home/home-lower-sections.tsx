@@ -62,3 +62,59 @@ export function HomeTimelineSection({transactions}:{transactions:HomeRow[]}){
     </article>)}</div>
   </section>;
 }
+
+export function HomeFirstUseGuide(){
+  const {locale}=useI18n();
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  return <section className="first-use-guide">
+    <div>
+      <span className="section-kicker">{l('PRÓXIMO PASSO','NEXT STEP','SIGUIENTE PASO')}</span>
+      <h2>{l('Agora deixe o NestBalance trabalhar por você.','Now let NestBalance start working for you.','Ahora deja que NestBalance empiece a trabajar por ti.')}</h2>
+      <p>{l(
+        'Seu saldo já está aqui. Traga uma conta, compra ou parcela do jeito mais fácil: escrevendo, colando um print ou falando.',
+        'Your balance is already here. Bring in a bill, purchase or installment in the easiest way: type it, paste a screenshot or speak.',
+        'Tu saldo ya está aquí. Agrega una cuenta, compra o cuota de la forma más fácil: escribiendo, pegando una captura o hablando.'
+      )}</p>
+    </div>
+    <div className="first-use-actions">
+      <a className="primary-button" href="/add">{l('Enviar print, áudio ou texto','Send screenshot, audio, or text','Enviar captura, audio o texto')}</a>
+      <a className="ghost-button" href="/accounts">{l('Organizar contas e cartões','Organize accounts and cards','Organizar cuentas y tarjetas')}</a>
+    </div>
+    <small>{l(
+      'Não precisa configurar tudo hoje. O NestBalance melhora conforme você usa.',
+      'You do not need to set everything up today. NestBalance gets better as you use it.',
+      'No necesitas configurar todo hoy. NestBalance mejora a medida que lo usas.'
+    )}</small>
+  </section>;
+}
+
+export function HomeMonthSection({
+  known,
+  incomeMinor,
+  paidExpenseMinor,
+  futureCommitmentsMinor,
+  projectedRemainderMinor,
+  hasAccounts
+}:{
+  known:boolean;
+  incomeMinor:number;
+  paidExpenseMinor:number;
+  futureCommitmentsMinor:number;
+  projectedRemainderMinor:number;
+  hasAccounts:boolean;
+}){
+  const {t,locale,formatMoney}=useI18n();
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  return <section className="month-section">
+    <div className="section-title"><div>
+      <h2>{t.month}</h2>
+      {!known&&<span>{l('Ainda sem dados suficientes para resumir este mês.','Not enough data to summarize this month yet.','Aún no hay datos suficientes para resumir este mes.')}</span>}
+    </div></div>
+    <div className={known?'month-grid':'month-grid month-grid-unknown'}>
+      <div><span>{t.moneyIn}</span><strong>{known?formatMoney(incomeMinor):'—'}</strong></div>
+      <div><span>{t.moneyOut}</span><strong>{known?formatMoney(paidExpenseMinor):'—'}</strong></div>
+      <div><span>{t.moneyToGo}</span><strong>{known?formatMoney(futureCommitmentsMinor):'—'}</strong></div>
+      <div className="projected"><span>{t.projectedLeft}{known&&<small className="estimate-badge">{l('estimado','estimate','estimado')}</small>}</span><strong>{known&&hasAccounts?formatMoney(projectedRemainderMinor):'—'}</strong></div>
+    </div>
+  </section>;
+}
