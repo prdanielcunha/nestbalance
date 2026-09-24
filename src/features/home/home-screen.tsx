@@ -8,8 +8,8 @@ import { categoryLabel, deriveFinancialAnomalies, deriveSpendingComparison } fro
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
-import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
+import { BrandLockup } from '@/src/features/brand/brand-lockup';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
@@ -252,10 +252,9 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
 
   return <main className={`app-shell home-shell ${viewAccounts.length===0?'home-first-use':''}`.trim()}>
     <header className="topbar home-topbar">
-      <div className="home-brand"><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div>
+      <div className="home-brand"><BrandLockup className="home-brand-logo"/><span className="topbar-subtitle">{t.brandTagline}</span></div>
       <HouseholdLink detailed/>
     </header>
-    <AppNav canContribute={canContribute} desktopInline className="home-primary-nav"/>
 
     <div className="home-context-row">
       <div className="home-scope-copy"><span>{l('Visão','View','Vista')}</span><small>{l('Escolha o que entra nesta tela.','Choose what is included on this screen.','Elige qué aparece en esta pantalla.')}</small></div>
