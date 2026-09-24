@@ -5,6 +5,7 @@ import type { User } from 'firebase/auth';
 import { deleteHouseholdPermanently, deleteMyPersonalData, exportPrivacyData, loadPrivacyStatus, recordPrivacyConsent, type PrivacyStatus } from '@/src/lib/repositories/privacy';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { SecurityPanel } from '@/src/features/privacy/security-panel';
+import { AppShell } from '@/src/features/navigation/app-shell';
 
 function download(blob:Blob,name:string){
   const url=URL.createObjectURL(blob);
@@ -95,12 +96,13 @@ export function PrivacyCenter({householdId,user,householdName,role}:{householdId
     }finally{setWorking('');}
   }
 
-  return <main className="app-shell privacy-shell">
-    <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{l('Privacidade e seus dados','Privacy & your data','Privacidad y tus datos')}</span></div>
-      <Link href="/household" className="household-back">{l('Voltar','Back','Volver')}</Link>
-    </header>
-
+  return <AppShell
+    className="privacy-shell"
+    subtitle={l('Privacidade e seus dados','Privacy & your data','Privacidad y tus datos')}
+    canContribute={role!=='read_only'}
+    householdLink="none"
+    headerActions={<Link href="/household" className="household-back">{l('Voltar','Back','Volver')}</Link>}
+  >
     <section className="area-hero privacy-hero">
       <span>{l('Controle sem vigilância','Control without surveillance','Control sin vigilancia')}</span>
       <h1>{l('Seus dados continuam seus.','Your data stays yours.','Tus datos siguen siendo tuyos.')}</h1>
@@ -213,5 +215,5 @@ export function PrivacyCenter({householdId,user,householdName,role}:{householdId
         'Las exportaciones, eliminaciones y cambios de seguridad quedan auditados sin copiar innecesariamente contenido financiero en los registros.'
       )}</p>
     </section>
-  </main>;
+  </AppShell>;
 }
