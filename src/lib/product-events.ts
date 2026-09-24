@@ -12,7 +12,7 @@ export type ProductEventName=
   | 'capture_corrected';
 
 export type CaptureSourceKind='text'|'image'|'pdf'|'csv'|'audio'|'other';
-export type CaptureCorrectionReason='description'|'amount'|'due_day'|'direction'|'source_type';
+export type CaptureCorrectionReason='label_field'|'value_field'|'due_day'|'direction'|'source_type';
 
 type ProductEventDetails={
   source?:CaptureSourceKind;
