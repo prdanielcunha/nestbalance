@@ -135,7 +135,19 @@ export function SupportScreen({householdId,role}:{householdId:string;role:Househ
 
     <section className="support-card">
       <div className="section-title"><div><h2>{l('O que o NestBalance já consegue importar','What NestBalance can already import','Lo que NestBalance ya puede importar')}</h2><span>{l('local primeiro','local first','local primero')}</span></div></div>
-      <div className="importer-grid">{IMPORTER_REGISTRY.map(item=><article key={item.id}><span>{item.input.toUpperCase()}</span><strong>{item.id.replaceAll('_',' ')}</strong><p>{item.description}</p><small>{item.aiFallback?l('IA só como fallback','AI only as fallback','IA solo como fallback'):l('Sem IA externa','No external AI','Sin IA externa')}</small></article>)}</div>
+      <div className="importer-grid">{IMPORTER_REGISTRY.map(item=>{
+        const descriptions:Record<string,[string,string,string]>={
+          universal_text:['Texto e listas em linguagem natural.','Natural-language text and lists.','Texto y listas en lenguaje natural.'],
+          generic_csv:['CSV genérico com normalização de datas, valores e direção.','Generic CSV with date, amount, and direction normalization.','CSV genérico con normalización de fechas, valores y dirección.'],
+          native_pdf:['PDF com texto nativo antes de OCR ou IA.','PDF native text before OCR or AI.','PDF con texto nativo antes de OCR o IA.'],
+          image_screen:['Prints com OCR local antes de fallback externo.','Screenshots with local OCR before external fallback.','Capturas con OCR local antes de fallback externo.'],
+          card_invoice:['Faturas com revisão e deduplicação de itens.','Statements with item review and deduplication.','Resúmenes con revisión y deduplicación de elementos.'],
+          account_screen:['Prints de saldo sem transformar saldo em receita.','Balance screenshots without turning balances into income.','Capturas de saldo sin convertir saldo en ingreso.'],
+          savings_pot_screen:['Cofrinhos reconhecidos sem movimentar dinheiro no banco.','Savings pots recognized without moving money in the bank.','Alcancías reconocidas sin mover dinero en el banco.']
+        };
+        const copy=descriptions[item.id]||[item.description,item.description,item.description];
+        return <article key={item.id}><span>{item.input.toUpperCase()}</span><strong>{item.id.replaceAll('_',' ')}</strong><p>{l(...copy)}</p><small>{item.aiFallback?l('IA só como fallback','AI only as fallback','IA solo como fallback'):l('Sem IA externa','No external AI','Sin IA externa')}</small></article>;
+      })}</div>
     </section>
 
     <div className="support-grid">
