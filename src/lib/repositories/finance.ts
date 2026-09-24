@@ -15,7 +15,6 @@ function localIsoDate() {
 export type CommitResult = { status: 'created' | 'duplicate' | 'queued'; id: string; evidenceId?: string | null };
 
 async function commitOnServer(householdId: string, sourceText: string, observedOn: string, evidenceId?: string | null, scope:FinancialScope='household'): Promise<CommitResult> {
-  const token = await getBrowserAuthToken();
   const queueIfSafe=async()=>{
     if(evidenceId) throw new Error('CAPTURE_COMMIT_FAILED');
     const queued=await enqueueCaptureMutation({householdId,sourceText,observedOn,scope});
@@ -25,6 +24,7 @@ async function commitOnServer(householdId: string, sourceText: string, observedO
 
   if(typeof navigator!=='undefined'&&!navigator.onLine) return queueIfSafe();
 
+  const token = await getBrowserAuthToken();
   try{
     const response = await fetch('/api/capture/commit', {
       method: 'POST',
