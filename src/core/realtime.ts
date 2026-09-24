@@ -17,7 +17,7 @@ export function syncDomainsForAuditType(value:unknown):SyncDomain[]{
   const type=String(value||'').trim().toLowerCase();
   const domains=new Set<SyncDomain>(['home','activity']);
 
-  if(/transaction|movement|category|recurrence|commitment|payment/.test(type)){
+  if(/transaction|movement|category|recurrence|commitment|payment|capture/.test(type)){
     add(domains,'movements','assistant');
   }
   if(/account/.test(type)){
