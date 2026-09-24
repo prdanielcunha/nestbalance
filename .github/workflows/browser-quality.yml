@@ -39,6 +39,9 @@ jobs:
           NEXT_PUBLIC_NESTBALANCE_E2E: "true"
         run: npm run build
 
+      - name: Route bundle budgets
+        run: npm run budget:bundle
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
