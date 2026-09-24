@@ -1,6 +1,5 @@
 'use client';
 import { getBrowserAuthToken } from '@/src/lib/browser-auth-token';
-import { bootstrapSession } from '@/src/lib/repositories/session';
 
 export type UniversalSearchResult={
   id:string;
@@ -10,12 +9,12 @@ export type UniversalSearchResult={
   href:string;
 };
 
-export async function searchCurrentHousehold(query:string){
-  const [token,session]=await Promise.all([getBrowserAuthToken(),bootstrapSession()]);
+export async function searchHousehold(householdId:string,query:string){
+  const token=await getBrowserAuthToken();
   const response=await fetch('/api/search',{
     method:'POST',
     headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
-    body:JSON.stringify({householdId:session.householdId,query}),
+    body:JSON.stringify({householdId,query}),
     cache:'no-store'
   });
   const json=await response.json().catch(()=>({}));
