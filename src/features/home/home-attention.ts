@@ -123,3 +123,61 @@ export function deriveHomeAttentionItems(input:{
 
   return items.filter(item=>!dismissedKeys.includes(item.key)).slice(0,3);
 }
+
+export function deriveHomeMonthNarrative(input:{
+  accountCount:number;
+  futureCommitmentsMinor:number;
+  projectedRemainderMinor:number;
+  spendingComparison:SpendingComparison;
+  partialInvoiceCount:number;
+  hasData:boolean;
+  locale:AppLocale;
+  formatMoney:(minor:number)=>string;
+}){
+  const {accountCount,futureCommitmentsMinor,projectedRemainderMinor,spendingComparison,partialInvoiceCount,hasData,locale,formatMoney}=input;
+  const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
+  const items:string[]=[];
+  if(accountCount){
+    if(futureCommitmentsMinor>0){
+      items.push(l(
+        `${formatMoney(futureCommitmentsMinor)} ainda estão comprometidos; com o que já sabemos, devem sobrar ${formatMoney(projectedRemainderMinor)}.`,
+        `${formatMoney(futureCommitmentsMinor)} is still committed; from what we know, about ${formatMoney(projectedRemainderMinor)} should remain.`,
+        `${formatMoney(futureCommitmentsMinor)} todavía está comprometido; con lo que sabemos, deberían quedar ${formatMoney(projectedRemainderMinor)}.`
+      ));
+    }else{
+      items.push(l(
+        'Não há contas pendentes conhecidas nesta visão.',
+        'There are no known pending bills in this view.',
+        'No hay cuentas pendientes conocidas en esta vista.'
+      ));
+    }
+  }
+  if(spendingComparison.hasComparableData&&spendingComparison.deltaMinor!==0){
+    items.push(spendingComparison.deltaMinor>0
+      ? l(
+          `Os gastos conhecidos estão ${formatMoney(spendingComparison.deltaMinor)} acima do mês anterior.`,
+          `Known spending is ${formatMoney(spendingComparison.deltaMinor)} above last month.`,
+          `Los gastos conocidos están ${formatMoney(spendingComparison.deltaMinor)} por encima del mes anterior.`
+        )
+      : l(
+          `Os gastos conhecidos estão ${formatMoney(Math.abs(spendingComparison.deltaMinor))} abaixo do mês anterior.`,
+          `Known spending is ${formatMoney(Math.abs(spendingComparison.deltaMinor))} below last month.`,
+          `Los gastos conocidos están ${formatMoney(Math.abs(spendingComparison.deltaMinor))} por debajo del mes anterior.`
+        ));
+  }
+  if(partialInvoiceCount>0){
+    items.push(l(
+      `${partialInvoiceCount} fatura${partialInvoiceCount===1?' ainda pode':'s ainda podem'} mudar a projeção. O valor mostrado é um teto com os dados confirmados até agora.`,
+      `${partialInvoiceCount} statement${partialInvoiceCount===1?' may':'s may'} still change the forecast. The amount shown is an upper estimate based on confirmed data so far.`,
+      `${partialInvoiceCount} resumen${partialInvoiceCount===1?' todavía puede':'es todavía pueden'} cambiar la previsión. El valor mostrado es un máximo estimado con los datos confirmados hasta ahora.`
+    ));
+  }
+  if(!items.length&&hasData){
+    items.push(l(
+      'Nada importante mudou nos dados conhecidos deste mês.',
+      'Nothing important changed in the known data for this month.',
+      'Nada importante cambió en los datos conocidos de este mes.'
+    ));
+  }
+  return items.slice(0,3);
+}
