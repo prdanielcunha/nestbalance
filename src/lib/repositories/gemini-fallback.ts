@@ -1,13 +1,14 @@
 'use client';
 import { auth } from '@/src/lib/firebase/client';
 import type { AiFinancialExtraction } from '@/src/core/ai-financial';
+import { captureTraceHeaders } from '@/src/lib/capture-trace';
 
 async function api<T>(path:string,body:unknown):Promise<T>{
   const token=await auth?.currentUser?.getIdToken();
   if(!token) throw new Error('AUTH_REQUIRED');
   const response=await fetch(path,{
     method:'POST',
-    headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
+    headers:{'content-type':'application/json',authorization:`Bearer ${token}`,...captureTraceHeaders()},
     body:JSON.stringify(body),
     cache:'no-store'
   });
