@@ -11,6 +11,7 @@ import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/feat
 import { AppShell } from '@/src/features/navigation/app-shell';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
+import { publishSyncStatus } from '@/src/features/realtime/sync-status-store';
 
 export function AccountsScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
   const {t,locale,intlLocale,currency,formatMoney,formatDate}=useI18n();
@@ -104,15 +105,35 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       await updateHouseholdAccountBalance({
         householdId,
         accountId:editingAccount.id,
-        balanceMinor
+        balanceMinor,
+        expectedUpdatedAtMs:editingAccount.updatedAtMs
       });
       setEditingAccount(null);
       refreshed();
     }catch(err:any){
       const code=String(err?.message||'');
-      setBalanceError(code==='ACCOUNT_NOT_ACTIVE'
-        ? l('Essa conta não está mais ativa.','This account is no longer active.','Esta cuenta ya no está activa.')
-        : l('Não conseguimos atualizar esse saldo agora.','We could not update this balance right now.','No pudimos actualizar este saldo ahora.'));
+      if(code==='ACCOUNT_BALANCE_CONFLICT'){
+        const currentBalanceMinor=Number(err?.currentBalanceMinor);
+        const currentUpdatedAtMs=Number(err?.currentUpdatedAtMs);
+        if(Number.isSafeInteger(currentBalanceMinor)&&Number.isSafeInteger(currentUpdatedAtMs)){
+          setEditingAccount(current=>current?{...current,balanceMinor:currentBalanceMinor,updatedAtMs:currentUpdatedAtMs}:current);
+          setBalanceInput((currentBalanceMinor/100).toLocaleString(intlLocale,{
+            minimumFractionDigits:2,
+            maximumFractionDigits:2,
+            useGrouping:false
+          }));
+        }
+        publishSyncStatus('conflict');
+        setBalanceError(l(
+          'Este saldo mudou em outro aparelho enquanto você editava. Mostramos o valor mais recente; confira e salve novamente se ainda quiser alterar.',
+          'This balance changed on another device while you were editing. We loaded the latest value; review it and save again if you still want to change it.',
+          'Este saldo cambió en otro dispositivo mientras editabas. Mostramos el valor más reciente; revísalo y guarda de nuevo si aún quieres cambiarlo.'
+        ));
+      }else{
+        setBalanceError(code==='ACCOUNT_NOT_ACTIVE'
+          ? l('Essa conta não está mais ativa.','This account is no longer active.','Esta cuenta ya no está activa.')
+          : l('Não conseguimos atualizar esse saldo agora.','We could not update this balance right now.','No pudimos actualizar este saldo ahora.'));
+      }
     }finally{
       setSavingBalance(false);
     }
