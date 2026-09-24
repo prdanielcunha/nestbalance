@@ -117,3 +117,33 @@ html[data-theme="dark"] .app-shell-nav.desktop-inline .app-nav-add{
   color:#111727;
 }
 html[data-theme="dark"] .app-shell-nav.desktop-inline .app-nav-add span{color:#111727}
+
+
+.sync-status-chip{
+  min-height:34px;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:0 10px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--surface-strong);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:750;
+  white-space:nowrap;
+}
+.sync-status-chip i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--iris);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--iris) 12%,transparent);
+}
+.sync-status-chip.offline i,.sync-status-chip.failed i{background:var(--danger);box-shadow:0 0 0 4px color-mix(in srgb,var(--danger) 12%,transparent)}
+.sync-status-chip.remote-change i,.sync-status-chip.updating i{animation:nb-sync-pulse 1.1s ease-in-out infinite alternate}
+@keyframes nb-sync-pulse{to{transform:scale(1.35);opacity:.62}}
+@media(max-width:520px){
+  .sync-status-chip{position:fixed;z-index:40;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);box-shadow:var(--shadow-sm)}
+}
+@media(prefers-reduced-motion:reduce){.sync-status-chip.remote-change i,.sync-status-chip.updating i{animation:none}}
