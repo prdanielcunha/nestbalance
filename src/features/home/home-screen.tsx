@@ -20,7 +20,7 @@ import { reportProductEvent } from '@/src/lib/product-events';
 import { DEFAULT_HOME_PREFERENCES, type HomePreferences } from '@/src/core/home-preferences';
 import { saveHomePreferences } from '@/src/lib/repositories/home-preferences';
 import { deriveHomeAttentionItems, deriveHomeMonthNarrative } from '@/src/features/home/home-attention';
-import { HomeFutureSection, HomeTimelineSection } from '@/src/features/home/home-lower-sections';
+import { HomeFirstUseGuide, HomeFutureSection, HomeMonthSection, HomeTimelineSection } from '@/src/features/home/home-lower-sections';
 
 const AccountOnboarding=dynamic(
   ()=>import('@/src/features/onboarding/account-onboarding').then(module=>module.AccountOnboarding),
@@ -377,43 +377,18 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       {attentionError&&<p className="error-copy attention-error" role="alert">{attentionError}</p>}
     </section>}
 
-    {viewAccounts.length>0&&!hasData&&canContribute&&<section className="first-use-guide">
-      <div>
-        <span className="section-kicker">{l('PRÓXIMO PASSO','NEXT STEP','SIGUIENTE PASO')}</span>
-        <h2>{l('Agora deixe o NestBalance trabalhar por você.','Now let NestBalance start working for you.','Ahora deja que NestBalance empiece a trabajar por ti.')}</h2>
-        <p>{l(
-          'Seu saldo já está aqui. Traga uma conta, compra ou parcela do jeito mais fácil: escrevendo, colando um print ou falando.',
-          'Your balance is already here. Bring in a bill, purchase or installment in the easiest way: type it, paste a screenshot or speak.',
-          'Tu saldo ya está aquí. Agrega una cuenta, compra o cuota de la forma más fácil: escribiendo, pegando una captura o hablando.'
-        )}</p>
-      </div>
-      <div className="first-use-actions">
-        <Link className="primary-button" href="/add">{l('Enviar print, áudio ou texto','Send screenshot, audio, or text','Enviar captura, audio o texto')}</Link>
-        <Link className="ghost-button" href="/accounts">{l('Organizar contas e cartões','Organize accounts and cards','Organizar cuentas y tarjetas')}</Link>
-      </div>
-      <small>{l(
-        'Não precisa configurar tudo hoje. O NestBalance melhora conforme você usa.',
-        'You do not need to set everything up today. NestBalance gets better as you use it.',
-        'No necesitas configurar todo hoy. NestBalance mejora a medida que lo usas.'
-      )}</small>
-    </section>}
+    {viewAccounts.length>0&&!hasData&&canContribute&&<HomeFirstUseGuide/>}
 
     <MonthlyPayments householdId={householdId} commitments={viewCommitments} canContribute={canContribute} onChanged={()=>void refreshHome(true)} />
 
-    <section className="month-section">
-      <div className="section-title">
-        <div>
-          <h2>{t.month}</h2>
-          {!monthHasKnownData&&<span>{l('Ainda sem dados suficientes para resumir este mês.','Not enough data to summarize this month yet.','Aún no hay datos suficientes para resumir este mes.')}</span>}
-        </div>
-      </div>
-      <div className={monthHasKnownData?'month-grid':'month-grid month-grid-unknown'}>
-        <div><span>{t.moneyIn}</span><strong>{monthHasKnownData?formatMoney(monthTransactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)):'—'}</strong></div>
-        <div><span>{t.moneyOut}</span><strong>{monthHasKnownData?formatMoney(snapshot.paidExpenseMinor):'—'}</strong></div>
-        <div><span>{t.moneyToGo}</span><strong>{monthHasKnownData?formatMoney(snapshot.futureCommitmentsMinor):'—'}</strong></div>
-        <div className="projected"><span>{t.projectedLeft}{monthHasKnownData&&<small className="estimate-badge">{l('estimado','estimate','estimado')}</small>}</span><strong>{monthHasKnownData&&viewAccounts.length ? formatMoney(snapshot.projectedRemainderMinor) : '—'}</strong></div>
-      </div>
-    </section>
+    <HomeMonthSection
+      known={monthHasKnownData}
+      incomeMinor={monthTransactions.filter(item=>item.direction==='income').reduce((sum,item)=>sum+item.amountMinor,0)}
+      paidExpenseMinor={snapshot.paidExpenseMinor}
+      futureCommitmentsMinor={snapshot.futureCommitmentsMinor}
+      projectedRemainderMinor={snapshot.projectedRemainderMinor}
+      hasAccounts={viewAccounts.length>0}
+    />
 
     <CreditCardManager
       householdId={householdId}
