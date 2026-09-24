@@ -78,7 +78,9 @@ test('authenticated finance screens stay usable from 320px to desktop',async({br
     {width:320,height:720},
     {width:390,height:844},
     {width:768,height:1024},
-    {width:1440,height:1000}
+    {width:1024,height:900},
+    {width:1440,height:1000},
+    {width:1920,height:1080}
   ]){
     const context=await browser.newContext({viewport,colorScheme:'dark'});
     const page=await context.newPage();
