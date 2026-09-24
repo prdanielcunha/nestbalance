@@ -5,7 +5,7 @@ const RATINGS=new Set(['good','needs-improvement','poor']);
 const NAVIGATION_TYPES=new Set(['navigate','reload','back-forward','prerender']);
 const PRODUCT_EVENTS=new Set(['session_observed','first_value_observed','capture_opened','capture_review_ready','capture_committed','capture_queued','capture_undone','capture_abandoned','capture_corrected']);
 const CAPTURE_SOURCES=new Set(['text','image','pdf','csv','audio','other']);
-const CAPTURE_CORRECTIONS=new Set(['description','amount','due_day','direction','source_type']);
+const CAPTURE_CORRECTIONS=new Set(['label_field','value_field','due_day','direction','source_type']);
 
 function routeKey(pathname:unknown){
   const raw=typeof pathname==='string'?pathname:'';
