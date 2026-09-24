@@ -12,6 +12,8 @@
 }
 
 .app-shell-content{display:contents}
+.app-shell-frame{font-variant-numeric:tabular-nums}
+button,input,select,textarea,[role="button"],summary{font-size:max(var(--nb-control-font-min),1em)}
 .app-shell-brand{min-width:0;display:grid;gap:2px}
 .app-shell-actions:empty{display:none}
 
@@ -164,13 +166,13 @@ html[data-theme="dark"] .app-shell-nav.desktop-inline .app-nav-add span{color:#1
 
 /* Capture progress is semantic rather than decorative: every expensive step is visible. */
 .capture-stage-progress{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:16px 0 4px;padding:0;list-style:none}
-.capture-stage-progress li{min-width:0;display:grid;justify-items:center;gap:5px;color:var(--muted);font-size:11px;text-align:center}
-.capture-stage-progress li>span{width:24px;height:24px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:var(--surface-strong);font-size:11px;font-weight:800}
-.capture-stage-progress li>b{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:720;white-space:nowrap}
+.capture-stage-progress li{min-width:0;display:grid;justify-items:center;gap:5px;color:var(--muted);font-size:12px;text-align:center}
+.capture-stage-progress li>span{width:24px;height:24px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:var(--surface-strong);font-size:12px;font-weight:800}
+.capture-stage-progress li>b{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:720;white-space:nowrap}
 .capture-stage-progress li.done,.capture-stage-progress li.active{color:var(--ink)}
 .capture-stage-progress li.done>span{border-color:color-mix(in srgb,var(--mint) 35%,var(--line));background:color-mix(in srgb,var(--mint) 12%,var(--surface-strong));color:var(--mint)}
 .capture-stage-progress li.active>span{border-color:color-mix(in srgb,var(--iris) 50%,var(--line));box-shadow:0 0 0 4px color-mix(in srgb,var(--iris) 10%,transparent);color:var(--iris)}
-@media(max-width:520px){.capture-stage-progress li>b{font-size:10px}.capture-stage-progress{gap:2px}}
+@media(max-width:520px){.capture-stage-progress li>b{font-size:12px}.capture-stage-progress{gap:2px}}
 
 
 /* Universal search */
