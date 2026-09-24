@@ -1,12 +1,11 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { deriveCashView } from '@/src/core/cash-view';
 import { projectHouseholdFuture } from '@/src/core/future-projection';
 import { categoryLabel, deriveFinancialAnomalies, deriveSpendingComparison } from '@/src/core/insights';
-import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
-import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
@@ -20,6 +19,15 @@ import { isDismissibleAttentionKind } from '@/src/core/attention';
 import { reportProductEvent } from '@/src/lib/product-events';
 import { DEFAULT_HOME_PREFERENCES, type HomePreferences } from '@/src/core/home-preferences';
 import { saveHomePreferences } from '@/src/lib/repositories/home-preferences';
+
+const AccountOnboarding=dynamic(
+  ()=>import('@/src/features/onboarding/account-onboarding').then(module=>module.AccountOnboarding),
+  {ssr:false}
+);
+const CreditCardManager=dynamic(
+  ()=>import('@/src/features/cards/card-manager').then(module=>module.CreditCardManager),
+  {ssr:false}
+);
 
 
 export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { householdId: string; role: HouseholdRole; firstValueStartedAtMs?:number }) {
