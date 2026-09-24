@@ -1,6 +1,6 @@
 import express from 'express';
 import { rateLimit, requestTelemetry, runtimeIdentity, securityHeaders } from './server/http-runtime.js';
-import { commitCapture } from './server/capture.js';
+import { commitCapture, undoCapture } from './server/capture.js';
 import { finalizeEvidence, startEvidence, uploadEvidence } from './server/evidence.js';
 import { analyzeEvidenceText } from './server/evidence-analysis.js';
 import { getVaultEvidenceDetail, listVaultEvidence, previewVaultEvidence, searchVaultEvidence } from './server/vault.js';
@@ -90,6 +90,7 @@ app.post('/api/vault/search', searchVaultEvidence);
 app.post('/api/vault/detail', getVaultEvidenceDetail);
 app.post('/api/vault/preview', previewVaultEvidence);
 app.post('/api/capture/commit', commitCapture);
+app.post('/api/capture/undo', undoCapture);
 app.post('/api/accounts/create', createAccount);
 app.post('/api/accounts/update-balance', updateAccountBalance);
 app.post('/api/savings-pots/upsert', upsertSavingsPot);
