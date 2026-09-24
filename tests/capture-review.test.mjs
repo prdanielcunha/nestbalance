@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyReviewedInterpretation } from '../.core-dist/capture-review.js';
+import { applyReviewedInterpretation } from '../.core-dist/core/capture-review.js';
 
 const base={
   kind:'transaction',
