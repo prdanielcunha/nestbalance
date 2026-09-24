@@ -11,7 +11,7 @@ export function endCaptureTrace(){
   activeFlowId=null;
 }
 
-export function captureTraceHeaders(){
+export function captureTraceHeaders():Record<string,string>{
   return activeFlowId?{'x-nestbalance-flow-id':activeFlowId}:{};
 }
 
