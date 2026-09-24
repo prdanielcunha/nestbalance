@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
@@ -287,7 +286,5 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
               <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {formatMoney(row.amountMinor)}</b>
             </article>)}
           </section>}
-
-    <AppNav canContribute={role!=='read_only'}/>
   </main>;
 }
