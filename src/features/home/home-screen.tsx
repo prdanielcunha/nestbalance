@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { deriveCashView } from '@/src/core/cash-view';
@@ -17,9 +17,10 @@ import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallme
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 import { dismissAttention } from '@/src/lib/repositories/attention';
 import { isDismissibleAttentionKind } from '@/src/core/attention';
+import { reportProductEvent } from '@/src/lib/product-events';
 
 
-export function HomeScreen({ householdId, role }: { householdId: string; role: HouseholdRole }) {
+export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { householdId: string; role: HouseholdRole; firstValueStartedAtMs?:number }) {
   const {t,locale,intlLocale,formatMoney}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const monthName=useMemo(()=>new Intl.DateTimeFormat(intlLocale,{month:'long'}),[intlLocale]);
@@ -41,6 +42,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const [dismissedAttentionKeys,setDismissedAttentionKeys]=useState<string[]>([]);
   const [attentionWorking,setAttentionWorking]=useState('');
   const [attentionError,setAttentionError]=useState('');
+  const firstValueReportedRef=useRef(false);
 
   async function refreshHome(silent=false){
     if(!silent) setLoadingHome(true);
@@ -132,6 +134,13 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
+
+  useEffect(()=>{
+    if(!firstValueStartedAtMs||loadingHome||!hasData||firstValueReportedRef.current) return;
+    firstValueReportedRef.current=true;
+    reportProductEvent('first_value_observed',{durationMs:Date.now()-firstValueStartedAtMs});
+  },[firstValueStartedAtMs,loadingHome,hasData]);
+
   const monthHasKnownData = monthTransactions.length + currentMonthCommitments.length + viewInvoiceImports.length > 0;
   const defaultCreateScope=view==='personal'?'personal':'household';
   const viewLabel=view==='household'?l('do Lar','in Household','del Hogar'):view==='personal'?l('Pessoal','Personal','Personal'):l('na sua visão completa','in your full view','en tu vista completa');
