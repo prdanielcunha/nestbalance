@@ -8,15 +8,18 @@ export type ProductEventName=
   | 'capture_committed'
   | 'capture_queued'
   | 'capture_undone'
-  | 'capture_abandoned';
+  | 'capture_abandoned'
+  | 'capture_corrected';
 
 export type CaptureSourceKind='text'|'image'|'pdf'|'csv'|'audio'|'other';
+export type CaptureCorrectionReason='description'|'amount'|'due_day'|'direction'|'source_type';
 
 type ProductEventDetails={
   source?:CaptureSourceKind;
   durationMs?:number;
   itemCount?:number;
   reviewCount?:number;
+  correction?:CaptureCorrectionReason;
 };
 
 function boundedInteger(value:unknown,max:number){
@@ -34,7 +37,8 @@ export function reportProductEvent(name:ProductEventName,details:ProductEventDet
     source:details.source,
     durationMs:boundedInteger(details.durationMs,30*60_000),
     itemCount:boundedInteger(details.itemCount,500),
-    reviewCount:boundedInteger(details.reviewCount,500)
+    reviewCount:boundedInteger(details.reviewCount,500),
+    correction:details.correction
   });
 
   void fetch('/api/metrics/product-event',{
