@@ -962,7 +962,7 @@ export function useUniversalCaptureController({ householdId, uid, onCommitted, d
     localOcrText,reprocessLocalAs,text,setText,setFile,setPreparedEvidenceId,setAnalysis,setAiAnalysis,setNotice,
     upload,localOcrPercent,analysis,amountChoices,chooseAmount,directionChoice,chooseDirection,
     geminiUsed,aiAnalysis,geminiStatus,screenSnapshot,setScreenSnapshot,geminiWorking,runGeminiFallback,
-    notice,error,reset,captureStage,captureStageLabels,screenResourceCount,totalOrganizedCount,reviewCount,organizedLabel,
+    notice,error,reset,captureStage,captureStageLabels,interpretations,screenResourceCount,totalOrganizedCount,reviewCount,organizedLabel,
     readEditedMoney,moneyInputValue,matchingPayments,paymentMatches,paymentMatchDismissed,payingMatchId,
     confirmMatchedPayment,setPaymentMatchDismissed,readyInterpretations,attentionInterpretations,visibleInterpretations,
     editInterpretation,reportCaptureCorrection,chooseImportedDirection,hiddenReadyCount,setShowAllReview,showAllReview,
