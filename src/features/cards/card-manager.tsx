@@ -8,7 +8,6 @@ import { InvoicePaymentSheet } from '@/src/features/cards/invoice-payment-sheet'
 import type { HomeAccount, HomeCardSnapshot, HomeCreditCard, HomeInvoiceImport } from '@/src/lib/repositories/home';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import type { FinancialScope } from '@/src/core/privacy';
-import { readCardImageLocally } from '@/src/lib/local-card-reader';
 import { useI18n } from '@/src/i18n/locale-provider';
 
 function inferBrand(value:string):CardBrand{
@@ -87,6 +86,7 @@ export function CreditCardManager({
     setError('');
     setPrefillNote('');
     try{
+      const {readCardImageLocally}=await import('@/src/lib/local-card-reader');
       const result=await readCardImageLocally(file,progress=>setLocalReadPercent(progress.percent));
       if(result.cardName) setName(result.cardName);
       if(result.brand!=='other') setBrand(result.brand);
