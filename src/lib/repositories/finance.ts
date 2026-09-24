@@ -6,6 +6,7 @@ import type { FinancialScope } from '@/src/core/privacy';
 import { enqueueCaptureMutation } from '@/src/lib/offline-mutation-queue';
 import { publishSyncStatus } from '@/src/features/realtime/sync-status-store';
 import { reviewedInterpretationPayload } from '@/src/core/capture-review';
+import { captureTraceHeaders } from '@/src/lib/capture-trace';
 
 function localIsoDate() {
   const d = new Date();
@@ -29,7 +30,7 @@ async function commitOnServer(householdId: string, sourceText: string, observedO
   try{
     const response = await fetch('/api/capture/commit', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...captureTraceHeaders() },
       body: JSON.stringify({ householdId, sourceText, evidenceId: evidenceId || null, observedOn, scope, reviewed }),
       cache:'no-store'
     });
