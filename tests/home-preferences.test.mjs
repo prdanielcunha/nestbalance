@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_HOME_PREFERENCES, normalizeHomePreferences } from '../.core-dist/home-preferences.js';
+import { DEFAULT_HOME_PREFERENCES, normalizeHomePreferences } from '../.core-dist/core/home-preferences.js';
 
 test('home preferences normalize unknown values safely',()=>{
   assert.deepEqual(normalizeHomePreferences(null),DEFAULT_HOME_PREFERENCES);
