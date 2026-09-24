@@ -8,12 +8,11 @@ import { categoryLabel, deriveFinancialAnomalies, deriveSpendingComparison } fro
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
-import { AppNav } from '@/src/features/navigation/app-nav';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { AppShell } from '@/src/features/navigation/app-shell';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 import { dismissAttention } from '@/src/lib/repositories/attention';
@@ -250,13 +249,13 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   }
 
 
-  return <main className={`app-shell home-shell ${viewAccounts.length===0?'home-first-use':''}`.trim()}>
-    <header className="topbar home-topbar">
-      <div className="home-brand"><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div>
-      <HouseholdLink detailed/>
-    </header>
-    <AppNav canContribute={canContribute} desktopInline className="home-primary-nav"/>
-
+  return <AppShell
+    className={`home-shell ${viewAccounts.length===0?'home-first-use':''}`.trim()}
+    subtitle={t.brandTagline}
+    canContribute={canContribute}
+    householdLink="detailed"
+    navClassName="home-primary-nav"
+  >
     <div className="home-context-row">
       <div className="home-scope-copy"><span>{l('Visão','View','Vista')}</span><small>{l('Escolha o que entra nesta tela.','Choose what is included on this screen.','Elige qué aparece en esta pantalla.')}</small></div>
       <ScopeViewSwitch value={view} onChange={setView}/>
@@ -415,5 +414,5 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?l('No cartão','On card','En tarjeta'):x.source==='credit_card_invoice_payment'?l('Fatura paga','Statement paid','Tarjeta pagada'):x.direction==='income'?t.moneyIn:x.direction==='transfer'?l('Transferência','Transfer','Transferencia'):l('Saiu','Money out','Salió')}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {formatMoney(x.amountMinor)}</b></article>)}</div>}
     </section>}
 
-  </main>;
+  </AppShell>;
 }
