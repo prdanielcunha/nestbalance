@@ -134,12 +134,13 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
+  const hasFirstValue = hasData || viewAccounts.some(account=>account.balanceMinor!==null&&account.balanceMinor!==undefined);
 
   useEffect(()=>{
-    if(!firstValueStartedAtMs||loadingHome||!hasData||firstValueReportedRef.current) return;
+    if(!firstValueStartedAtMs||loadingHome||!hasFirstValue||firstValueReportedRef.current) return;
     firstValueReportedRef.current=true;
     reportProductEvent('first_value_observed',{durationMs:Date.now()-firstValueStartedAtMs});
-  },[firstValueStartedAtMs,loadingHome,hasData]);
+  },[firstValueStartedAtMs,loadingHome,hasFirstValue]);
 
   const monthHasKnownData = monthTransactions.length + currentMonthCommitments.length + viewInvoiceImports.length > 0;
   const defaultCreateScope=view==='personal'?'personal':'household';
