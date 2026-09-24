@@ -97,7 +97,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     }
   }
 
-  useHouseholdRevisionRefresh(householdId,()=>load(true));
+  useHouseholdRevisionRefresh(householdId,()=>load(true),25_000,['pots']);
 
   useEffect(()=>{
     void load();
