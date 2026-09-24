@@ -29,6 +29,7 @@ import { updateHomePreferences } from './server/home-preferences.js';
 import { listPlanningScenarios, savePlanningScenario, deletePlanningScenario, getMonthlyClose, completeMonthlyClose, updateIntelligencePreferences } from './server/planning.js';
 import { loadCollaboration, createSharedTask, updateSharedTask, listComments, createComment, createExpenseSplit, settleExpenseSplit, getWeeklyRitual, saveWeeklyRitual } from './server/collaboration.js';
 import { recordProductEvent, recordWebVital, recordClientCrash } from './server/product-metrics.js';
+import { exportAccountingCsv, createSharedMonthlyReport, viewSharedMonthlyReport } from './server/reports.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -98,6 +99,9 @@ app.post('/api/collaboration/split/create', createExpenseSplit);
 app.post('/api/collaboration/split/settle', settleExpenseSplit);
 app.post('/api/collaboration/weekly/get', getWeeklyRitual);
 app.post('/api/collaboration/weekly/save', saveWeeklyRitual);
+app.post('/api/reports/accounting/export', sensitiveLimit, exportAccountingCsv);
+app.post('/api/reports/monthly/share', sensitiveLimit, createSharedMonthlyReport);
+app.post('/api/reports/monthly/view', rateLimit({windowMs:60_000,max:30,namespace:'shared-report'}), viewSharedMonthlyReport);
 app.post('/api/attention/dismiss', sensitiveLimit, dismissAttention);
 app.post('/api/evidence/start', startEvidence);
 app.post('/api/evidence/finalize', finalizeEvidence);
