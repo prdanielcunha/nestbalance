@@ -801,6 +801,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         created++;
       }
       let duplicates = 0;
+      let queued = 0;
       for (let i = 0; i < interpretations.length; i++) {
         const result = await commitInterpretation({
           householdId,
@@ -812,6 +813,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           scope
         });
         if (result.status === 'duplicate') duplicates++;
+        else if(result.status === 'queued') queued++;
         else created++;
       }
       if (duplicates && !created) {
@@ -820,7 +822,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         setUpload(null);
         return;
       }
-      reportProductEvent('capture_committed',{
+      reportProductEvent(queued>0?'capture_queued':'capture_committed',{
         source:captureSourceKind(),
         durationMs:captureDurationMs(),
         itemCount:Math.max(1,interpretations.length+(screenSnapshot?screenSnapshot.accounts.length+screenSnapshot.pots.length+screenSnapshot.cards.length+screenSnapshot.commitments.length:0)),
