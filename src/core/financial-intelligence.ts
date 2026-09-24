@@ -6,7 +6,7 @@ import {
   resolvedSpendingCategory,
   type InsightTransaction,
   type SpendingCategory
-} from './insights.js';
+} from './insights.ts';
 
 export type InsightConfidence='high'|'medium';
 export type InsightUrgency='critical'|'high'|'normal'|'low';
