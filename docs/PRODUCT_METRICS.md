@@ -55,3 +55,10 @@ Universal Capture also emits a fixed, content-free funnel:
 Allowed dimensions are limited to coarse input type, elapsed milliseconds, total item count, review item count and coarse route key. Values, descriptions, extracted text, filenames, evidence IDs, user IDs and Household IDs are not accepted by the client contract or logged by the endpoint.
 
 This baseline is intended to answer: how long capture takes, where users leave, and how much review the machine creates. It is not intended to reconstruct what the user did financially.
+
+
+## Time to First Value
+
+For a Household created by the current session bootstrap, the client starts a local timer immediately before bootstrap and emits `first_value_observed` once the Home first contains useful financial information (a known account balance, movement, commitment, installment plan or imported invoice).
+
+Only elapsed milliseconds and the coarse Home route are sent. Existing Households do not emit this event, preventing old accounts from distorting the first-use baseline. The event is intentionally one-shot per freshly created session.
