@@ -4,6 +4,7 @@ import './globals.css';
 import './home-premium.css';
 import { PwaRuntime } from '@/src/features/pwa/pwa-runtime';
 import { ThemeRuntime } from '@/src/features/theme/theme-runtime';
+import { ProductMetricsRuntime } from '@/src/features/telemetry/product-metrics-runtime';
 
 const inter=Inter({
   subsets:['latin'],
@@ -35,6 +36,6 @@ const themeBootScript=`(()=>{try{const saved=localStorage.getItem('nestbalance-t
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
   return <html lang="pt-BR" data-theme="dark" className={inter.variable} suppressHydrationWarning>
     <head><script dangerouslySetInnerHTML={{__html:themeBootScript}}/></head>
-    <body><PwaRuntime/><ThemeRuntime/>{children}</body>
+    <body><PwaRuntime/><ThemeRuntime/><ProductMetricsRuntime/>{children}</body>
   </html>;
 }
