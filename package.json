@@ -24,7 +24,8 @@
     "test:e2e": "node scripts/production-browser-gate.mjs",
     "test:e2e:raw": "playwright test",
     "test:authenticated-api": "npm run build:cloudrun && firebase emulators:exec --only auth,firestore --project demo-nestbalance-auth \"node --test tests/authenticated-api-flow.test.mjs\"",
-    "benchmark:ai": "node scripts/ai-benchmark.mjs"
+    "benchmark:ai": "node scripts/ai-benchmark.mjs",
+    "roadmap:evidence": "node scripts/roadmap-evidence.mjs"
   },
   "dependencies": {
     "firebase": "12.19.0",
