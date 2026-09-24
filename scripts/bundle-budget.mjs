@@ -18,6 +18,7 @@ const budgets={
   '/pots':1_000_000,
   '/assistant':1_050_000,
   '/household':950_000,
+  '/inbox':850_000,
   '/together':950_000,
   '/documents':900_000,
   '/vault':900_000,
