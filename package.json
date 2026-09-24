@@ -11,7 +11,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:core": "rm -rf .core-dist && tsc -p tsconfig.core.json && node --test tests/evidence.test.mjs tests/date.test.mjs tests/finance-core.test.mjs tests/text-parser.test.mjs tests/document-signals.test.mjs tests/document-suggestion.test.mjs tests/future-projection.test.mjs tests/cash-view.test.mjs tests/open-finance.test.mjs tests/movement-import.test.mjs tests/csv-import.test.mjs tests/commitment-payments.test.mjs tests/assistant.test.mjs tests/accounts.test.mjs tests/cards.test.mjs tests/card-local-reader.test.mjs tests/invoices.test.mjs tests/invoice-vision.test.mjs tests/invoice-review.test.mjs tests/ai-financial.test.mjs tests/account-balance-import.test.mjs tests/recurring-commitment-import.test.mjs tests/savings-pot-import.test.mjs tests/savings-pot-goal.test.mjs tests/household.test.mjs tests/privacy.test.mjs tests/vault-search.test.mjs tests/financial-redaction.test.mjs tests/gemini-financial.test.mjs tests/insights.test.mjs tests/locale.test.mjs tests/activity.test.mjs tests/proactivity.test.mjs tests/attention.test.mjs tests/security.test.mjs tests/theme.test.mjs tests/realtime.test.mjs tests/home-preferences.test.mjs tests/capture-review.test.mjs tests/financial-intelligence.test.mjs tests/intelligence-preferences.test.mjs tests/commercial-foundation.test.mjs tests/search.test.mjs tests/product-demo-contract.test.mjs",
-    "check": "npm run test:core && npm run test:document && npm run test:security:static && npm run budget:architecture",
+    "check": "npm run test:core && npm run benchmark:ai && npm run test:document && npm run test:security:static && npm run budget:architecture",
     "budget:architecture": "node scripts/architecture-budget.mjs",
     "budget:bundle": "node scripts/bundle-budget.mjs",
     "test:security:static": "node scripts-verify.mjs",
@@ -23,7 +23,8 @@
     "deploy:preflight": "node scripts/runtime-preflight.mjs",
     "test:e2e": "node scripts/production-browser-gate.mjs",
     "test:e2e:raw": "playwright test",
-    "test:authenticated-api": "npm run build:cloudrun && firebase emulators:exec --only auth,firestore --project demo-nestbalance-auth \"node --test tests/authenticated-api-flow.test.mjs\""
+    "test:authenticated-api": "npm run build:cloudrun && firebase emulators:exec --only auth,firestore --project demo-nestbalance-auth \"node --test tests/authenticated-api-flow.test.mjs\"",
+    "benchmark:ai": "node scripts/ai-benchmark.mjs"
   },
   "dependencies": {
     "firebase": "12.19.0",
