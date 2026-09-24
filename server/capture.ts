@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Request, Response } from 'express';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import { fingerprintForInterpretation } from '../src/core/fingerprint.js';
 import { parseFinancialText } from '../src/core/text-parser.js';
 import { applyReviewedInterpretation } from '../src/core/capture-review.js';
@@ -124,14 +124,15 @@ export async function undoCapture(req:Request,res:Response){
     const householdId=String(req.body?.householdId||'');
     await requireHouseholdMember(householdId,user.uid,'contribute');
     const rawItems=Array.isArray(req.body?.items)?req.body.items:[];
-    const items=rawItems.slice(0,50).map((item:any)=>({
+    type UndoItem={id:string;entityType:'transaction'|'commitment'};
+    const items:UndoItem[]=rawItems.slice(0,50).map((item:any):UndoItem=>({
       id:String(item?.id||''),
       entityType:item?.entityType==='commitment'?'commitment':'transaction'
     }));
-    if(!items.length||items.some(item=>!/^[A-Za-z0-9_-]{6,128}$/.test(item.id))) return error(res,400,'INVALID_CAPTURE_UNDO');
+    if(!items.length||items.some((item:UndoItem)=>!/^[A-Za-z0-9_-]{6,128}$/.test(item.id))) return error(res,400,'INVALID_CAPTURE_UNDO');
 
     const household=adminDb.collection('households').doc(householdId);
-    const entries=items.map(item=>({
+    const entries:Array<UndoItem&{ref:DocumentReference}>=items.map((item:UndoItem)=>({
       ...item,
       ref:household.collection(item.entityType==='commitment'?'commitments':'transactions').doc(item.id)
     }));
