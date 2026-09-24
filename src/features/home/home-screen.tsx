@@ -19,7 +19,7 @@ import { isDismissibleAttentionKind } from '@/src/core/attention';
 import { reportProductEvent } from '@/src/lib/product-events';
 import { DEFAULT_HOME_PREFERENCES, type HomePreferences } from '@/src/core/home-preferences';
 import { saveHomePreferences } from '@/src/lib/repositories/home-preferences';
-import { deriveHomeAttentionItems } from '@/src/features/home/home-attention';
+import { deriveHomeAttentionItems, deriveHomeMonthNarrative } from '@/src/features/home/home-attention';
 
 const AccountOnboarding=dynamic(
   ()=>import('@/src/features/onboarding/account-onboarding').then(module=>module.AccountOnboarding),
@@ -178,52 +178,17 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
   const refreshedLabel=refreshedAt
     ? new Intl.DateTimeFormat(intlLocale,{hour:'2-digit',minute:'2-digit'}).format(new Date(refreshedAt))
     : null;
-  const monthNarrative=useMemo(()=>{
-    const items:string[]=[];
-    if(viewAccounts.length){
-      if(snapshot.futureCommitmentsMinor>0){
-        items.push(l(
-          `${formatMoney(snapshot.futureCommitmentsMinor)} ainda estão comprometidos; com o que já sabemos, devem sobrar ${formatMoney(snapshot.projectedRemainderMinor)}.`,
-          `${formatMoney(snapshot.futureCommitmentsMinor)} is still committed; from what we know, about ${formatMoney(snapshot.projectedRemainderMinor)} should remain.`,
-          `${formatMoney(snapshot.futureCommitmentsMinor)} todavía está comprometido; con lo que sabemos, deberían quedar ${formatMoney(snapshot.projectedRemainderMinor)}.`
-        ));
-      }else{
-        items.push(l(
-          'Não há contas pendentes conhecidas nesta visão.',
-          'There are no known pending bills in this view.',
-          'No hay cuentas pendientes conocidas en esta vista.'
-        ));
-      }
-    }
-    if(spendingComparison.hasComparableData&&spendingComparison.deltaMinor!==0){
-      items.push(spendingComparison.deltaMinor>0
-        ? l(
-            `Os gastos conhecidos estão ${formatMoney(spendingComparison.deltaMinor)} acima do mês anterior.`,
-            `Known spending is ${formatMoney(spendingComparison.deltaMinor)} above last month.`,
-            `Los gastos conocidos están ${formatMoney(spendingComparison.deltaMinor)} por encima del mes anterior.`
-          )
-        : l(
-            `Os gastos conhecidos estão ${formatMoney(Math.abs(spendingComparison.deltaMinor))} abaixo do mês anterior.`,
-            `Known spending is ${formatMoney(Math.abs(spendingComparison.deltaMinor))} below last month.`,
-            `Los gastos conocidos están ${formatMoney(Math.abs(spendingComparison.deltaMinor))} por debajo del mes anterior.`
-          ));
-    }
-    if(partialInvoiceCount>0){
-      items.push(l(
-        `${partialInvoiceCount} fatura${partialInvoiceCount===1?' ainda pode':'s ainda podem'} mudar a projeção. O valor mostrado é um teto com os dados confirmados até agora.`,
-        `${partialInvoiceCount} statement${partialInvoiceCount===1?' may':'s may'} still change the forecast. The amount shown is an upper estimate based on confirmed data so far.`,
-        `${partialInvoiceCount} resumen${partialInvoiceCount===1?' todavía puede':'es todavía pueden'} cambiar la previsión. El valor mostrado es un máximo estimado con los datos confirmados hasta ahora.`
-      ));
-    }
-    if(!items.length&&hasData){
-      items.push(l(
-        'Nada importante mudou nos dados conhecidos deste mês.',
-        'Nothing important changed in the known data for this month.',
-        'Nada importante cambió en los datos conocidos de este mes.'
-      ));
-    }
-    return items.slice(0,3);
-  },[viewAccounts.length,snapshot.futureCommitmentsMinor,snapshot.projectedRemainderMinor,spendingComparison,partialInvoiceCount,hasData,formatMoney,locale]);
+  const monthNarrative=useMemo(()=>deriveHomeMonthNarrative({
+    accountCount:viewAccounts.length,
+    futureCommitmentsMinor:snapshot.futureCommitmentsMinor,
+    projectedRemainderMinor:snapshot.projectedRemainderMinor,
+    spendingComparison,
+    partialInvoiceCount,
+    hasData,
+    locale,
+    formatMoney
+  }),[viewAccounts.length,snapshot.futureCommitmentsMinor,snapshot.projectedRemainderMinor,spendingComparison,partialInvoiceCount,hasData,formatMoney,locale]);
+
   const attentionItems=useMemo(()=>deriveHomeAttentionItems({
     commitments:viewCommitments,
     installmentPlans:viewInstallmentPlans,
