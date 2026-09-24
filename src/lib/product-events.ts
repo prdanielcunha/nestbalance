@@ -1,6 +1,7 @@
 'use client';
 
 export type ProductEventName=
+  | 'first_value_observed'
   | 'capture_opened'
   | 'capture_review_ready'
   | 'capture_committed'
