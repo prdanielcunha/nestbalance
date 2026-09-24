@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo } from 'react';
 import { useI18n } from '@/src/i18n/locale-provider';
 import type { HomeRow } from '@/src/lib/repositories/home';
@@ -77,8 +78,8 @@ export function HomeFirstUseGuide(){
       )}</p>
     </div>
     <div className="first-use-actions">
-      <a className="primary-button" href="/add">{l('Enviar print, áudio ou texto','Send screenshot, audio, or text','Enviar captura, audio o texto')}</a>
-      <a className="ghost-button" href="/accounts">{l('Organizar contas e cartões','Organize accounts and cards','Organizar cuentas y tarjetas')}</a>
+      <Link className="primary-button" href="/add">{l('Enviar print, áudio ou texto','Send screenshot, audio, or text','Enviar captura, audio o texto')}</Link>
+      <Link className="ghost-button" href="/accounts">{l('Organizar contas e cartões','Organize accounts and cards','Organizar cuentas y tarjetas')}</Link>
     </div>
     <small>{l(
       'Não precisa configurar tudo hoje. O NestBalance melhora conforme você usa.',
