@@ -49,6 +49,50 @@ async function post(path,token,body={},expectedStatus){
   return {status:response.status,json};
 }
 
+async function openRevisionStream(token,householdId){
+  const controller=new AbortController();
+  const response=await fetch(apiBase+'/api/household/revision/stream',{
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      accept:'text/event-stream',
+      authorization:`Bearer ${token}`
+    },
+    body:JSON.stringify({householdId}),
+    signal:controller.signal
+  });
+  assert.equal(response.ok,true,'revision stream must authenticate');
+  assert.ok(response.body,'revision stream body is required');
+  const reader=response.body.getReader();
+  const decoder=new TextDecoder();
+  let buffer='';
+
+  async function next(timeoutMs=2500){
+    const read=async()=>{
+      while(true){
+        let boundary=buffer.indexOf('\n\n');
+        while(boundary>=0){
+          const chunk=buffer.slice(0,boundary);
+          buffer=buffer.slice(boundary+2);
+          boundary=buffer.indexOf('\n\n');
+          const line=chunk.split('\n').find(item=>item.startsWith('data: '));
+          if(!line) continue;
+          return JSON.parse(line.slice(6));
+        }
+        const {done,value}=await reader.read();
+        if(done) throw new Error('REVISION_STREAM_ENDED');
+        buffer+=decoder.decode(value,{stream:true});
+      }
+    };
+    return Promise.race([
+      read(),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('REVISION_STREAM_TIMEOUT')),timeoutMs))
+    ]);
+  }
+
+  return {next,close:()=>controller.abort()};
+}
+
 test('authenticated API flow: first login, couple invite, daily finance and personal privacy',async()=>{
   assert.ok(process.env.FIREBASE_AUTH_EMULATOR_HOST,'Auth emulator must be running');
   assert.ok(process.env.FIRESTORE_EMULATOR_HOST,'Firestore emulator must be running');
@@ -180,6 +224,25 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     assert.equal(partnerHome.json.transactions.some(item=>item.id===householdExpense.json.id),true);
     assert.equal(partnerHome.json.transactions.some(item=>item.id===privateExpense.json.id),false);
 
+    const sharedAccount=ownerHome.json.accounts.find(item=>item.id===account.json.id);
+    assert.ok(Number.isSafeInteger(sharedAccount?.updatedAtMs)&&sharedAccount.updatedAtMs>0);
+    const partnerStream=await openRevisionStream(partner.token,householdId);
+    const initialRevision=await partnerStream.next();
+    assert.equal(typeof initialRevision.revision,'string');
+
+    const syncStartedAt=Date.now();
+    const ownerBalanceUpdate=await post('/api/accounts/update-balance',owner.token,{
+      householdId,
+      accountId:account.json.id,
+      balanceMinor:260000,
+      expectedUpdatedAtMs:sharedAccount.updatedAtMs
+    });
+    assert.equal(ownerBalanceUpdate.json.balanceMinor,260000);
+    const remoteRevision=await partnerStream.next();
+    assert.equal(remoteRevision.domains.includes('accounts'),true);
+    assert.ok(Date.now()-syncStartedAt<2000,'cross-device invalidation must arrive in under 2 seconds in the emulator gate');
+    partnerStream.close();
+
     const memberCannotManageFinance=await post('/api/accounts/create',partner.token,{
       householdId,
       name:'Conta indevida',
@@ -207,6 +270,30 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
       scope:'household'
     });
     assert.equal(managerAccount.status,201);
+
+    const managerHomeBeforeConflict=await post('/api/home',manager.token,{householdId});
+    const managerSeenAccount=managerHomeBeforeConflict.json.accounts.find(item=>item.id===account.json.id);
+    assert.equal(managerSeenAccount?.balanceMinor,260000);
+    assert.ok(Number.isSafeInteger(managerSeenAccount?.updatedAtMs)&&managerSeenAccount.updatedAtMs>0);
+
+    const ownerHomeBeforeConflict=await post('/api/home',owner.token,{householdId});
+    const ownerSeenAccount=ownerHomeBeforeConflict.json.accounts.find(item=>item.id===account.json.id);
+    await post('/api/accounts/update-balance',owner.token,{
+      householdId,
+      accountId:account.json.id,
+      balanceMinor:270000,
+      expectedUpdatedAtMs:ownerSeenAccount.updatedAtMs
+    });
+
+    const staleManagerUpdate=await post('/api/accounts/update-balance',manager.token,{
+      householdId,
+      accountId:account.json.id,
+      balanceMinor:280000,
+      expectedUpdatedAtMs:managerSeenAccount.updatedAtMs
+    },409);
+    assert.equal(staleManagerUpdate.json.error,'ACCOUNT_BALANCE_CONFLICT');
+    assert.equal(staleManagerUpdate.json.currentBalanceMinor,270000);
+    assert.ok(staleManagerUpdate.json.currentUpdatedAtMs>managerSeenAccount.updatedAtMs);
     const managerCannotInvite=await post('/api/household/invite',manager.token,{
       householdId,
       role:'read_only',
