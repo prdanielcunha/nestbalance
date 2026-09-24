@@ -2,10 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getVaultDetail, getVaultPreview, listVault, searchVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
-import { AppNav } from '@/src/features/navigation/app-nav';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { AppShell } from '@/src/features/navigation/app-shell';
 import { useI18n } from '@/src/i18n/locale-provider';
 
 export function VaultScreen({householdId,role}:{householdId:string;role:HouseholdRole}) {
@@ -136,11 +135,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
     return {values,dates,installments,ai,aiAmount,transcript:detail?.understood?.transcriptPreview||null};
   },[detail]);
 
-  return <main className="app-shell vault-shell">
-    <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{l('Documentos','Documents','Documentos')}</span></div>
-      <HouseholdLink/>
-    </header>
+  return <AppShell className="vault-shell" subtitle={l('Documentos','Documents','Documentos')} canContribute={canContribute}>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="vault-hero">
@@ -206,7 +201,6 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
       </button>)}
     </section>}
 
-    <AppNav canContribute={canContribute}/>
 
     {selected && <div className="sheet-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)closeDetail();}}>
       <section className="capture-sheet vault-detail" role="dialog" aria-modal="true" aria-label={selected.originalName}>
@@ -248,5 +242,5 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
         <div className="sheet-actions"><button className="ghost-button" disabled={previewLoading} onClick={closeDetail}>{l('Fechar','Close','Cerrar')}</button></div>
       </section>
     </div>}
-  </main>;
+  </AppShell>;
 }
