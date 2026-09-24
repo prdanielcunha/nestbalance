@@ -18,6 +18,8 @@ import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/
 import { dismissAttention } from '@/src/lib/repositories/attention';
 import { isDismissibleAttentionKind } from '@/src/core/attention';
 import { reportProductEvent } from '@/src/lib/product-events';
+import { DEFAULT_HOME_PREFERENCES, type HomePreferences } from '@/src/core/home-preferences';
+import { saveHomePreferences } from '@/src/lib/repositories/home-preferences';
 
 
 export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { householdId: string; role: HouseholdRole; firstValueStartedAtMs?:number }) {
@@ -44,6 +46,9 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
   const [attentionError,setAttentionError]=useState('');
   const [refreshedAt,setRefreshedAt]=useState<string|null>(null);
   const [hideValues,setHideValues]=useState(false);
+  const [homePreferences,setHomePreferences]=useState<HomePreferences>(DEFAULT_HOME_PREFERENCES);
+  const [homePreferencesSaving,setHomePreferencesSaving]=useState(false);
+  const [homePreferencesError,setHomePreferencesError]=useState('');
   const firstValueReportedRef=useRef(false);
 
   async function refreshHome(silent=false){
@@ -57,6 +62,7 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       setInstallmentPlans(data.installmentPlans||[]);
       setInvoiceImports(data.invoiceImports||[]);
       setProactivity(data.proactivityPreferences||DEFAULT_PROACTIVITY_PREFERENCES);
+      setHomePreferences(data.homePreferences||DEFAULT_HOME_PREFERENCES);
       setDismissedAttentionKeys(data.dismissedAttentionKeys||[]);
       setRefreshedAt(data.refreshedAt||new Date().toISOString());
       setHomeError('');
@@ -306,6 +312,22 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     return items.filter(item=>!dismissedAttentionKeys.includes(item.key)).slice(0,3);
   },[viewCommitments,viewInstallmentPlans,anomalies,spendingComparison,proactivity,locale,formatMoney,currentMonthKey,dismissedAttentionKeys]);
 
+  async function changeHomePreferences(next:HomePreferences){
+    if(homePreferencesSaving) return;
+    const previous=homePreferences;
+    setHomePreferences(next);
+    setHomePreferencesSaving(true);
+    setHomePreferencesError('');
+    try{
+      const saved=await saveHomePreferences(householdId,next);
+      setHomePreferences(saved.preferences);
+    }catch{
+      setHomePreferences(previous);
+      setHomePreferencesError(l('Não conseguimos salvar esta preferência agora.','We could not save this preference right now.','No pudimos guardar esta preferencia ahora.'));
+    }finally{
+      setHomePreferencesSaving(false);
+    }
+  }
   async function snoozeAttention(item:{key:string;code:string;snoozeDays:number}){
     if(!isDismissibleAttentionKind(item.code)||attentionWorking) return;
     setAttentionWorking(item.key);
@@ -414,6 +436,30 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       {homeCoverage==='partial'&&<p className="home-uncertainty-note">{partialInvoiceCount>0
         ? l('Faixa de incerteza: o valor “deve sobrar” pode diminuir quando as faturas em revisão forem concluídas. Não inventamos um limite inferior sem dados.','Uncertainty: “projected left” may decrease when statements under review are completed. We do not invent a lower bound without data.','Incertidumbre: “debería quedar” puede disminuir cuando terminen los resúmenes en revisión. No inventamos un límite inferior sin datos.')
         : l('A projeção ainda é parcial porque faltam movimentos ou compromissos conhecidos neste mês.','The forecast is still partial because known movements or commitments are missing this month.','La previsión todavía es parcial porque faltan movimientos o compromisos conocidos este mes.')}</p>}
+      <details className="home-personalization">
+        <summary>{l('Ajustar minha visão','Adjust my view','Ajustar mi vista')}</summary>
+        <div className="home-personalization-grid">
+          <label>
+            <span>{l('Como você usa este Lar?','How do you use this Household?','¿Cómo usas este Hogar?')}</span>
+            <select disabled={homePreferencesSaving} value={homePreferences.mode} onChange={event=>void changeHomePreferences({...homePreferences,mode:event.target.value as HomePreferences['mode']})}>
+              <option value="person">{l('Individual','Individual','Individual')}</option>
+              <option value="couple">{l('Casal','Couple','Pareja')}</option>
+              <option value="family">{l('Família','Family','Familia')}</option>
+            </select>
+          </label>
+          <label>
+            <span>{l('Renda costuma chegar','Income usually arrives','Los ingresos suelen llegar')}</span>
+            <select disabled={homePreferencesSaving} value={homePreferences.incomeFrequency} onChange={event=>void changeHomePreferences({...homePreferences,incomeFrequency:event.target.value as HomePreferences['incomeFrequency']})}>
+              <option value="monthly">{l('Uma vez por mês','Once a month','Una vez al mes')}</option>
+              <option value="biweekly">{l('A cada 15 dias','Every two weeks','Cada 15 días')}</option>
+              <option value="weekly">{l('Toda semana','Every week','Cada semana')}</option>
+              <option value="variable">{l('Varia','Varies','Varía')}</option>
+            </select>
+          </label>
+        </div>
+        <small>{l('Isso ajusta linguagem e prioridades; não altera nenhum cálculo ou registro financeiro.','This adjusts language and priorities; it does not change any financial calculation or record.','Esto ajusta el lenguaje y las prioridades; no cambia ningún cálculo ni registro financiero.')}</small>
+        {homePreferencesError&&<p className="error-copy" role="alert">{homePreferencesError}</p>}
+      </details>
     </section>}
     {attentionItems.length>0&&<section className="attention-section" aria-labelledby="attention-title">
       <div className="section-title">
