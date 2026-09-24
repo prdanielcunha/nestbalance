@@ -5,6 +5,7 @@ export type ProductEventName=
   | 'capture_opened'
   | 'capture_review_ready'
   | 'capture_committed'
+  | 'capture_queued'
   | 'capture_abandoned';
 
 export type CaptureSourceKind='text'|'image'|'pdf'|'csv'|'audio'|'other';
