@@ -15,7 +15,8 @@ import {
   syncSavingsPotAutomations,
   updateSavingsPotAutomation,
   uploadSavingsPotCover,
-  upsertSavingsPot
+  upsertSavingsPot,
+  type SavingsPotActivity
 } from '@/src/lib/repositories/savings-pots';
 import { inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
 import { AppShell } from '@/src/features/navigation/app-shell';
