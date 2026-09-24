@@ -9,7 +9,7 @@ This ledger intentionally follows the roadmap in order. A later phase may be res
 | Phase | Status | Exit gate |
 | --- | --- | --- |
 | 0 — Baseline e pesquisa real | IN PROGRESS | Baseline + 13 moderated participants + top 5 frictions + privacy-safe telemetry |
-| 1 — Fundação premium única | BLOCKED BY PHASE 0 EXIT | Unified AppShell + typography/tokens/states + full visual/accessibility gate |
+| 1 — Fundação premium única | PREPARATORY IMPLEMENTATION; CANNOT CLOSE BEFORE PHASE 0 | Unified AppShell + typography/tokens/states + full visual/accessibility gate |
 | 2 — Sync em tempo real e resiliência | NOT STARTED | p95 < 2s + two-session concurrency + offline/reconnect safety |
 | 3 — Home orientada a decisões | NOT STARTED | 90% comprehension + priority action <= 10s + unknown != zero |
 | 4 — Captura sem atrito | NOT STARTED | 80% one-tap common items + p50 < 8s + exception-only review |
@@ -17,6 +17,16 @@ This ledger intentionally follows the roadmap in order. A later phase may be res
 | 6 — Casal e família | NOT STARTED | privacy proof + shared-state consistency + role onboarding |
 | 7 — Performance/arquitetura/observabilidade | NOT STARTED | LCP/INP/CLS/API/bundle SLOs |
 | 8 — Integrações e expansão | NOT STARTED | certified consent/revoke/reconciliation + commercial safeguards |
+
+## Phase 1 preparatory work already landed on this branch
+
+This work is deliberately not treated as Phase 1 completion while Phase 0 evidence remains open.
+
+- Shared `AppShell` now owns the primary header/navigation contract.
+- Home, Movements, Accounts, Savings Pots, Assistant, Documents, Household and Privacy use the same shell component.
+- Desktop (>= 840 px) uses the same inline primary navigation contract; mobile retains the bottom navigation.
+- Playwright enforces one `.app-shell-nav` per primary route and verifies fixed-mobile vs inline-desktop behavior.
+- The remaining Phase 1 work is typography floor, token/CSS decomposition, global states, full light/dark visual matrix and consistency scoring.
 
 ## Phase 0 — engineering baseline
 
