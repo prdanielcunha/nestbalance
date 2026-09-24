@@ -16,3 +16,9 @@ test('preference filter respects subject and minimum urgency',()=>{
   assert.equal(acceptsInsightPreference(prefs,{type:'spending_change',urgency:'normal'}),false);
   assert.equal(acceptsInsightPreference({...prefs,minimumUrgency:'low'},{type:'subscription',urgency:'low'}),false);
 });
+
+test('in-app channel can mute the explainable radar without changing topic choices',()=>{
+  const prefs={...DEFAULT_INTELLIGENCE_PREFERENCES,channels:{...DEFAULT_INTELLIGENCE_PREFERENCES.channels,inApp:false}};
+  assert.equal(acceptsInsightPreference(prefs,{type:'due_bill',urgency:'critical'}),false);
+  assert.equal(prefs.dueBills,true);
+});

@@ -48,6 +48,7 @@ export function acceptsInsightPreference(
   preferences:IntelligencePreferences,
   input:{type:string;urgency:'critical'|'high'|'normal'|'low'}
 ){
+  if(!preferences.channels.inApp) return false;
   if(rank[input.urgency]>rank[preferences.minimumUrgency]) return false;
   if(input.type==='possible_duplicate'&&!preferences.duplicates) return false;
   if(input.type==='amount_increase'&&!preferences.amountIncreases) return false;

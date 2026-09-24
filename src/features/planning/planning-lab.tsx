@@ -24,11 +24,11 @@ import {
   deletePlanningScenario,
   loadMonthlyClose,
   loadPlanningScenarios,
-  saveIntelligencePreferences,
   savePlanningScenario,
   type SavedPlanningScenario
 } from '@/src/lib/repositories/planning';
 import { useI18n } from '@/src/i18n/locale-provider';
+import { IntelligencePreferencesPanel } from '@/src/features/planning/intelligence-preferences-panel';
 
 type ScenarioKind=SavedPlanningScenario['kind'];
 
@@ -54,7 +54,6 @@ export function PlanningLab({householdId,role}:{householdId:string;role:Househol
   const [scenarioScope,setScenarioScope]=useState<'household'|'personal'>('household');
   const [scenarioSaving,setScenarioSaving]=useState(false);
   const [prefs,setPrefs]=useState<IntelligencePreferences>(DEFAULT_INTELLIGENCE_PREFERENCES);
-  const [prefsSaving,setPrefsSaving]=useState(false);
   const [closing,setClosing]=useState(false);
 
   const periodKey=useMemo(()=>{
@@ -183,23 +182,6 @@ export function PlanningLab({householdId,role}:{householdId:string;role:Househol
     return value?l(...value):item.premise;
   }
 
-  async function toggleSubject(key:keyof Pick<IntelligencePreferences,'duplicates'|'amountIncreases'|'spendingChanges'|'subscriptions'|'dueBills'|'potSuggestions'>){
-    if(prefsSaving) return;
-    const previous=prefs;
-    const next={...prefs,[key]:!prefs[key]};
-    setPrefs(next);
-    setPrefsSaving(true);
-    try{
-      const result=await saveIntelligencePreferences(householdId,next);
-      setPrefs(result.preferences);
-    }catch{
-      setPrefs(previous);
-      setError(l('Não conseguimos salvar essa preferência.','We could not save that preference.','No pudimos guardar esa preferencia.'));
-    }finally{
-      setPrefsSaving(false);
-    }
-  }
-
   async function saveScenario(){
     const amountMinor=parseMoneyInputToMinor(scenarioAmount,locale);
     if(amountMinor===null||amountMinor<0||scenarioName.trim().length<2) return;
@@ -319,26 +301,12 @@ export function PlanningLab({householdId,role}:{householdId:string;role:Househol
           : <button className="primary-button" disabled={!canManage||!canClose||closing} onClick={()=>void closeMonth()}>{closing?l('Fechando…','Closing…','Cerrando…'):canClose?l('Concluir fechamento','Complete close','Completar cierre'):l('Resolva as exceções acima','Resolve exceptions above','Resuelve las excepciones arriba')}</button>}
       </section>
 
-      <section className="planning-panel preference-panel">
-        <div className="section-title"><div><h3>{l('Preferências de inteligência','Intelligence preferences','Preferencias de inteligencia')}</h3><span>{l('assunto, urgência e canal','topic, urgency and channel','tema, urgencia y canal')}</span></div></div>
-        <div className="intelligence-options">
-          {([
-            ['duplicates',l('Duplicidades','Duplicates','Duplicados')],
-            ['amountIncreases',l('Reajustes e aumentos','Increases','Aumentos')],
-            ['spendingChanges',l('Mudanças no mês','Monthly changes','Cambios del mes')],
-            ['subscriptions',l('Assinaturas','Subscriptions','Suscripciones')],
-            ['dueBills',l('Vencimentos','Due dates','Vencimientos')],
-            ['potSuggestions',l('Sugestões de Cofrinho','Savings-pot suggestions','Sugerencias de alcancía')]
-          ] as Array<[keyof Pick<IntelligencePreferences,'duplicates'|'amountIncreases'|'spendingChanges'|'subscriptions'|'dueBills'|'potSuggestions'>,string]>).map(([key,label])=><button type="button" key={key} aria-pressed={prefs[key]} disabled={prefsSaving} className={prefs[key]?'active':''} onClick={()=>void toggleSubject(key)}><span>{label}</span><b>{prefs[key]?l('Ativo','On','Activo'):l('Silenciado','Muted','Silenciado')}</b></button>)}
-        </div>
-        <label className="preference-select"><span>{l('Mostrar a partir de','Show starting at','Mostrar desde')}</span><select value={prefs.minimumUrgency} disabled={prefsSaving} onChange={async e=>{
-          const previous=prefs;
-          const next={...prefs,minimumUrgency:e.target.value as IntelligencePreferences['minimumUrgency']};
-          setPrefs(next);setPrefsSaving(true);
-          try{const result=await saveIntelligencePreferences(householdId,next);setPrefs(result.preferences);}catch{setPrefs(previous);}finally{setPrefsSaving(false);}
-        }}><option value="critical">{l('Só crítico','Critical only','Solo crítico')}</option><option value="high">{l('Alta prioridade','High priority','Alta prioridad')}</option><option value="normal">{l('Normal','Normal','Normal')}</option><option value="low">{l('Tudo, inclusive baixa prioridade','Everything, including low priority','Todo, incluso baja prioridad')}</option></select></label>
-        <p className="planning-disclaimer">{l('Canal no app está ativo. Notificações do aparelho só serão usadas quando o produto ativar esse canal; a preferência fica preparada sem enviar nada hoje.','In-app is active. Device notifications will only be used once that channel is enabled; the preference can be prepared without sending anything today.','El canal dentro de la app está activo. Las notificaciones del dispositivo solo se usarán cuando se habilite ese canal; la preferencia queda preparada sin enviar nada hoy.')}</p>
-      </section>
+      <IntelligencePreferencesPanel
+        householdId={householdId}
+        preferences={prefs}
+        onChange={setPrefs}
+        onError={setError}
+      />
     </div>
   </section>;
 }
