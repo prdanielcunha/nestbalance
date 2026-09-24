@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getVaultDetail, getVaultPreview, listVault, searchVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
-import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
@@ -205,8 +204,6 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
         <span className="vault-row-date">{item.createdAtMs ? formatDate(new Date(item.createdAtMs),{day:'2-digit',month:'short'}) : ''}</span>
       </button>)}
     </section>}
-
-    <AppNav canContribute={canContribute}/>
 
     {selected && <div className="sheet-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)closeDetail();}}>
       <section className="capture-sheet vault-detail" role="dialog" aria-modal="true" aria-label={selected.originalName}>
