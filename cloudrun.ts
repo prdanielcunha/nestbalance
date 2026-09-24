@@ -28,7 +28,7 @@ import { getHouseholdRevision, streamHouseholdRevision } from './server/revision
 import { updateHomePreferences } from './server/home-preferences.js';
 import { listPlanningScenarios, savePlanningScenario, deletePlanningScenario, getMonthlyClose, completeMonthlyClose, updateIntelligencePreferences } from './server/planning.js';
 import { loadCollaboration, createSharedTask, updateSharedTask, listComments, createComment, createExpenseSplit, settleExpenseSplit, getWeeklyRitual, saveWeeklyRitual } from './server/collaboration.js';
-import { recordProductEvent, recordWebVital } from './server/product-metrics.js';
+import { recordProductEvent, recordWebVital, recordClientCrash } from './server/product-metrics.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -49,6 +49,7 @@ app.post('/api/savings-pots/cover/upload', express.raw({ type: ['image/jpeg','im
 app.use(express.json({ limit: '128kb' }));
 app.post('/api/metrics/web-vital', rateLimit({windowMs:60_000,max:30,namespace:'web-vitals'}), recordWebVital);
 app.post('/api/metrics/product-event', rateLimit({windowMs:60_000,max:60,namespace:'product-events'}), recordProductEvent);
+app.post('/api/metrics/client-crash', rateLimit({windowMs:60_000,max:20,namespace:'client-crash'}), recordClientCrash);
 app.post('/api/session/bootstrap', bootstrapSession);
 app.post('/api/session/select-household', selectHousehold);
 app.post('/api/household/settings', getHouseholdSettings);
