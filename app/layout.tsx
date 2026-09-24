@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import './tokens.css';
+import './primitives.css';
+import './patterns.css';
 import './globals.css';
 import './foundation.css';
 import './home-premium.css';
