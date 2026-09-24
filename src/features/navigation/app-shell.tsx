@@ -5,6 +5,7 @@ import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { subscribeSyncStatus, type SyncStatus } from '@/src/features/realtime/sync-status-store';
+import { GlobalSearch } from '@/src/features/search/global-search';
 
 type HouseholdLinkMode='default'|'detailed'|'none';
 
@@ -55,6 +56,7 @@ export function AppShell({
         <span className="topbar-subtitle">{subtitle}</span>
       </div>
       <div className="topbar-actions app-shell-actions">
+        <GlobalSearch/>
         <SyncStatusChip/>
         {headerActions}
         {householdLink!=='none'&&<HouseholdLink detailed={householdLink==='detailed'}/>}
