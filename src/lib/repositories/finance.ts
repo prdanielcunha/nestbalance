@@ -5,6 +5,7 @@ import { ingestEvidence, type UploadProgress } from './evidence';
 import type { FinancialScope } from '@/src/core/privacy';
 import { enqueueCaptureMutation } from '@/src/lib/offline-mutation-queue';
 import { publishSyncStatus } from '@/src/features/realtime/sync-status-store';
+import { reviewedInterpretationPayload } from '@/src/core/capture-review';
 
 function localIsoDate() {
   const d = new Date();
@@ -14,7 +15,7 @@ function localIsoDate() {
 
 export type CommitResult = { status: 'created' | 'duplicate' | 'queued'; id: string; evidenceId?: string | null };
 
-async function commitOnServer(householdId: string, sourceText: string, observedOn: string, evidenceId?: string | null, scope:FinancialScope='household'): Promise<CommitResult> {
+async function commitOnServer(householdId: string, sourceText: string, observedOn: string, evidenceId?: string | null, scope:FinancialScope='household', reviewed?:ReturnType<typeof reviewedInterpretationPayload>): Promise<CommitResult> {
   const queueIfSafe=async()=>{
     if(evidenceId) throw new Error('CAPTURE_COMMIT_FAILED');
     const queued=await enqueueCaptureMutation({householdId,sourceText,observedOn,scope});
@@ -29,7 +30,7 @@ async function commitOnServer(householdId: string, sourceText: string, observedO
     const response = await fetch('/api/capture/commit', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify({ householdId, sourceText, evidenceId: evidenceId || null, observedOn, scope }),
+      body: JSON.stringify({ householdId, sourceText, evidenceId: evidenceId || null, observedOn, scope, reviewed }),
       cache:'no-store'
     });
     const json = await response.json().catch(() => ({}));
@@ -59,5 +60,5 @@ export async function commitInterpretation(args: {
     const evidence = await ingestEvidence(householdId, file, onUploadProgress, scope);
     evidenceId = evidence.canonicalEvidenceId;
   }
-  return commitOnServer(householdId, interpretation.sourceText, interpretation.occurredOn || localIsoDate(), evidenceId, scope);
+  return commitOnServer(householdId, interpretation.sourceText, interpretation.occurredOn || localIsoDate(), evidenceId, scope, reviewedInterpretationPayload(interpretation));
 }
