@@ -18,13 +18,14 @@ export function ToastViewport(){
   useEffect(()=>()=>{if(timerRef.current!==undefined) window.clearTimeout(timerRef.current);},[]);
 
   if(!toast) return null;
+  const action=toast.onAction;
 
   return <div className="toast-viewport" aria-live="polite" aria-atomic="true">
     <div className="app-toast" role="status">
       <span>{toast.message}</span>
-      {toast.actionLabel&&toast.onAction&&<button type="button" disabled={working} onClick={async()=>{
+      {toast.actionLabel&&action&&<button type="button" disabled={working} onClick={async()=>{
         setWorking(true);
-        try{await toast.onAction();setToast(null);}
+        try{await action();setToast(null);}
         finally{setWorking(false);}
       }}>{working?'…':toast.actionLabel}</button>}
       <button type="button" className="toast-close" aria-label="Fechar" onClick={()=>setToast(null)}>×</button>
