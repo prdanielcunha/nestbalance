@@ -21,7 +21,6 @@ import { DEFAULT_HOME_PREFERENCES, type HomePreferences } from '@/src/core/home-
 import { saveHomePreferences } from '@/src/lib/repositories/home-preferences';
 import { deriveHomeAttentionItems, deriveHomeMonthNarrative } from '@/src/features/home/home-attention';
 import { HomeFirstUseGuide, HomeFutureSection, HomeMonthSection, HomeTimelineSection } from '@/src/features/home/home-lower-sections';
-
 const AccountOnboarding=dynamic(
   ()=>import('@/src/features/onboarding/account-onboarding').then(module=>module.AccountOnboarding),
   {ssr:false}
@@ -30,8 +29,6 @@ const CreditCardManager=dynamic(
   ()=>import('@/src/features/cards/card-manager').then(module=>module.CreditCardManager),
   {ssr:false}
 );
-
-
 export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { householdId: string; role: HouseholdRole; firstValueStartedAtMs?:number }) {
   const {t,locale,intlLocale,formatMoney}=useI18n();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
@@ -59,7 +56,6 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
   const [homePreferencesSaving,setHomePreferencesSaving]=useState(false);
   const [homePreferencesError,setHomePreferencesError]=useState('');
   const firstValueReportedRef=useRef(false);
-
   async function refreshHome(silent=false){
     if(!silent) setLoadingHome(true);
     try{
@@ -81,9 +77,7 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       if(!silent) setLoadingHome(false);
     }
   }
-
   useHouseholdRevisionRefresh(householdId,()=>refreshHome(true),25_000,['home','movements','accounts','invoices','pots']);
-
   useEffect(() => {
     void refreshHome();
     const onFocus=()=>void refreshHome(true);
@@ -92,14 +86,12 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     document.addEventListener('visibilitychange',onVisibility);
     return ()=>{ window.removeEventListener('focus',onFocus); document.removeEventListener('visibilitychange',onVisibility); };
   }, [householdId, accountCreated, cardCreated]);
-
   const viewAccounts=useMemo(()=>accounts.filter(item=>inFinancialView(item.scope,view)),[accounts,view]);
   const viewCards=useMemo(()=>cards.filter(item=>inFinancialView(item.scope,view)),[cards,view]);
   const viewTransactions=useMemo(()=>transactions.filter(item=>inFinancialView(item.scope,view)),[transactions,view]);
   const viewCommitments=useMemo(()=>commitments.filter(item=>inFinancialView(item.scope,view)),[commitments,view]);
   const viewInstallmentPlans=useMemo(()=>installmentPlans.filter(item=>inFinancialView(item.scope,view)),[installmentPlans,view]);
   const viewInvoiceImports=useMemo(()=>invoiceImports.filter(item=>inFinancialView(item.scope,view)),[invoiceImports,view]);
-
   const currentMonthKey=useMemo(()=>{
     const now=new Date();
     return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -108,18 +100,15 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     ()=>viewTransactions.filter(item=>typeof item.observedOn==='string'&&item.observedOn.startsWith(currentMonthKey)),
     [viewTransactions,currentMonthKey]
   );
-
   const currentMonthCommitments=useMemo(
     ()=>viewCommitments.filter(item=>!item.paidThisMonth),
     [viewCommitments]
   );
-
   const cashView=useMemo(()=>deriveCashView({
     transactions:monthTransactions,
     commitments:currentMonthCommitments,
     invoices:viewInvoiceImports
   }),[monthTransactions,currentMonthCommitments,viewInvoiceImports]);
-
   const cashAccounts=useMemo(
     ()=>viewAccounts.filter(account=>account.connectedProductType!=='investment'),
     [viewAccounts]
@@ -136,7 +125,6 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     ()=>viewInvoiceImports.filter(invoice=>invoice.status==='partial'&&invoice.paymentStatus!=='paid').length,
     [viewInvoiceImports]
   );
-
   const snapshot = useMemo(() => {
     const availableMinor = cashAccounts
       .reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
@@ -148,17 +136,14 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       dueSoonMinor:cashView.futureCommitmentsMinor
     });
   }, [cashAccounts, cashView]);
-
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
   const hasFirstValue = hasData || viewAccounts.some(account=>account.balanceMinor!==null&&account.balanceMinor!==undefined);
-
   useEffect(()=>{
     if(!firstValueStartedAtMs||loadingHome||!hasFirstValue||firstValueReportedRef.current) return;
     firstValueReportedRef.current=true;
     reportProductEvent('first_value_observed',{durationMs:Date.now()-firstValueStartedAtMs});
   },[firstValueStartedAtMs,loadingHome,hasFirstValue]);
-
   const monthHasKnownData = monthTransactions.length + currentMonthCommitments.length + viewInvoiceImports.length > 0;
   const defaultCreateScope=view==='personal'?'personal':'household';
   const viewLabel=view==='household'?l('do Lar','in Household','del Hogar'):view==='personal'?l('Pessoal','Personal','Personal'):l('na sua visão completa','in your full view','en tu vista completa');
@@ -187,7 +172,6 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     locale,
     formatMoney
   }),[viewAccounts.length,snapshot.futureCommitmentsMinor,snapshot.projectedRemainderMinor,spendingComparison,partialInvoiceCount,hasData,formatMoney,locale]);
-
   const attentionItems=useMemo(()=>deriveHomeAttentionItems({
     commitments:viewCommitments,
     installmentPlans:viewInstallmentPlans,
@@ -199,7 +183,6 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     currentMonthKey,
     dismissedKeys:dismissedAttentionKeys
   }),[viewCommitments,viewInstallmentPlans,anomalies,spendingComparison,proactivity,locale,formatMoney,currentMonthKey,dismissedAttentionKeys]);
-
   async function changeHomePreferences(next:HomePreferences){
     if(homePreferencesSaving) return;
     const previous=homePreferences;
@@ -229,8 +212,6 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       setAttentionWorking('');
     }
   }
-
-
   return <AppShell
     className={`home-shell ${viewAccounts.length===0?'home-first-use':''} ${hideValues?'home-values-hidden':''}`.trim()}
     subtitle={t.brandTagline}
@@ -252,7 +233,6 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
             </div>}
       </div>
     </div>
-
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
     <div className={`home-hero-grid ${viewAccounts.length===0?'is-empty':'has-balance'}`}>
     <section className="hero-balance home-balance-card">
@@ -304,7 +284,6 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
     </section>
     {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
     </div>
-
     {viewAccounts.length>0&&<section className="home-30s" aria-labelledby="home-30s-title">
       <div className="section-title">
         <div>
@@ -376,11 +355,8 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       </div>
       {attentionError&&<p className="error-copy attention-error" role="alert">{attentionError}</p>}
     </section>}
-
     {viewAccounts.length>0&&!hasData&&canContribute&&<HomeFirstUseGuide/>}
-
     <MonthlyPayments householdId={householdId} commitments={viewCommitments} canContribute={canContribute} onChanged={()=>void refreshHome(true)} />
-
     <HomeMonthSection
       known={monthHasKnownData}
       incomeMinor={monthTransactions.filter(item=>item.direction==='income').reduce((sum,item)=>sum+item.amountMinor,0)}
@@ -389,7 +365,6 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       projectedRemainderMinor={snapshot.projectedRemainderMinor}
       hasAccounts={viewAccounts.length>0}
     />
-
     <CreditCardManager
       householdId={householdId}
       cards={viewCards}
@@ -399,14 +374,11 @@ export function HomeScreen({ householdId, role, firstValueStartedAtMs }: { house
       canManage={canManage}
       onCreated={()=>{setCardCreated(v=>v+1);void refreshHome(true);}}
     />
-
     {hasData&&<HomeFutureSection
       months={futureMonths}
       expandedKey={expandedFuture}
       onToggle={key=>setExpandedFuture(value=>value===key?null:key)}
     />}
     {hasData&&<HomeTimelineSection transactions={viewTransactions}/>}
-
-
   </AppShell>;
 }
