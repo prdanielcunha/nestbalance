@@ -10,6 +10,7 @@ import { ThemeRuntime } from '@/src/features/theme/theme-runtime';
 import { ProductMetricsRuntime } from '@/src/features/telemetry/product-metrics-runtime';
 import { OfflineMutationRuntime } from '@/src/features/offline/offline-mutation-runtime';
 import { ToastViewport } from '@/src/features/feedback/toast-viewport';
+import { CrashTelemetryRuntime } from '@/src/features/telemetry/crash-telemetry-runtime';
 
 const inter=Inter({
   subsets:['latin'],
@@ -41,6 +42,6 @@ const themeBootScript=`(()=>{try{const saved=localStorage.getItem('nestbalance-t
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
   return <html lang="pt-BR" data-theme="dark" className={inter.variable} suppressHydrationWarning>
     <head><script dangerouslySetInnerHTML={{__html:themeBootScript}}/></head>
-    <body><PwaRuntime/><ThemeRuntime/><ProductMetricsRuntime/><OfflineMutationRuntime/>{children}<ToastViewport/></body>
+    <body><PwaRuntime/><ThemeRuntime/><ProductMetricsRuntime/><CrashTelemetryRuntime/><OfflineMutationRuntime/>{children}<ToastViewport/></body>
   </html>;
 }
