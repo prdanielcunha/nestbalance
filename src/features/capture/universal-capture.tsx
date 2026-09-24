@@ -739,7 +739,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   }
 
   function chooseAmount(amountMinor: number) {
-    reportCaptureCorrection('amount');
+    reportCaptureCorrection('value_field');
     if(pendingAi){
       prepareAiReview(pendingAi.extraction,amountMinor);
       return;
@@ -1333,7 +1333,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   <input
                     value={interpretation.description}
                     maxLength={160}
-                    onBlur={()=>reportCaptureCorrection('description')}
+                    onBlur={()=>reportCaptureCorrection('label_field')}
                     onChange={event=>editInterpretation(index,current=>({
                       ...current,
                       description:event.target.value,
@@ -1351,7 +1351,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                     onBlur={event=>{
                       const amountMinor=readEditedMoney(event.currentTarget.value);
                       if(amountMinor===null) return;
-                      reportCaptureCorrection('amount');
+                      reportCaptureCorrection('value_field');
                       editInterpretation(index,current=>({
                         ...current,
                         money:{...current.money,amountMinor},
