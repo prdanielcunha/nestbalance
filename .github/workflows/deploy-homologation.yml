@@ -101,7 +101,8 @@ jobs:
             -p 18083:8080 "$NESTBALANCE_API_IMAGE"
           trap 'docker stop nestbalance-api-smoke >/dev/null 2>&1 || true' EXIT
           for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:18083/healthz | grep -q '"ok":true'; then
+            if curl --fail --silent --output /tmp/local-homol-health.json http://127.0.0.1:18083/healthz \
+              && jq -e '.ok == true' /tmp/local-homol-health.json >/dev/null; then
               echo "NESTBALANCE_CONTAINER_SMOKE_OK"
               exit 0
             fi
@@ -197,19 +198,21 @@ jobs:
 
           curl --fail --silent --show-error --location \
             --retry 12 --retry-delay 3 --retry-all-errors \
-            "$HOSTING_URL/api/healthz" | tee /tmp/homolog-health.json | grep -q '"ok":true'
-          grep -q '"environment":"homologation"' /tmp/homolog-health.json
-          grep -q '"release":"'${GITHUB_SHA}'"' /tmp/homolog-health.json
+            --output /tmp/homolog-health.json "$HOSTING_URL/api/healthz"
+          jq -e --arg sha "$GITHUB_SHA" '.ok == true and .environment == "homologation" and .release == $sha' /tmp/homolog-health.json >/dev/null
 
           curl --fail --silent --show-error --location \
             --retry 12 --retry-delay 3 --retry-all-errors \
-            "$HOSTING_URL/" | grep -q 'NestBalance'
+            --output /tmp/homol-index.html "$HOSTING_URL/"
+          grep -q 'NestBalance' /tmp/homol-index.html
 
           curl --fail --silent --show-error --location \
             --retry 12 --retry-delay 3 --retry-all-errors \
-            "$HOSTING_URL/sw.js" | grep -Fq "url.pathname.startsWith('/api/')"
-          curl --fail --silent --show-error --head "$HOSTING_URL/sw.js" \
-            | tr -d '\r' | grep -Eqi '^cache-control:.*no-store'
+            --output /tmp/homol-sw.js "$HOSTING_URL/sw.js"
+          grep -Fq "url.pathname.startsWith('/api/')" /tmp/homol-sw.js
+
+          curl --fail --silent --show-error --head --output /tmp/homol-sw-headers.txt "$HOSTING_URL/sw.js"
+          tr -d '\r' </tmp/homol-sw-headers.txt | grep -Eqi '^cache-control:.*no-store'
 
           DIRECT_API_STATUS="$(curl --silent --show-error --location -o /tmp/nestbalance-direct-health.json -w '%{http_code}' "$API_URL/healthz" || true)"
           echo "NESTBALANCE_DIRECT_API_STATUS=$DIRECT_API_STATUS"
