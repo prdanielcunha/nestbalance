@@ -1,5 +1,9 @@
 # NestBalance 1.3 Premium Experience
 
+## 1.3.1 certification patch
+
+Version 1.3.1 keeps the 1.3 product experience unchanged and hardens release ordering: the official Firebase Hosting publish now waits for the matching production API deployment to pass before pinning the Cloud Run rewrite. Stable GitHub Release notes are selected from the matching major/minor release document.
+
 Source of truth: NestBalance Product Blueprint v1.2 plus NestBalance Brand Kit Premium v1.0.
 
 ## Release identity
