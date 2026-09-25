@@ -620,3 +620,31 @@ html[data-theme="dark"] .home-hero-grid .first-money-card {
   background-image: none !important;
   box-shadow: var(--nb-shadow-sm);
 }
+
+
+/* Narrow screens: context explanations wrap inside their own segment instead of widening the page. */
+.scope-view-switch,
+.scope-view-switch button {
+  min-width: 0;
+  max-width: 100%;
+}
+.scope-view-switch button span {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Legacy opacity modifiers reduced effective contrast after the brand palette swap. */
+.section-kicker,
+.movement-category-source {
+  opacity: 1 !important;
+}
+
+/* Keep onboarding guidance solid and calm too. */
+.first-use-guide {
+  background: var(--surface) !important;
+  background-image: none !important;
+}
