@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
@@ -9,7 +8,7 @@ import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { loadHomeData, type HomeAccount, type HomeCardSnapshot, type HomeCreditCard, type HomeInvoiceImport } from '@/src/lib/repositories/home';
-import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 
@@ -29,7 +28,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
   const [balanceInput,setBalanceInput]=useState('');
   const [savingBalance,setSavingBalance]=useState(false);
   const [balanceError,setBalanceError]=useState('');
-  const [view,setView]=useState<FinancialView>('household');
+  const [view,setView]=useFinancialView();
 
   async function load(silent=false){
     if(!silent) setLoading(true);
@@ -210,8 +209,6 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
       suggestedCards={viewSnapshots}
       onCreated={refreshed}
     />}
-
-    <AppNav canContribute={role!=='read_only'}/>
 
     {canManage&&editingAccount&&<div className="sheet-backdrop" role="presentation" onMouseDown={e=>e.target===e.currentTarget&&!savingBalance&&setEditingAccount(null)}>
       <section className="capture-sheet balance-update-sheet" role="dialog" aria-modal="true" aria-label={l('Atualizar saldo','Update balance','Actualizar saldo')}>

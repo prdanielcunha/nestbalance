@@ -2,10 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getVaultDetail, getVaultPreview, listVault, searchVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
-import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
-import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
 
 export function VaultScreen({householdId,role}:{householdId:string;role:HouseholdRole}) {
@@ -21,7 +20,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   const [detailLoading,setDetailLoading]=useState(false);
   const [previewUrl,setPreviewUrl]=useState<string|null>(null);
   const [previewLoading,setPreviewLoading]=useState(false);
-  const [view,setView]=useState<FinancialView>('household');
+  const [view,setView]=useFinancialView();
   const [query,setQuery]=useState('');
   const [searching,setSearching]=useState(false);
   const [searchResults,setSearchResults]=useState<VaultItem[]|null>(null);
@@ -205,8 +204,6 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
         <span className="vault-row-date">{item.createdAtMs ? formatDate(new Date(item.createdAtMs),{day:'2-digit',month:'short'}) : ''}</span>
       </button>)}
     </section>}
-
-    <AppNav canContribute={canContribute}/>
 
     {selected && <div className="sheet-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)closeDetail();}}>
       <section className="capture-sheet vault-detail" role="dialog" aria-modal="true" aria-label={selected.originalName}>

@@ -2,6 +2,33 @@
 
 All notable NestBalance product releases are documented here.
 
+
+## 1.3.0 — 2026-09-24
+
+Premium brand-system and navigation release focused on faster comprehension without changing the financial truth model.
+
+### Brand and shell
+- Applies the NestBalance Premium v1.0 palette and official open-B mark across the authenticated product, login and PWA/browser surfaces.
+- Uses Graphite #090B10, restrained solid surfaces and Pearl text as the official dark experience; light mode remains explicitly supported.
+- Uses Amber for primary action, selection and financial emphasis, while Orchid is reserved for Assistant/intelligence surfaces.
+- Replaces duplicated per-screen navigation with one authenticated responsive shell and a collapsible desktop sidebar.
+- Keeps mobile navigation compact with 44px minimum touch targets and supports the open-B symbol in the collapsed desktop state.
+
+### Financial context and Home
+- Makes Pessoal, Lar and Tudo explicit, explained and persistent while navigating between financial areas.
+- Adds a conservative “Você pode usar” amount based only on the available balances and commitments already known to NestBalance.
+- Shows a “Falta cobrir” state instead of presenting a negative usable amount when known commitments exceed available balances.
+- Keeps the existing Home attention, due-bill, month and future-projection logic grounded in canonical data; no new financial rule or silent assumption is introduced.
+
+### PWA and accessibility
+- Adds branded favicon, Apple Touch Icon, installable PWA icons, maskable icons, Open Graph image and phone startup image.
+- Centralizes brand tokens in design-system/nestbalance-tokens.css.
+- Raises focus and secondary-text contrast to the WCAG AA release gate while preserving reduced-motion behavior.
+- Expands authenticated responsive browser coverage to 320, 360, 390, 768, 1024, 1440 and 1920 px.
+
+### Safety boundary
+- Firestore Rules, Household roles, privacy scopes, finance-core semantics, canonical repositories, AI human-confirmation boundaries and paid-integration defaults remain unchanged.
+
 ## 1.2.2 — 2026-09-22
 
 Real-life input hardening without expanding product scope.
