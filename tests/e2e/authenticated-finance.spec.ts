@@ -76,9 +76,12 @@ test('authenticated finance screens stay usable from 320px to desktop',async({br
   test.skip(testInfo.project.name!=='desktop-chromium','The authenticated viewport matrix is created explicitly.');
   for(const viewport of [
     {width:320,height:720},
+    {width:360,height:800},
     {width:390,height:844},
     {width:768,height:1024},
-    {width:1440,height:1000}
+    {width:1024,height:900},
+    {width:1440,height:1000},
+    {width:1920,height:1080}
   ]){
     const context=await browser.newContext({viewport,colorScheme:'dark'});
     const page=await context.newPage();
@@ -167,23 +170,44 @@ test('200% text scaling keeps the authenticated Home operable',async({browser},t
   await context.close();
 });
 
-test('authenticated visual regression: Home mobile dark',async({browser},testInfo)=>{
-  test.skip(testInfo.project.name!=='desktop-chromium','Snapshots are generated on the stable desktop Chromium project.');
+test('premium Home mobile contract keeps brand hierarchy and decision data visible',async({browser},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','The visual contract is exercised once on stable Chromium.');
   const context=await browser.newContext({viewport:{width:390,height:844},colorScheme:'dark'});
   const page=await context.newPage();
   await mockAuthenticatedApi(page);
   await gotoAuthenticated(page,'/');
-  await expect(page).toHaveScreenshot('authenticated-home-mobile-dark.png',{fullPage:true,animations:'disabled'});
+  await expect(page.locator('.home-brand-logo img.brand-lockup__dark')).toBeVisible();
+  await expect(page.locator('.home-safe-card')).toBeVisible();
+  await expect(page.locator('.home-safe-card > strong')).toContainText('8.078');
+  await expect(page.locator('.scope-view-switch')).toBeVisible();
+  const tokens=await page.evaluate(()=>{
+    const style=getComputedStyle(document.documentElement);
+    return {
+      paper:style.getPropertyValue('--paper').trim().toLowerCase(),
+      ink:style.getPropertyValue('--ink').trim().toLowerCase(),
+      amber:style.getPropertyValue('--nb-amber-500').trim().toLowerCase()
+    };
+  });
+  expect(tokens).toEqual({paper:'#090b10',ink:'#f5f1e8',amber:'#ffb33e'});
+  await assertNoHorizontalOverflow(page);
+  await assertNoSeriousA11y(page);
   await context.close();
 });
 
-test('authenticated visual regression: Accounts desktop light',async({browser},testInfo)=>{
-  test.skip(testInfo.project.name!=='desktop-chromium','Snapshots are generated on the stable desktop Chromium project.');
+test('desktop shell can collapse to the open-B symbol without losing navigation',async({browser},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','Desktop shell is exercised once.');
   const context=await browser.newContext({viewport:{width:1440,height:1000},colorScheme:'light'});
   await context.addInitScript(()=>localStorage.setItem('nestbalance-theme','light'));
   const page=await context.newPage();
   await mockAuthenticatedApi(page);
   await gotoAuthenticated(page,'/accounts');
-  await expect(page).toHaveScreenshot('authenticated-accounts-desktop-light.png',{fullPage:true,animations:'disabled'});
+  await expect(page.locator('.app-nav-brand img.brand-lockup__light')).toBeVisible();
+  await expect(page.locator('.app-nav-toggle')).toBeVisible();
+  await page.locator('.app-nav-toggle').click();
+  await expect(page.locator('.app-nav')).toHaveClass(/collapsed/);
+  await expect(page.locator('.app-nav-brand img.brand-lockup__light')).toHaveAttribute('src','/brand/symbol-dark.svg');
+  await expect(page.locator('.app-nav-link.nav-accounts')).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+  await assertNoSeriousA11y(page);
   await context.close();
 });
