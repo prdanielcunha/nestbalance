@@ -526,3 +526,69 @@ html[data-theme="dark"] .app-nav-add {
 @media(max-width:1179px){
   .app-nav-toggle{display:none}
 }
+
+
+/* Home decision hierarchy: money on hand + a conservative usable amount. */
+.home-safe-card{
+  min-width:0;
+  padding:26px;
+  border:1px solid color-mix(in srgb,var(--nb-amber-500) 30%,var(--line));
+  border-radius:var(--nb-radius-lg);
+  background:var(--surface);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  box-shadow:var(--nb-shadow-sm);
+}
+.home-safe-card>span{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:850;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.home-safe-card>strong{
+  display:block;
+  margin-top:8px;
+  color:var(--nb-amber-500);
+  font-size:clamp(34px,4vw,52px);
+  line-height:1;
+  letter-spacing:-.055em;
+  font-variant-numeric:tabular-nums;
+}
+.home-safe-card>p{
+  margin:13px 0 18px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.55;
+}
+.home-safe-card>a{
+  align-self:flex-start;
+  color:var(--ink);
+  font-size:12px;
+  font-weight:800;
+  text-decoration-color:color-mix(in srgb,var(--nb-amber-500) 60%,transparent);
+  text-underline-offset:4px;
+}
+.home-safe-card.warning{
+  border-color:color-mix(in srgb,var(--nb-danger) 38%,var(--line));
+}
+.home-safe-card.warning>strong{
+  color:var(--nb-danger);
+}
+@media(min-width:840px){
+  .home-hero-grid.has-balance{
+    grid-template-columns:minmax(0,1.45fr) minmax(260px,.55fr);
+    align-items:stretch;
+  }
+  .home-hero-grid.has-balance .home-balance-card,
+  .home-hero-grid.has-balance .home-safe-card{
+    min-height:250px;
+  }
+}
+@media(max-width:839px){
+  .home-safe-card{
+    margin:14px 0 4px;
+    padding:21px;
+  }
+}
