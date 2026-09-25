@@ -6,6 +6,7 @@ on:
       - production
 
 permissions:
+  actions: read
   contents: read
   id-token: write
 
@@ -55,6 +56,30 @@ jobs:
             exit 1
           fi
           echo "NestBalance certified main promotion: PASS"
+
+      - name: Wait for production API certification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..120}; do
+            RUN_JSON="$(gh api -H "Accept: application/vnd.github+json" "/repos/$GITHUB_REPOSITORY/actions/workflows/deploy-production.yml/runs?branch=production&event=push&per_page=30")"
+            STATUS="$(jq -r --arg sha "$GITHUB_SHA" '.workflow_runs[] | select(.head_sha==$sha) | .status' <<<"$RUN_JSON" | head -n 1)"
+            CONCLUSION="$(jq -r --arg sha "$GITHUB_SHA" '.workflow_runs[] | select(.head_sha==$sha) | (.conclusion // "")' <<<"$RUN_JSON" | head -n 1)"
+            if [[ "$STATUS" == "completed" ]]; then
+              if [[ "$CONCLUSION" == "success" ]]; then
+                echo "NestBalance production API certification: PASS"
+                exit 0
+              fi
+              echo "::error::Deploy NestBalance Production finished with conclusion: ${CONCLUSION:-unknown}"
+              exit 1
+            fi
+            echo "Waiting for production API certification for $GITHUB_SHA (attempt $attempt/120)..."
+            sleep 15
+          done
+          echo "::error::Timed out waiting for Deploy NestBalance Production for $GITHUB_SHA."
+          exit 1
 
       - name: Setup Node
         uses: actions/setup-node@v7
