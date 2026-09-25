@@ -13,7 +13,7 @@ import { BrandLockup } from '@/src/features/brand/brand-lockup';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
-import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 import { dismissAttention } from '@/src/lib/repositories/attention';
@@ -37,7 +37,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
   const [accountCreated,setAccountCreated]=useState(0);
   const [cardCreated,setCardCreated]=useState(0);
-  const [view,setView]=useState<FinancialView>('household');
+  const [view,setView]=useFinancialView();
   const [proactivity,setProactivity]=useState<ProactivityPreferences>(DEFAULT_PROACTIVITY_PREFERENCES);
   const [dismissedAttentionKeys,setDismissedAttentionKeys]=useState<string[]>([]);
   const [attentionWorking,setAttentionWorking]=useState('');
