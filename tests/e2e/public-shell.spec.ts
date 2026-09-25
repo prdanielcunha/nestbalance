@@ -96,7 +96,7 @@ test('explicit light preference persists and overrides the dark default',async({
   expect(first.theme).toBe('light');
   expect(first.paper).toBe('#f7f3ea');
   expect(first.ink).toBe('#17191f');
-  expect(first.surface).toBe('#ffffff');
+  expect(first.surface).toBe('#fff');
 
   await page.reload();
   await expect.poll(()=>page.evaluate(()=>document.documentElement.dataset.theme)).toBe('light');
