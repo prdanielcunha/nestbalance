@@ -3,6 +3,7 @@
    while the monolithic stylesheet is progressively split. */
 
 html[data-theme="dark"] {
+  --nb-ai-text: var(--nb-orchid-500);
   --paper: var(--nb-bg);
   --canvas: var(--nb-bg);
   --ink: var(--nb-text);
@@ -24,6 +25,7 @@ html[data-theme="dark"] {
 }
 
 html[data-theme="light"] {
+  --nb-ai-text: #7049df;
   --nb-bg: #f7f3ea;
   --nb-surface: #fffdfa;
   --nb-surface-raised: #ffffff;
@@ -200,7 +202,7 @@ html[data-theme="dark"] .month-grid .projected {
 .assistant-hero > span,
 .assistant-starters button:hover,
 .assistant-next-questions button:hover {
-  color: var(--nb-ai-accent);
+  color: var(--nb-ai-text);
 }
 
 .assistant-composer:focus-within {
@@ -598,4 +600,9 @@ html[data-theme="dark"] .app-nav-add {
 .section-kicker,
 .movement-category-source {
   color: var(--muted) !important;
+}
+
+
+html[data-theme="light"] .home-safe-card>strong {
+  color: var(--iris);
 }
