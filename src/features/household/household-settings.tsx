@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { ProductTopbar } from '@/src/features/navigation/product-topbar';
 import { useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
 import {
@@ -298,13 +299,9 @@ export function HouseholdSettings({
   }
 
   return <main className="app-shell household-shell">
-    <header className="topbar">
-      <div>
-        <div className="eyebrow">NestBalance</div>
-        <span className="topbar-subtitle">{l('Compartilhar e acessos','Sharing & access','Compartir y accesos')}</span>
-      </div>
+    <ProductTopbar section={l('Compartilhar e acessos','Sharing & access','Compartir y accesos')} showHousehold={false}>
       <Link href="/" className="household-back">{l('Voltar','Back','Volver')}</Link>
-    </header>
+    </ProductTopbar>
 
     <section className="area-hero household-hero">
       <span>{l('Sua vida financeira pode ser compartilhada sem compartilhar senha.','Share your financial life without sharing a password.','Comparte tu vida financiera sin compartir contraseña.')}</span>

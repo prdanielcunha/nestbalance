@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { ProductTopbar } from '@/src/features/navigation/product-topbar';
 import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { deleteHouseholdPermanently, deleteMyPersonalData, exportPrivacyData, loadPrivacyStatus, recordPrivacyConsent, type PrivacyStatus } from '@/src/lib/repositories/privacy';
@@ -96,10 +97,9 @@ export function PrivacyCenter({householdId,user,householdName,role}:{householdId
   }
 
   return <main className="app-shell privacy-shell">
-    <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{l('Privacidade e seus dados','Privacy & your data','Privacidad y tus datos')}</span></div>
+    <ProductTopbar section={l('Privacidade e seus dados','Privacy & your data','Privacidad y tus datos')} showHousehold={false}>
       <Link href="/household" className="household-back">{l('Voltar','Back','Volver')}</Link>
-    </header>
+    </ProductTopbar>
 
     <section className="area-hero privacy-hero">
       <span>{l('Controle sem vigilância','Control without surveillance','Control sin vigilancia')}</span>

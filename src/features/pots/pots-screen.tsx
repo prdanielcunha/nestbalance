@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
+import { ProductTopbar } from '@/src/features/navigation/product-topbar';
 import { SavingsPotCover } from '@/src/features/pots/pot-cover';
 import type { HouseholdRole } from '@/src/core/household';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
@@ -420,16 +420,9 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   const selectedPace=selected?savingsPotGoalPace(selected.balanceMinor,selected.goalMinor,selected.targetDate):null;
 
   return <main className="app-shell accounts-shell pots-shell">
-    <header className="topbar">
-      <div>
-        <div className="eyebrow">NestBalance</div>
-        <span className="topbar-subtitle">{l('Cofrinhos','Savings pots','Alcancías')}</span>
-      </div>
-      <div className="topbar-actions">
-        <Link href="/documents" className="ghost-button">{l('Documentos','Documents','Documentos')}</Link>
-        <HouseholdLink/>
-      </div>
-    </header>
+    <ProductTopbar section={l('Cofrinhos','Savings pots','Alcancías')}>
+      <Link href="/documents" className="ghost-button">{l('Documentos','Documents','Documentos')}</Link>
+    </ProductTopbar>
 
     <ScopeViewSwitch value={view} onChange={setView}/>
 
