@@ -8,12 +8,12 @@ import { categoryLabel, deriveFinancialAnomalies, deriveSpendingComparison } fro
 import { AccountOnboarding } from '@/src/features/onboarding/account-onboarding';
 import { CreditCardManager } from '@/src/features/cards/card-manager';
 import { MonthlyPayments } from '@/src/features/payments/monthly-payments';
-import { AppNav } from '@/src/features/navigation/app-nav';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
+import { BrandLockup } from '@/src/features/brand/brand-lockup';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
-import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 import { dismissAttention } from '@/src/lib/repositories/attention';
@@ -37,7 +37,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const [expandedFuture,setExpandedFuture]=useState<string|null>(null);
   const [accountCreated,setAccountCreated]=useState(0);
   const [cardCreated,setCardCreated]=useState(0);
-  const [view,setView]=useState<FinancialView>('household');
+  const [view,setView]=useFinancialView();
   const [proactivity,setProactivity]=useState<ProactivityPreferences>(DEFAULT_PROACTIVITY_PREFERENCES);
   const [dismissedAttentionKeys,setDismissedAttentionKeys]=useState<string[]>([]);
   const [attentionWorking,setAttentionWorking]=useState('');
@@ -130,6 +130,8 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     });
   }, [cashAccounts, cashView]);
 
+  const safeToUseMinor=Math.max(snapshot.projectedRemainderMinor,0);
+  const coverageGapMinor=Math.max(-snapshot.projectedRemainderMinor,0);
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
@@ -252,10 +254,9 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
 
   return <main className={`app-shell home-shell ${viewAccounts.length===0?'home-first-use':''}`.trim()}>
     <header className="topbar home-topbar">
-      <div className="home-brand"><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.brandTagline}</span></div>
+      <div className="home-brand"><BrandLockup className="home-brand-logo"/><span className="topbar-subtitle">{t.brandTagline}</span></div>
       <HouseholdLink detailed/>
     </header>
-    <AppNav canContribute={canContribute} desktopInline className="home-primary-nav"/>
 
     <div className="home-context-row">
       <div className="home-scope-copy"><span>{l('Visão','View','Vista')}</span><small>{l('Escolha o que entra nesta tela.','Choose what is included on this screen.','Elige qué aparece en esta pantalla.')}</small></div>
@@ -312,6 +313,15 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         )}</p>}
       </details>}
     </section>
+    {viewAccounts.length>0&&<section className={coverageGapMinor>0?'home-safe-card warning':'home-safe-card'}>
+      <span>{coverageGapMinor>0?l('Falta cobrir','Gap to cover','Falta cubrir'):l('Você pode usar','You can use','Puedes usar')}</span>
+      <strong>{formatMoney(coverageGapMinor>0?coverageGapMinor:safeToUseMinor)}</strong>
+      <p>{coverageGapMinor>0
+        ? l('Com os saldos e contas que já conhecemos, falta esse valor para cobrir os compromissos atuais.','With the balances and bills we already know, this amount is still missing to cover current commitments.','Con los saldos y cuentas que ya conocemos, todavía falta este valor para cubrir los compromisos actuales.')
+        : l('Sem encostar no que já sabemos que vai sair. É uma estimativa baseada apenas nos saldos e compromissos confirmados.','Without touching what we already know must leave. This estimate uses only confirmed balances and commitments.','Sin tocar lo que ya sabemos que saldrá. Esta estimación usa solo saldos y compromisos confirmados.')
+      }</p>
+      <Link href="/assistant">{l('Entender esse valor','Understand this amount','Entender este valor')}</Link>
+    </section>}
     {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
     </div>
 

@@ -6,12 +6,12 @@ test('dark is the official default theme',()=>{
   assert.equal(normalizeTheme(null),'dark');
   assert.equal(normalizeTheme(undefined),'dark');
   assert.equal(normalizeTheme('system'),'dark');
-  assert.equal(themeColor('dark'),'#080B14');
+  assert.equal(themeColor('dark'),'#090B10');
   assert.equal(THEME_STORAGE_KEY,'nestbalance-theme');
 });
 
 test('light is only used after an explicit light preference',()=>{
   assert.equal(normalizeTheme('light'),'light');
   assert.equal(normalizeTheme('dark'),'dark');
-  assert.equal(themeColor('light'),'#F3F5F9');
+  assert.equal(themeColor('light'),'#F7F3EA');
 });

@@ -7,5 +7,5 @@ export function normalizeTheme(value:unknown):AppTheme{
 }
 
 export function themeColor(theme:AppTheme){
-  return theme==='light'?'#F3F5F9':'#080B14';
+  return theme==='light'?'#F7F3EA':'#090B10';
 }
