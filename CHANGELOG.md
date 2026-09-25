@@ -3,6 +3,20 @@
 All notable NestBalance product releases are documented here.
 
 
+## 1.3.3 — 2026-09-25
+
+Release-certification patch after production deployment completed but the smoke gate failed on a shell pipeline edge case.
+
+### Release reliability
+- Removes curl-to-grep pipelines from production, official-domain and homologation endpoint smoke checks so a successful HTTP response cannot be reported as curl error 23 when the downstream matcher exits early.
+- Writes health, HTML, service-worker and header responses to files first, then validates them deterministically.
+- Uses JSON validation for release SHA and environment on health endpoints instead of text fragments.
+- Hardens local Cloud Run image health checks in both homologation and production.
+
+### Product boundary
+- The 1.3.2 premium-shell UI and all financial behavior remain unchanged. This patch changes release verification only.
+
+
 ## 1.3.2 — 2026-09-25
 
 Premium-shell consistency patch after a route-by-route UI audit.
