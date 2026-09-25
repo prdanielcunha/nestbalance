@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
-import { ScopeViewSwitch, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { ScopeViewSwitch, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
 
 export function AssistantScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
@@ -23,7 +23,7 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [result,setResult]=useState<AssistantAnswerResponse|null>(null);
-  const [view,setView]=useState<FinancialView>('household');
+  const [view,setView]=useFinancialView();
 
   const sourceTotal=useMemo(()=>result?.answer.sources.reduce((sum,item)=>sum+item.amountMinor,0)??0,[result]);
 
