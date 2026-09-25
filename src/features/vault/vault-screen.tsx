@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { getVaultDetail, getVaultPreview, listVault, searchVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
-import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
 
 export function VaultScreen({householdId,role}:{householdId:string;role:HouseholdRole}) {
@@ -20,7 +20,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   const [detailLoading,setDetailLoading]=useState(false);
   const [previewUrl,setPreviewUrl]=useState<string|null>(null);
   const [previewLoading,setPreviewLoading]=useState(false);
-  const [view,setView]=useState<FinancialView>('household');
+  const [view,setView]=useFinancialView();
   const [query,setQuery]=useState('');
   const [searching,setSearching]=useState(false);
   const [searchResults,setSearchResults]=useState<VaultItem[]|null>(null);
