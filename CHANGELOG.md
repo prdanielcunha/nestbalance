@@ -3,6 +3,21 @@
 All notable NestBalance product releases are documented here.
 
 
+## 1.3.2 — 2026-09-25
+
+Premium-shell consistency patch after a route-by-route UI audit.
+
+### Consistency and navigation
+- Replaces the remaining legacy authenticated page headers with one shared premium NestBalance top bar across Home, Movements, Accounts, Cofrinhos, Assistant, Documents, Household and Privacy.
+- Moves the desktop sidebar breakpoint to 960 px so notebook/tablet-landscape widths no longer fall back to the old floating bottom navigation.
+- Keeps true mobile navigation, but locks it to the current dark/light brand surfaces and readable text contrast instead of the pale legacy treatment.
+- Preserves the same canonical navigation, permissions, financial scopes and route behavior; this patch changes presentation and responsive shell behavior only.
+
+### Regression coverage
+- Adds browser coverage that opens every authenticated product area at 1024 px and verifies the premium header, sidebar layout, no legacy NestBalance eyebrow, no horizontal overflow and no serious accessibility violations.
+- Adds a dark-mobile navigation contract for Cofrinhos so the old low-contrast floating bar cannot silently return.
+
+
 ## 1.3.1 — 2026-09-25
 
 Production-certification hotfix for the Premium Experience release.
