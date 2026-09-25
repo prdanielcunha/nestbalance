@@ -277,6 +277,72 @@ html[data-theme="light"] .brand-lockup__light {
   width: 58px;
 }
 
+/* Initial/session loading should feel like the product, not a blank placeholder card. */
+.app-loading-screen{
+  min-height:100dvh;
+  display:grid;
+  place-items:center;
+  padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom));
+  background:var(--paper);
+  color:var(--ink);
+}
+.app-loading-stage{
+  width:min(100%,320px);
+  display:grid;
+  justify-items:center;
+  gap:26px;
+  transform:translateY(-4dvh);
+}
+.app-loading-logo{
+  width:min(220px,64vw);
+}
+.app-loading-copy{
+  width:min(100%,220px);
+  display:grid;
+  gap:11px;
+  text-align:center;
+}
+.app-loading-copy>span{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:650;
+  letter-spacing:.01em;
+}
+.app-loading-progress{
+  position:relative;
+  height:2px;
+  overflow:hidden;
+  border-radius:999px;
+  background:color-mix(in srgb,var(--muted) 18%,transparent);
+}
+.app-loading-progress>i{
+  position:absolute;
+  inset:0 auto 0 0;
+  width:42%;
+  border-radius:inherit;
+  background:var(--nb-amber-500);
+  animation:nb-loading-slide 1.05s var(--nb-ease) infinite;
+}
+@keyframes nb-loading-slide{
+  0%{transform:translateX(-115%)}
+  55%{transform:translateX(110%)}
+  100%{transform:translateX(255%)}
+}
+@media(max-width:720px){
+  .app-loading-stage{
+    gap:22px;
+    transform:translateY(-2dvh);
+  }
+  .app-loading-logo{width:min(190px,58vw)}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-loading-progress>i{
+    width:100%;
+    opacity:.72;
+    animation:none;
+  }
+}
+
 .login-card h1.sr-only,
 .setup-card h1.sr-only {
   margin: 0;

@@ -1,5 +1,9 @@
 # NestBalance 1.3 Premium Experience
 
+## 1.3.4 loading experience patch
+
+Version 1.3.4 replaces the large generic skeleton shown while Firebase restores the user session with a compact branded NestBalance loading state. It uses the current logo, theme background and a restrained amber progress indicator, with reduced-motion support and the same behavior across authenticated and auth-only bootstraps.
+
 ## 1.3.3 release-certification patch
 
 Version 1.3.3 leaves the 1.3.2 product UI unchanged and fixes release smoke verification. Production, homologation and official-domain checks now save HTTP responses before validating them, avoiding curl error 23 caused by early-closing grep pipelines. Health checks verify the exact environment and release SHA as JSON.
