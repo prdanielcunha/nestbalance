@@ -132,7 +132,10 @@ jobs:
           docker run -d --rm --name nestbalance-prod-smoke             -e PORT=8080             -e NESTBALANCE_ENV=production             -e NESTBALANCE_RELEASE_SHA="${GITHUB_SHA}"             -e FIREBASE_PROJECT_ID="$GCP_PROJECT_ID"             -e FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET"             -p 18084:8080 "$NESTBALANCE_API_IMAGE"
           trap 'docker stop nestbalance-prod-smoke >/dev/null 2>&1 || true' EXIT
           for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:18084/healthz | grep -q '"ok":true'; then exit 0; fi
+            if curl --fail --silent --output /tmp/local-prod-health.json http://127.0.0.1:18084/healthz \
+              && jq -e '.ok == true' /tmp/local-prod-health.json >/dev/null; then
+              exit 0
+            fi
             sleep 1
           done
           docker logs nestbalance-prod-smoke
@@ -190,10 +193,18 @@ jobs:
         run: |
           set -euo pipefail
           HOSTING_URL="https://$FIREBASE_HOSTING_SITE.web.app"
-          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$HOSTING_URL/api/healthz" | tee /tmp/prod-health.json | grep -q '"ok":true'
-          grep -q '"environment":"production"' /tmp/prod-health.json
-          jq -e --arg sha "$GITHUB_SHA" '.release == $sha' /tmp/prod-health.json >/dev/null
-          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$HOSTING_URL/" | grep -q 'NestBalance'
-          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$HOSTING_URL/sw.js" | grep -Fq "url.pathname.startsWith('/api/')"
-          curl --fail --silent --show-error --head "$HOSTING_URL/sw.js" | tr -d '\r' | grep -Eqi '^cache-control:.*no-store'
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors \
+            --output /tmp/prod-health.json "$HOSTING_URL/api/healthz"
+          jq -e --arg sha "$GITHUB_SHA" '.ok == true and .environment == "production" and .release == $sha' /tmp/prod-health.json >/dev/null
+
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors \
+            --output /tmp/prod-index.html "$HOSTING_URL/"
+          grep -q 'NestBalance' /tmp/prod-index.html
+
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors \
+            --output /tmp/prod-sw.js "$HOSTING_URL/sw.js"
+          grep -Fq "url.pathname.startsWith('/api/')" /tmp/prod-sw.js
+
+          curl --fail --silent --show-error --head --output /tmp/prod-sw-headers.txt "$HOSTING_URL/sw.js"
+          tr -d '\r' </tmp/prod-sw-headers.txt | grep -Eqi '^cache-control:.*no-store'
           echo "NESTBALANCE_PRODUCTION_URL=$HOSTING_URL"
