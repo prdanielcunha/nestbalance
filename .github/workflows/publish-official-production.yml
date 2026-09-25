@@ -137,9 +137,15 @@ jobs:
           wait_for_release "$SITE_URL" /tmp/site-health.json
           wait_for_release "$DOMAIN_URL" /tmp/domain-health.json
 
-          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$DOMAIN_URL/" | grep -q 'NestBalance'
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors \
+            --output /tmp/official-index.html "$DOMAIN_URL/"
+          grep -q 'NestBalance' /tmp/official-index.html
 
-          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors             "$DOMAIN_URL/sw.js" | grep -Fq "url.pathname.startsWith('/api/')"
-          curl --fail --silent --show-error --head "$DOMAIN_URL/sw.js" | tr -d '\r' | grep -Eqi '^cache-control:.*no-store'
+          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors \
+            --output /tmp/official-sw.js "$DOMAIN_URL/sw.js"
+          grep -Fq "url.pathname.startsWith('/api/')" /tmp/official-sw.js
+
+          curl --fail --silent --show-error --head --output /tmp/official-sw-headers.txt "$DOMAIN_URL/sw.js"
+          tr -d '\r' </tmp/official-sw-headers.txt | grep -Eqi '^cache-control:.*no-store'
 
           echo "NESTBALANCE_OFFICIAL_PRODUCTION_URL=$DOMAIN_URL"
