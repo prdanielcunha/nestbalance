@@ -61,9 +61,9 @@ test('dark is the official default regardless of device color preference',async(
         };
       });
       expect(tokens.theme).toBe('dark');
-      expect(tokens.paper).toBe('#090d18');
-      expect(tokens.ink).toBe('#edf0f6');
-      expect(tokens.surface).toBe('#121725');
+      expect(tokens.paper).toBe('#090b10');
+      expect(tokens.ink).toBe('#f5f1e8');
+      expect(tokens.surface).toBe('#181e28');
 
       const results=await new AxeBuilder({page}).analyze();
       const severe=results.violations.filter(item=>item.impact==='serious'||item.impact==='critical');
@@ -94,9 +94,9 @@ test('explicit light preference persists and overrides the dark default',async({
     };
   });
   expect(first.theme).toBe('light');
-  expect(first.paper).toBe('#f6f7f9');
-  expect(first.ink).toBe('#202635');
-  expect(first.surface).toBe('#fff');
+  expect(first.paper).toBe('#f7f3ea');
+  expect(first.ink).toBe('#17191f');
+  expect(first.surface).toBe('#ffffff');
 
   await page.reload();
   await expect.poll(()=>page.evaluate(()=>document.documentElement.dataset.theme)).toBe('light');
@@ -113,7 +113,8 @@ test('PWA manifest is installable and references the NestBalance icon',async({re
   expect(manifest.start_url).toBe('/');
   expect(manifest.scope).toBe('/');
   expect(Array.isArray(manifest.icons)).toBeTruthy();
-  expect(manifest.icons.some((icon:any)=>icon.src==='/nestbalance-icon.svg'&&icon.type==='image/svg+xml')).toBeTruthy();
+  expect(manifest.icons.some((icon:any)=>icon.src==='/icons/icon-192.png'&&icon.sizes==='192x192')).toBeTruthy();
+  expect(manifest.icons.some((icon:any)=>icon.src==='/icons/maskable-icon-512.png'&&String(icon.purpose).includes('maskable'))).toBeTruthy();
 });
 
 
