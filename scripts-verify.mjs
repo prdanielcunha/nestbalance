@@ -250,7 +250,13 @@ assert.match(officialProductionWorkflow,/git merge-base --is-ancestor "\$PROMOTE
 assert.match(officialProductionWorkflow,/PROMOTED_TREE/);
 assert.match(officialProductionWorkflow,/Wait for production API certification/);
 assert.match(officialProductionWorkflow,/deploy-production\.yml\/runs/);
-assert.match(packageSource,/"version": "1\.3\.2"/);
+assert.match(productionWorkflow,/--output \/tmp\/prod-health\.json/);
+assert.match(productionWorkflow,/--output \/tmp\/prod-index\.html/);
+assert.match(officialProductionWorkflow,/--output \/tmp\/official-index\.html/);
+assert.match(deployWorkflow,/--output \/tmp\/homolog-health\.json/);
+assert.ok(!productionWorkflow.includes('| tee /tmp/prod-health.json | grep'),'Production smoke must not pipe curl through early-exit matchers.');
+assert.ok(!officialProductionWorkflow.includes('"$DOMAIN_URL/" | grep'),'Official smoke must not pipe curl through early-exit matchers.');
+assert.match(packageSource,/"version": "1\.3\.3"/);
 assert.match(githubReleaseWorkflow,/workflow_run:/);
 assert.match(githubReleaseWorkflow,/Deploy NestBalance Production/);
 assert.match(githubReleaseWorkflow,/Publish NestBalance Official Production Site/);
