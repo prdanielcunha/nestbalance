@@ -3,6 +3,20 @@
 All notable NestBalance product releases are documented here.
 
 
+## 1.3.1 — 2026-09-25
+
+Production-certification hotfix for the Premium Experience release.
+
+### Release reliability
+- Serializes publication of the official Firebase Hosting site after the matching production API deployment has completed successfully, preventing Hosting from pinning the previous Cloud Run revision during concurrent deploys.
+- Keeps the exact certified production SHA as the required health-check release on both the Firebase site and the official custom domain.
+- Makes stable GitHub Releases select the matching major/minor release-notes file instead of using the previous 1.2 notes for every version.
+- Adds static release-contract checks so the production ordering and release-note selection cannot regress silently.
+
+### Product boundary
+- No financial rules, user data, permissions, Firestore Rules, AI behavior, billing or application UX changed in this patch.
+
+
 ## 1.3.0 — 2026-09-24
 
 Premium brand-system and navigation release focused on faster comprehension without changing the financial truth model.
