@@ -1,5 +1,9 @@
 # NestBalance 1.3 Premium Experience
 
+## 1.3.3 release-certification patch
+
+Version 1.3.3 leaves the 1.3.2 product UI unchanged and fixes release smoke verification. Production, homologation and official-domain checks now save HTTP responses before validating them, avoiding curl error 23 caused by early-closing grep pipelines. Health checks verify the exact environment and release SHA as JSON.
+
 ## 1.3.2 shell consistency patch
 
 Version 1.3.2 completes the premium shell migration across authenticated routes. Home, Movements, Accounts, Cofrinhos, Assistant, Documents, Household and Privacy now share the same branded page header. The desktop sidebar starts at 960 px so common notebook widths do not show the legacy floating bottom menu; true mobile keeps a compact branded navigation with explicit contrast coverage.
