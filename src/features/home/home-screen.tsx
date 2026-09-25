@@ -130,6 +130,8 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     });
   }, [cashAccounts, cashView]);
 
+  const safeToUseMinor=Math.max(snapshot.projectedRemainderMinor,0);
+  const coverageGapMinor=Math.max(-snapshot.projectedRemainderMinor,0);
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
@@ -311,6 +313,15 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         )}</p>}
       </details>}
     </section>
+    {viewAccounts.length>0&&<section className={coverageGapMinor>0?'home-safe-card warning':'home-safe-card'}>
+      <span>{coverageGapMinor>0?l('Falta cobrir','Gap to cover','Falta cubrir'):l('Você pode usar','You can use','Puedes usar')}</span>
+      <strong>{formatMoney(coverageGapMinor>0?coverageGapMinor:safeToUseMinor)}</strong>
+      <p>{coverageGapMinor>0
+        ? l('Com os saldos e contas que já conhecemos, falta esse valor para cobrir os compromissos atuais.','With the balances and bills we already know, this amount is still missing to cover current commitments.','Con los saldos y cuentas que ya conocemos, todavía falta este valor para cubrir los compromisos actuales.')
+        : l('Sem encostar no que já sabemos que vai sair. É uma estimativa baseada apenas nos saldos e compromissos confirmados.','Without touching what we already know must leave. This estimate uses only confirmed balances and commitments.','Sin tocar lo que ya sabemos que saldrá. Esta estimación usa solo saldos y compromisos confirmados.')
+      }</p>
+      <Link href="/assistant">{l('Entender esse valor','Understand this amount','Entender este valor')}</Link>
+    </section>}
     {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
     </div>
 
