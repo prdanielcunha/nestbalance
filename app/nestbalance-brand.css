@@ -269,6 +269,67 @@ html[data-theme="light"] .brand-lockup__light {
   margin: 0;
 }
 
+/* Shared premium page chrome. */
+.product-topbar{
+  min-height:72px;
+  gap:20px;
+  border-bottom:1px solid var(--line);
+}
+.product-topbar-brand{
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+.product-topbar-logo{
+  width:min(168px,42vw);
+}
+.product-topbar .topbar-subtitle{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:650;
+  letter-spacing:.01em;
+}
+.product-topbar .topbar-actions{
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:8px;
+}
+.product-topbar .ghost-button,
+.product-topbar .household-pill,
+.product-topbar .household-back{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid var(--line);
+  background:var(--surface);
+  color:var(--ink);
+  border-radius:var(--nb-radius-pill);
+  text-decoration:none;
+  box-shadow:none;
+}
+.product-topbar .ghost-button:hover,
+.product-topbar .household-pill:hover,
+.product-topbar .household-back:hover{
+  background:var(--surface-raised);
+  border-color:color-mix(in srgb,var(--nb-amber-500) 32%,var(--line));
+}
+
+@media(max-width:720px){
+  .product-topbar{
+    align-items:flex-start;
+    padding-bottom:20px;
+  }
+  .product-topbar-logo{width:min(150px,46vw)}
+  .product-topbar .topbar-actions{max-width:52%;gap:6px}
+  .product-topbar .ghost-button,
+  .product-topbar .household-pill,
+  .product-topbar .household-back{
+    padding-inline:12px;
+    font-size:12px;
+  }
+}
+
 /* One authenticated shell for every financial route. */
 .authenticated-shell {
   min-height: 100dvh;
@@ -341,6 +402,22 @@ html[data-theme="dark"] .app-nav-add {
 }
 
 @media (max-width: 720px) {
+  html[data-theme="dark"] .app-nav-track{
+    background:#11151d;
+    border-color:rgba(152,160,174,.22);
+    box-shadow:0 18px 48px rgba(0,0,0,.34);
+  }
+  html[data-theme="dark"] .app-nav-link{
+    color:#c1c7d2;
+  }
+  html[data-theme="dark"] .app-nav-link.active{
+    color:#f5f1e8;
+    background:#181e28;
+  }
+  html[data-theme="light"] .app-nav-track{
+    background:#fffdfa;
+    border-color:rgba(9,11,16,.14);
+  }
   .app-nav {
     width: calc(100% - 12px);
     bottom: max(6px,env(safe-area-inset-bottom));
@@ -367,7 +444,27 @@ html[data-theme="dark"] .app-nav-add {
   }
 }
 
-@media (min-width: 1180px) {
+@media (min-width:721px) and (max-width:959px){
+  .app-nav{
+    width:min(calc(100% - 40px),760px);
+    bottom:max(14px,env(safe-area-inset-bottom));
+  }
+  .app-nav-track{
+    background:var(--surface);
+    border-color:var(--line);
+    box-shadow:var(--nb-shadow-md);
+  }
+  .app-nav-link{
+    color:color-mix(in srgb,var(--muted) 88%,var(--ink));
+    font-size:12px;
+  }
+  .app-nav-link.active{
+    color:var(--ink);
+    background:var(--surface-raised);
+  }
+}
+
+@media (min-width: 960px) {
   .authenticated-shell {
     display: grid;
     grid-template-columns: 244px minmax(0,1fr);
@@ -504,7 +601,7 @@ html[data-theme="dark"] .app-nav-add {
 .app-nav-head{display:none}
 .app-nav-short{display:none}
 .app-nav-label{display:inline}
-@media(min-width:1180px){
+@media(min-width:960px){
   .authenticated-shell{transition:grid-template-columns var(--nb-motion-base) var(--nb-ease)}
   .authenticated-shell.nav-collapsed{grid-template-columns:84px minmax(0,1fr)}
   .authenticated-shell.nav-collapsed .app-nav{width:84px;padding-inline:12px}
@@ -525,7 +622,7 @@ html[data-theme="dark"] .app-nav-add {
   .app-nav.collapsed .app-nav-add span{display:none}
   .app-nav.collapsed .app-nav-link.active::after{left:2px}
 }
-@media(max-width:1179px){
+@media(max-width:959px){
   .app-nav-toggle{display:none}
 }
 
@@ -647,4 +744,20 @@ html[data-theme="dark"] .home-hero-grid .first-money-card {
 .first-use-guide {
   background: var(--surface) !important;
   background-image: none !important;
+}
+
+/* Route-wide premium consistency: all authenticated areas share the same spacing and hierarchy. */
+@media(min-width:960px){
+  .authenticated-content>.app-shell{
+    padding-top:24px;
+    padding-inline:clamp(28px,4vw,64px);
+  }
+  .authenticated-content>.app-shell:not(.home-shell) .area-hero,
+  .authenticated-content>.app-shell .vault-hero{
+    padding-top:30px;
+  }
+  .authenticated-content>.app-shell:not(.home-shell) .area-hero h1,
+  .authenticated-content>.app-shell .vault-hero h1{
+    max-width:900px;
+  }
 }
