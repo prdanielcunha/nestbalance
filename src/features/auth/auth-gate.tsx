@@ -10,6 +10,7 @@ import { nestBalanceE2eAuthMode } from '@/src/lib/browser-auth-token';
 import { normalizeHouseholdRole } from '@/src/core/household';
 import { AuthenticatedShell } from '@/src/features/navigation/authenticated-shell';
 import { BrandLockup } from '@/src/features/brand/brand-lockup';
+import { AppLoadingScreen } from '@/src/features/loading/app-loading-screen';
 
 function prefersRedirectSignIn(){
   if(typeof window==='undefined'||typeof navigator==='undefined') return false;
@@ -125,7 +126,7 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   }
 
   if (!firebaseConfigured) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="setup-card"><div><BrandLockup compact className="auth-symbol"/><h1 className="sr-only">NestBalance</h1></div><p>{t.setupMissing}</p></section></main></LocaleProvider>;
-  if (loading) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><div className="skeleton-card" role="status"><span className="sr-only">{t.loading}</span></div></main></LocaleProvider>;
+  if (loading) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><AppLoadingScreen label={t.loading}/></LocaleProvider>;
 
   const authenticatedUser = auth?.currentUser ?? null;
   if (!state && sessionError && authenticatedUser) {
@@ -200,7 +201,7 @@ export function AuthOnlyGate({ children }: { children: (user: User) => React.Rea
   }
 
   if(!firebaseConfigured) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><section className="setup-card"><div><BrandLockup compact className="auth-symbol"/><h1 className="sr-only">NestBalance</h1></div><p>{t.setupMissing}</p></section></main></LocaleProvider>;
-  if(loading) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><div className="skeleton-card" role="status"><span className="sr-only">{t.loading}</span></div></main></LocaleProvider>;
+  if(loading) return <LocaleProvider locale={browserLocale} currency="BRL"><AppLoadingScreen label={t.loading}/></LocaleProvider>;
   if(!user) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><section className="login-card">
     <div>
       <div className="eyebrow">MillionsNest</div>

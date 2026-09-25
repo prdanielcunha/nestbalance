@@ -3,6 +3,20 @@
 All notable NestBalance product releases are documented here.
 
 
+## 1.3.4 — 2026-09-25
+
+Loading-experience polish after validating the production app on iPhone Safari.
+
+### Loading experience
+- Replaces the large blank/light skeleton card shown during Firebase session bootstrap with a dedicated NestBalance loading screen.
+- Uses the current brand lockup, app background and a restrained amber progress indicator so startup and session refresh feel intentional in both dark and light themes.
+- Keeps the loading state compact on mobile, avoids the large white flash captured on iPhone Safari and respects reduced-motion preferences.
+- Applies the same loading treatment to both full authenticated bootstrap and auth-only flows.
+
+### Product boundary
+- No finance logic, permissions, Firestore Rules, data model, navigation behavior, AI or billing behavior changed.
+
+
 ## 1.3.3 — 2026-09-25
 
 Release-certification patch after production deployment completed but the smoke gate failed on a shell pipeline edge case.
