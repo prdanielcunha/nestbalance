@@ -240,7 +240,9 @@ assert.match(officialProductionWorkflow,/fetch-depth: 2/);
 assert.match(officialProductionWorkflow,/Require certified main promotion/);
 assert.match(officialProductionWorkflow,/git merge-base --is-ancestor "\$PROMOTED_MAIN_SHA" origin\/main/);
 assert.match(officialProductionWorkflow,/PROMOTED_TREE/);
-assert.match(packageSource,/"version": "1\.3\.0"/);
+assert.match(officialProductionWorkflow,/Wait for production API certification/);
+assert.match(officialProductionWorkflow,/deploy-production\.yml\/runs/);
+assert.match(packageSource,/"version": "1\.3\.1"/);
 assert.match(githubReleaseWorkflow,/workflow_run:/);
 assert.match(githubReleaseWorkflow,/Deploy NestBalance Production/);
 assert.match(githubReleaseWorkflow,/Publish NestBalance Official Production Site/);
@@ -248,6 +250,7 @@ assert.match(githubReleaseWorkflow,/deploy-production\.yml/);
 assert.match(githubReleaseWorkflow,/certified=false/);
 assert.match(githubReleaseWorkflow,/certified=true/);
 assert.match(githubReleaseWorkflow,/publish-official-production\.yml/);
+assert.match(githubReleaseWorkflow,/RELEASE_\$\{VERSION%\.\*\}\.md/);
 assert.match(githubReleaseWorkflow,/gh release create/);
 assert.match(githubReleaseWorkflow,/test "\$TAG_SHA" = "\$RELEASE_SHA"/);
 
