@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
-import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { SPENDING_CATEGORIES, categoryLabel, deriveRecurringCandidates, recurringPatternKey, resolvedSpendingCategory, type SpendingCategory } from '@/src/core/insights';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
@@ -43,7 +43,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   const [error,setError]=useState('');
   const [filter,setFilter]=useState<Filter>('all');
   const [query,setQuery]=useState('');
-  const [view,setView]=useState<FinancialView>('household');
+  const [view,setView]=useFinancialView();
   const [recurrenceWorking,setRecurrenceWorking]=useState('');
   const [recurrenceError,setRecurrenceError]=useState('');
   const [categoryEditingId,setCategoryEditingId]=useState('');
