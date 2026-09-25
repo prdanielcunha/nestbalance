@@ -592,3 +592,10 @@ html[data-theme="dark"] .app-nav-add {
     padding:21px;
   }
 }
+
+
+/* WCAG AA: legacy low-emphasis blends are too dim on the official graphite. */
+.section-kicker,
+.movement-category-source {
+  color: var(--muted) !important;
+}
