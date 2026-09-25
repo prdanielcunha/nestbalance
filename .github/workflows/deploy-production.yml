@@ -132,7 +132,10 @@ jobs:
           docker run -d --rm --name nestbalance-prod-smoke             -e PORT=8080             -e NESTBALANCE_ENV=production             -e NESTBALANCE_RELEASE_SHA="${GITHUB_SHA}"             -e FIREBASE_PROJECT_ID="$GCP_PROJECT_ID"             -e FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET"             -p 18084:8080 "$NESTBALANCE_API_IMAGE"
           trap 'docker stop nestbalance-prod-smoke >/dev/null 2>&1 || true' EXIT
           for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:18084/healthz | grep -q '"ok":true'; then exit 0; fi
+            if curl --fail --silent --output /tmp/local-prod-health.json http://127.0.0.1:18084/healthz \
+              && jq -e '.ok == true' /tmp/local-prod-health.json >/dev/null; then
+              exit 0
+            fi
             sleep 1
           done
           docker logs nestbalance-prod-smoke
