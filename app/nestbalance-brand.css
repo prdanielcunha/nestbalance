@@ -606,3 +606,17 @@ html[data-theme="dark"] .app-nav-add {
 html[data-theme="light"] .home-safe-card>strong {
   color: var(--iris);
 }
+
+
+/* Home follows the restrained brand rule: solid hierarchy, no decorative gradients. */
+.home-balance-card,
+.home-hero-grid .first-money-card,
+.home-shell .month-grid>div,
+.home-shell .card-empty,
+.home-shell .future-card,
+html[data-theme="dark"] .home-balance-card,
+html[data-theme="dark"] .home-hero-grid .first-money-card {
+  background: var(--surface) !important;
+  background-image: none !important;
+  box-shadow: var(--nb-shadow-sm);
+}
