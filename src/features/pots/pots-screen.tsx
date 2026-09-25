@@ -21,7 +21,7 @@ import {
   upsertSavingsPot,
   type SavingsPotActivity
 } from '@/src/lib/repositories/savings-pots';
-import { ScopeViewSwitch, inFinancialView, type FinancialView } from '@/src/features/privacy/scope-view-switch';
+import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { ScopeChoice } from '@/src/features/privacy/scope-choice';
 import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
@@ -41,7 +41,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
-  const [view,setView]=useState<FinancialView>('household');
+  const [view,setView]=useFinancialView();
 
   const [editing,setEditing]=useState<HomeSavingsPot|null>(null);
   const [creating,setCreating]=useState(false);
