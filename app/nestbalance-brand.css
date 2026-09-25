@@ -42,7 +42,7 @@ html[data-theme="light"] {
   --surface-elevated: var(--nb-surface-raised);
   --line: var(--nb-border);
   --hairline: var(--nb-border);
-  --iris: #a75f00;
+  --iris: #a15a00;
   --mint: #147a5d;
   --danger: #b63e49;
   --night: var(--nb-graphite-950);
