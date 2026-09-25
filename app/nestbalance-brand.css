@@ -222,6 +222,19 @@ html[data-theme="dark"] .month-grid .projected {
   background: var(--nb-ai-accent);
 }
 
+.assistant-trust-note,
+.assistant-starters button,
+.assistant-next-questions button {
+  background: var(--surface);
+  border-color: var(--line);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.assistant-trust-note p {
+  color: var(--muted);
+}
+
 /* Official brand assets. */
 .brand-lockup {
   display: inline-grid;
