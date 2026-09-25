@@ -41,8 +41,7 @@ export const metadata: Metadata = {
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'NestBalance' }]
   },
   other: {
-    'msapplication-TileColor': '#090B10',
-    'msapplication-config': '/browserconfig.xml'
+    'msapplication-TileColor': '#090B10'
   }
 };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', colorScheme: 'dark light', themeColor:'#090B10' };
@@ -54,8 +53,6 @@ export default function RootLayout({ children }: Readonly<{children: React.React
     <head>
       <script dangerouslySetInnerHTML={{__html:themeBootScript}}/>
       <link rel="apple-touch-startup-image" href="/splash/splash-iphone-1290x2796.png" media="(max-width: 767px) and (orientation: portrait)"/>
-      <link rel="apple-touch-startup-image" href="/splash/splash-tablet-2048x2732.png" media="(min-width: 768px) and (orientation: portrait)"/>
-      <link rel="apple-touch-startup-image" href="/splash/splash-tablet-landscape-2732x2048.png" media="(min-width: 768px) and (orientation: landscape)"/>
     </head>
     <body><PwaRuntime/><ThemeRuntime/>{children}</body>
   </html>;
