@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
+import { ProductTopbar } from '@/src/features/navigation/product-topbar';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { updateHouseholdAccountBalance } from '@/src/lib/repositories/accounts';
@@ -119,13 +119,9 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
   }
 
   return <main className="app-shell accounts-shell">
-    <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navAccounts}</span></div>
-      <div className="topbar-actions">
-        {canManage&&<AccountOnboarding householdId={householdId} variant="compact" defaultScope={defaultCreateScope} onCreated={refreshed}/>}
-        <HouseholdLink/>
-      </div>
-    </header>
+    <ProductTopbar section={t.navAccounts}>
+      {canManage&&<AccountOnboarding householdId={householdId} variant="compact" defaultScope={defaultCreateScope} onCreated={refreshed}/>}
+    </ProductTopbar>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="area-hero accounts-hero">

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getVaultDetail, getVaultPreview, listVault, searchVault, type VaultDetail, type VaultItem } from '@/src/lib/repositories/vault';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
+import { ProductTopbar } from '@/src/features/navigation/product-topbar';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
@@ -136,10 +136,7 @@ export function VaultScreen({householdId,role}:{householdId:string;role:Househol
   },[detail]);
 
   return <main className="app-shell vault-shell">
-    <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{l('Documentos','Documents','Documentos')}</span></div>
-      <HouseholdLink/>
-    </header>
+    <ProductTopbar section={l('Documentos','Documents','Documentos')}/>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="vault-hero">

@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
+import { ProductTopbar } from '@/src/features/navigation/product-topbar';
 import type { HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, useFinancialView } from '@/src/features/privacy/scope-view-switch';
 import { useI18n } from '@/src/i18n/locale-provider';
@@ -60,13 +60,7 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
       : l('O Assistente combina o Lar com os seus itens Pessoais, sem incluir dados pessoais de outras pessoas.','The Assistant combines Household data with your private items, without including anyone else’s private data.','El Asistente combina los datos del Hogar con tus elementos privados, sin incluir datos privados de otras personas.');
 
   return <main className="app-shell assistant-shell">
-    <header className="topbar">
-      <div>
-        <div className="eyebrow">NestBalance</div>
-        <span className="topbar-subtitle">{t.navAssistant}</span>
-      </div>
-      <HouseholdLink/>
-    </header>
+    <ProductTopbar section={t.navAssistant}/>
     <ScopeViewSwitch value={view} onChange={next=>{setView(next);setResult(null);setError('');}}/>
 
     <section className="assistant-hero">

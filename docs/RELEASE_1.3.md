@@ -1,5 +1,9 @@
 # NestBalance 1.3 Premium Experience
 
+## 1.3.2 shell consistency patch
+
+Version 1.3.2 completes the premium shell migration across authenticated routes. Home, Movements, Accounts, Cofrinhos, Assistant, Documents, Household and Privacy now share the same branded page header. The desktop sidebar starts at 960 px so common notebook widths do not show the legacy floating bottom menu; true mobile keeps a compact branded navigation with explicit contrast coverage.
+
 ## 1.3.1 certification patch
 
 Version 1.3.1 keeps the 1.3 product experience unchanged and hardens release ordering: the official Firebase Hosting publish now waits for the matching production API deployment to pass before pinning the Cloud Run rewrite. Stable GitHub Release notes are selected from the matching major/minor release document.

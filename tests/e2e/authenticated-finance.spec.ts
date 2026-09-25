@@ -176,7 +176,7 @@ test('premium Home mobile contract keeps brand hierarchy and decision data visib
   const page=await context.newPage();
   await mockAuthenticatedApi(page);
   await gotoAuthenticated(page,'/');
-  await expect(page.locator('.home-brand-logo img.brand-lockup__dark')).toBeVisible();
+  await expect(page.locator('.product-topbar-logo img.brand-lockup__dark')).toBeVisible();
   await expect(page.locator('.home-safe-card')).toBeVisible();
   await expect(page.locator('.home-safe-card > strong')).toContainText('7.823');
   await expect(page.locator('.scope-view-switch')).toBeVisible();
@@ -189,6 +189,46 @@ test('premium Home mobile contract keeps brand hierarchy and decision data visib
     };
   });
   expect(tokens).toEqual({paper:'#090b10',ink:'#f5f1e8',amber:'#ffb33e'});
+  await assertNoHorizontalOverflow(page);
+  await assertNoSeriousA11y(page);
+  await context.close();
+});
+
+test('every authenticated route uses the same premium shell at tablet and desktop widths',async({browser},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','Premium route shell is exercised once on stable Chromium.');
+  const routes=['/','/movements','/accounts','/pots','/assistant','/documents','/household','/privacy'];
+  for(const route of routes){
+    const context=await browser.newContext({viewport:{width:1024,height:900},colorScheme:'dark'});
+    const page=await context.newPage();
+    await mockAuthenticatedApi(page);
+    await gotoAuthenticated(page,route);
+    await expect(page.locator('.product-topbar-logo img.brand-lockup__dark')).toBeVisible();
+    await expect(page.locator('.topbar .eyebrow')).toHaveCount(0);
+    const nav=await page.locator('.app-nav').evaluate(element=>{
+      const style=getComputedStyle(element);
+      return {position:style.position,bottom:style.bottom,width:Math.round(element.getBoundingClientRect().width)};
+    });
+    expect(nav.position).toBe('sticky');
+    expect(nav.bottom).toBe('auto');
+    expect(nav.width).toBeGreaterThanOrEqual(220);
+    await assertNoHorizontalOverflow(page);
+    await assertNoSeriousA11y(page);
+    await context.close();
+  }
+});
+
+test('true mobile navigation remains branded and readable instead of using the legacy pale bar',async({browser},testInfo)=>{
+  test.skip(testInfo.project.name!=='desktop-chromium','Mobile nav contract is exercised once on stable Chromium.');
+  const context=await browser.newContext({viewport:{width:390,height:844},colorScheme:'dark'});
+  const page=await context.newPage();
+  await mockAuthenticatedApi(page);
+  await gotoAuthenticated(page,'/pots');
+  const nav=await page.locator('.app-nav-track').evaluate(element=>{
+    const style=getComputedStyle(element);
+    return {background:style.backgroundColor,border:style.borderColor};
+  });
+  expect(nav.background).toBe('rgb(17, 21, 29)');
+  await expect(page.locator('.app-nav-link').filter({hasText:/Início|Movimentos|Cofrinhos|Assistente/}).first()).toBeVisible();
   await assertNoHorizontalOverflow(page);
   await assertNoSeriousA11y(page);
   await context.close();

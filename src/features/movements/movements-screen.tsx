@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { HouseholdLink } from '@/src/features/navigation/household-link';
+import { ProductTopbar } from '@/src/features/navigation/product-topbar';
 import type { HouseholdRole } from '@/src/core/household';
 import { loadHomeData, type HomeRow } from '@/src/lib/repositories/home';
 import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
@@ -167,10 +167,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
   ];
 
   return <main className="app-shell movements-shell">
-    <header className="topbar">
-      <div><div className="eyebrow">NestBalance</div><span className="topbar-subtitle">{t.navMovements}</span></div>
-      <HouseholdLink/>
-    </header>
+    <ProductTopbar section={t.navMovements}/>
     <ScopeViewSwitch value={view} onChange={setView}/>
 
     <section className="area-hero">
