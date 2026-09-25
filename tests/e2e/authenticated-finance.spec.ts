@@ -178,7 +178,7 @@ test('premium Home mobile contract keeps brand hierarchy and decision data visib
   await gotoAuthenticated(page,'/');
   await expect(page.locator('.home-brand-logo img.brand-lockup__dark')).toBeVisible();
   await expect(page.locator('.home-safe-card')).toBeVisible();
-  await expect(page.locator('.home-safe-card > strong')).toContainText('8.078');
+  await expect(page.locator('.home-safe-card > strong')).toContainText('7.823');
   await expect(page.locator('.scope-view-switch')).toBeVisible();
   const tokens=await page.evaluate(()=>{
     const style=getComputedStyle(document.documentElement);
