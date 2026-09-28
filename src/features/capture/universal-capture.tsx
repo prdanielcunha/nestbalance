@@ -811,8 +811,10 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       onCommitted?.();
     } catch (err:any) {
       const code=String(err?.message||'');
-      setError(code==='EVIDENCE_NOT_FOUND'
-        ? l('O print original não ficou disponível para concluir esta importação. Tente guardar novamente; se continuar, troque o arquivo e reimporte.','The original screenshot was not available to finish this import. Try saving again; if it continues, replace the file and reimport.','La captura original no quedó disponible para terminar esta importación. Intenta guardar de nuevo; si continúa, cambia el archivo y vuelve a importar.')
+      setError(code==='EVIDENCE_UPLOAD_FAILED'
+        ? l('Não conseguimos enviar o print original. Sua revisão ficou preservada; confira a conexão e toque em Guardar novamente.','We could not upload the original screenshot. Your review is preserved; check your connection and tap Save again.','No pudimos enviar la captura original. Tu revisión quedó preservada; revisa la conexión y toca Guardar de nuevo.')
+        : code==='EVIDENCE_NOT_FOUND'
+          ? l('O print original não ficou disponível para concluir esta importação. Tente guardar novamente; se continuar, troque o arquivo e reimporte.','The original screenshot was not available to finish this import. Try saving again; if it continues, replace the file and reimport.','La captura original no quedó disponible para terminar esta importación. Intenta guardar de nuevo; si continúa, cambia el archivo y vuelve a importar.')
         : code==='SCREEN_SNAPSHOT_UNAVAILABLE'||code==='SCREEN_ANALYSIS_REQUIRED'
           ? l('A leitura deste print ficou incompleta. Nada foi salvo. Retire ou corrija o item estranho e tente novamente.','This screenshot reading is incomplete. Nothing was saved. Remove or correct the odd item and try again.','La lectura de esta captura quedó incompleta. No se guardó nada. Retira o corrige el elemento extraño e inténtalo de nuevo.')
           : code==='HOUSEHOLD_ACCESS_DENIED'||code==='PRIVATE_RECORD_ACCESS_DENIED'
