@@ -28,28 +28,43 @@ export async function ingestEvidence(householdId: string, file: File, onProgress
   });
 
   return new Promise<{status:'accepted'|'duplicate';evidenceId:string;canonicalEvidenceId:string}>((resolve,reject)=>{
-    const xhr=new XMLHttpRequest();
-    xhr.open('POST','/api/evidence/upload');
-    xhr.setRequestHeader('Authorization',`Bearer ${token}`);
-    xhr.setRequestHeader('X-NestBalance-Household-Id',householdId);
-    xhr.setRequestHeader('X-NestBalance-Evidence-Id',started.evidenceId);
-    xhr.setRequestHeader('Content-Type',file.type||'application/octet-stream');
-    xhr.responseType='json';
-    xhr.upload.onprogress=event=>{
-      const percent=event.lengthComputable&&event.total>0?Math.round((event.loaded/event.total)*100):0;
-      onProgress?.({phase:'uploading',percent});
+    const send=(attempt:number)=>{
+      const xhr=new XMLHttpRequest();
+      xhr.open('POST','/api/evidence/upload');
+      xhr.setRequestHeader('Authorization',`Bearer ${token}`);
+      xhr.setRequestHeader('X-NestBalance-Household-Id',householdId);
+      xhr.setRequestHeader('X-NestBalance-Evidence-Id',started.evidenceId);
+      xhr.setRequestHeader('Content-Type',file.type||'application/octet-stream');
+      xhr.responseType='json';
+      xhr.upload.onprogress=event=>{
+        const percent=event.lengthComputable&&event.total>0?Math.round((event.loaded/event.total)*100):0;
+        onProgress?.({phase:'uploading',percent});
+      };
+      xhr.upload.onload=()=>onProgress?.({phase:'verifying',percent:100});
+      xhr.onerror=()=>{
+        if(attempt===0){
+          onProgress?.({phase:'uploading',percent:0});
+          window.setTimeout(()=>send(1),250);
+          return;
+        }
+        reject(new Error('EVIDENCE_UPLOAD_FAILED'));
+      };
+      xhr.onload=()=>{
+        const json=xhr.response||{};
+        if(xhr.status>=500&&attempt===0){
+          onProgress?.({phase:'uploading',percent:0});
+          window.setTimeout(()=>send(1),250);
+          return;
+        }
+        if(xhr.status<200||xhr.status>=300){
+          reject(new Error(json.error||'EVIDENCE_UPLOAD_FAILED'));
+          return;
+        }
+        resolve(json);
+      };
+      xhr.send(file);
     };
-    xhr.upload.onload=()=>onProgress?.({phase:'verifying',percent:100});
-    xhr.onerror=()=>reject(new Error('EVIDENCE_UPLOAD_FAILED'));
-    xhr.onload=()=>{
-      const json=xhr.response||{};
-      if(xhr.status<200||xhr.status>=300){
-        reject(new Error(json.error||'EVIDENCE_UPLOAD_FAILED'));
-        return;
-      }
-      resolve(json);
-    };
-    xhr.send(file);
+    send(0);
   });
 }
 

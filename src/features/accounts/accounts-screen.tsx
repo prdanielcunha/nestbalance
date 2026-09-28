@@ -218,7 +218,12 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
         )}</p>
         <label className="field-label" htmlFor="balance-update-value">{l('Saldo','Balance','Saldo')}</label>
         <div className="money-input-wrap"><span>{currencySymbol}</span><input id="balance-update-value" autoFocus inputMode="decimal" value={balanceInput} onChange={e=>setBalanceInput(e.target.value)} placeholder={locale==='en'?'0.00':'0,00'}/></div>
-        <small className="field-help">{l('Pode ser negativo se a conta estiver no vermelho.','It can be negative if the account is overdrawn.','Puede ser negativo si la cuenta está en descubierto.')}</small>
+        <div className="balance-update-shortcuts">
+          <button type="button" disabled={savingBalance} onClick={()=>{setBalanceInput(locale==='en'?'0.00':'0,00');setBalanceError('');}}>
+            {l('Zerar saldo','Set balance to zero','Poner saldo en cero')}
+          </button>
+        </div>
+        <small className="field-help">{l('Pode ser negativo se a conta estiver no vermelho. Zerar só prepara o valor; toque em “Atualizar saldo” para confirmar.','It can be negative if the account is overdrawn. Setting to zero only prepares the value; tap “Update balance” to confirm.','Puede ser negativo si la cuenta está en descubierto. Poner en cero solo prepara el valor; toca “Actualizar saldo” para confirmar.')}</small>
         {balanceError&&<p className="error-copy" role="alert">{balanceError}</p>}
         <div className="sheet-actions">
           <button className="ghost-button" disabled={savingBalance} onClick={()=>setEditingAccount(null)}>{l('Cancelar','Cancel','Cancelar')}</button>

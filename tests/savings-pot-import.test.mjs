@@ -107,3 +107,32 @@ Davi R$ 361,00`);
   assert.equal(cleanSavingsPotDisplayName('e Dízimo'),'Dízimo');
   assert.equal(cleanSavingsPotDisplayName('TV nova'),'TV nova');
 });
+
+
+test('does not turn goal progress copy into a new savings pot',()=>{
+  const screen=parseSavingsPotsFromOcr(`Cofrinhos
+Mercado Pago
+Fralda
+R$ 206,05
+Falta R$ 1.043,95 para a meta
+Meta R$ 1.250,00
+Dízimo
+R$ 100,00
+Studio Z
+R$ 68,47`);
+  assert.ok(screen);
+  assert.deepEqual(screen.pots.map(item=>item.name),['Fralda','Dízimo','Studio Z']);
+  assert.equal(screen.pots[0].balanceMinor,20605);
+  assert.equal(screen.pots[0].goalMinor,125000);
+});
+
+test('removes an unknown repeated OCR icon prefix without deleting legitimate short words',()=>{
+  const screen=parseSavingsPotsFromOcr(`Cofrinhos
+Mercado Pago
+q Fralda R$ 206,05
+q Dízimo R$ 100,00
+q Studio Z R$ 68,47
+TV nova R$ 50,00`);
+  assert.ok(screen);
+  assert.deepEqual(screen.pots.map(item=>item.name),['Fralda','Dízimo','Studio Z','TV nova']);
+});

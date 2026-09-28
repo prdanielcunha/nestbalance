@@ -731,6 +731,28 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     }
   }
 
+  function removeScreenResource(kind:'accounts'|'pots'|'cards'|'commitments',index:number){
+    setScreenSnapshot(current=>{
+      if(!current) return current;
+      if(kind==='accounts') return {...current,accounts:current.accounts.filter((_,itemIndex)=>itemIndex!==index)};
+      if(kind==='pots') return {...current,pots:current.pots.filter((_,itemIndex)=>itemIndex!==index)};
+      if(kind==='cards') return {...current,cards:current.cards.filter((_,itemIndex)=>itemIndex!==index)};
+      return {...current,commitments:current.commitments.filter((_,itemIndex)=>itemIndex!==index)};
+    });
+    setError('');
+    setNotice(l('Item retirado desta importação. O print original continua preservado.','Item removed from this import. The original screenshot stays preserved.','Elemento retirado de esta importación. La captura original sigue preservada.'));
+  }
+
+  function removeInterpretation(index:number){
+    setInterpretations(current=>current.filter((_,itemIndex)=>itemIndex!==index));
+    setPaymentMatches([]);
+    setMatchingPayments(false);
+    setPaymentMatchDismissed(false);
+    setPayingMatchId('');
+    setError('');
+    setNotice(l('Item retirado desta importação. Você pode guardar o restante normalmente.','Item removed from this import. You can save the rest normally.','Elemento retirado de esta importación. Puedes guardar el resto normalmente.'));
+  }
+
   async function confirm() {
     if (!interpretations.length&&!screenSnapshot) return;
     if(paymentMatches.length&&!paymentMatchDismissed){
@@ -787,8 +809,17 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       }
       clearAll();
       onCommitted?.();
-    } catch {
-      setError(l('Não conseguimos salvar isso agora. Nada foi marcado como concluído.','We could not save this right now. Nothing was marked as completed.','No pudimos guardar esto ahora. Nada se marcó como completado.'));
+    } catch (err:any) {
+      const code=String(err?.message||'');
+      setError(code==='EVIDENCE_UPLOAD_FAILED'
+        ? l('Não conseguimos enviar o print original. Sua revisão ficou preservada; confira a conexão e toque em Guardar novamente.','We could not upload the original screenshot. Your review is preserved; check your connection and tap Save again.','No pudimos enviar la captura original. Tu revisión quedó preservada; revisa la conexión y toca Guardar de nuevo.')
+        : code==='EVIDENCE_NOT_FOUND'
+          ? l('O print original não ficou disponível para concluir esta importação. Tente guardar novamente; se continuar, troque o arquivo e reimporte.','The original screenshot was not available to finish this import. Try saving again; if it continues, replace the file and reimport.','La captura original no quedó disponible para terminar esta importación. Intenta guardar de nuevo; si continúa, cambia el archivo y vuelve a importar.')
+        : code==='SCREEN_SNAPSHOT_UNAVAILABLE'||code==='SCREEN_ANALYSIS_REQUIRED'
+          ? l('A leitura deste print ficou incompleta. Nada foi salvo. Retire ou corrija o item estranho e tente novamente.','This screenshot reading is incomplete. Nothing was saved. Remove or correct the odd item and try again.','La lectura de esta captura quedó incompleta. No se guardó nada. Retira o corrige el elemento extraño e inténtalo de nuevo.')
+          : code==='HOUSEHOLD_ACCESS_DENIED'||code==='PRIVATE_RECORD_ACCESS_DENIED'
+            ? l('Seu acesso mudou enquanto você revisava. Atualize a tela e tente novamente.','Your access changed while you were reviewing. Refresh the page and try again.','Tu acceso cambió mientras revisabas. Actualiza la pantalla e inténtalo de nuevo.')
+            : l('Não conseguimos salvar isso agora. Nada foi marcado como concluído. Sua revisão continua aqui para você tentar novamente.','We could not save this right now. Nothing was marked as completed. Your review stays here so you can try again.','No pudimos guardar esto ahora. Nada se marcó como completado. Tu revisión sigue aquí para que puedas intentarlo de nuevo.'));
     } finally {
       setSaving(false);
     }
@@ -1040,6 +1071,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                     />
                   </label>
                   <small>{screenSnapshot.institution||l('Instituição não confirmada','Institution not confirmed','Institución no confirmada')}</small>
+                  <button type="button" className="capture-remove-item" onClick={()=>removeScreenResource('accounts',index)}>{l('Não importar','Do not import','No importar')}</button>
                 </div>
               </div>)}
             </div>}
@@ -1085,9 +1117,24 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                     />
                   </label>
                   <small>{pot.goalMinor&&pot.goalMinor>0?l(`Meta ${formatMoney(pot.goalMinor)}`,`Goal ${formatMoney(pot.goalMinor)}`,`Meta ${formatMoney(pot.goalMinor)}`):l('Sem meta encontrada','No goal found','Sin meta encontrada')}</small>
+                  <button type="button" className="capture-remove-item" onClick={()=>removeScreenResource('pots',index)}>{l('Não importar','Do not import','No importar')}</button>
                 </div>
               </div>)}
             </div></>}
+
+            {screenSnapshot.cards.length>0&&<div className="screen-pot-review">
+              {screenSnapshot.cards.map((card,index)=><div className="screen-pot-review-row" key={index}>
+                <div>
+                  <strong>{card.name}{card.last4?` · •••• ${card.last4}`:''}</strong>
+                  <span>{l('Cartão reconhecido','Recognized card','Tarjeta reconocida')}</span>
+                </div>
+                <div>
+                  <b>{card.statementAmountMinor!==null?formatMoney(card.statementAmountMinor):card.availableLimitMinor!==null?formatMoney(card.availableLimitMinor):'—'}</b>
+                  <small>{card.statementAmountMinor!==null?l('Fatura','Statement','Resumen'):card.availableLimitMinor!==null?l('Limite disponível','Available limit','Límite disponible'):l('Sem valor principal','No primary amount','Sin valor principal')}</small>
+                  <button type="button" className="capture-remove-item" onClick={()=>removeScreenResource('cards',index)}>{l('Não importar','Do not import','No importar')}</button>
+                </div>
+              </div>)}
+            </div>}
 
             {screenSnapshot.commitments.length>0&&<div className="screen-pot-review screen-commitment-review">
               {screenSnapshot.commitments.map((commitment,index)=><div className="screen-pot-review-row screen-pot-review-editable" key={index}>
@@ -1130,6 +1177,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                       }}
                     />
                   </label>
+                  <button type="button" className="capture-remove-item" onClick={()=>removeScreenResource('commitments',index)}>{l('Não importar','Do not import','No importar')}</button>
                 </div>
               </div>)}
             </div>}
@@ -1176,7 +1224,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           </div>}
 
           <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
-            <div><strong>{interpretation.description}</strong><b>{formatMoney(interpretation.money.amountMinor)}</b></div>
+            <div className="interpretation-card-head"><strong>{interpretation.description}</strong><b>{formatMoney(interpretation.money.amountMinor)}</b></div>
+            <button type="button" className="capture-remove-item capture-remove-movement" onClick={()=>removeInterpretation(index)}>{l('Não importar este item','Do not import this item','No importar este elemento')}</button>
             <span>{interpretation.kind === 'commitment'
               ? (interpretation.recurring ? l(`Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}`,`Every month${interpretation.dueDay ? ` · day ${interpretation.dueDay}` : ''}`,`Cada mes${interpretation.dueDay ? ` · día ${interpretation.dueDay}` : ''}`) : l('Conta para pagar','Bill to pay','Cuenta por pagar'))
               : interpretation.needsReview.includes('direction')
@@ -1217,7 +1266,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setScreenSnapshot(null); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
-            <button className="primary-button" disabled={working||unresolvedDirectionCount>0||Boolean(missingScreenInstitution)||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
+            <button className="primary-button" disabled={working||totalOrganizedCount===0||unresolvedDirectionCount>0||Boolean(missingScreenInstitution)||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
               ? (upload?.phase === 'verifying' ? l('Conferindo…','Checking…','Revisando…') : l('Guardando…','Saving…','Guardando…'))
               : unresolvedDirectionCount
                 ? l(`Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`,`${unresolvedDirectionCount} confirmation${unresolvedDirectionCount===1?'':'s'} remaining`,`Falta${unresolvedDirectionCount===1?'':'n'} ${unresolvedDirectionCount} confirmación${unresolvedDirectionCount===1?'':'es'}`)
@@ -1225,7 +1274,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                 ? l('Informe o banco ou origem acima','Enter the bank or source above','Indica el banco u origen arriba')
                 : paymentMatches.length>0&&!paymentMatchDismissed
                   ? l('Escolha a conta acima','Choose the bill above','Elige la cuenta de arriba')
-                  : l('Guardar','Save','Guardar')}</button>
+                  : totalOrganizedCount===0
+                    ? l('Nada para guardar','Nothing to save','Nada para guardar')
+                    : l('Guardar','Save','Guardar')}</button>
           </div>
         </>}
       </section>

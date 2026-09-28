@@ -308,6 +308,30 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     const partnerAfterPotSync=await post('/api/home',partner.token,{householdId});
     assert.equal(partnerAfterPotSync.json.savingsPots.some(item=>item.name==='Viagem'&&item.balanceMinor===120000),true);
 
+    const mercadoPotScreen={
+      ...potScreen,
+      institution:'Mercado Pago',
+      pots:[
+        {name:'Fralda',balanceMinor:20605,goalMinor:125000,targetDate:null,currency:'BRL',confidence:0.99},
+        {name:'Dízimo',balanceMinor:10000,goalMinor:null,targetDate:null,currency:'BRL',confidence:0.99},
+        {name:'Studio Z',balanceMinor:6847,goalMinor:null,targetDate:null,currency:'BRL',confidence:0.99}
+      ],
+      movements:[],
+      summary:'3 cofrinhos identificados em Mercado Pago.'
+    };
+    const mercadoPotImport=await post('/api/financial-screen/commit',owner.token,{
+      householdId,
+      evidenceId:screenEvidenceId,
+      screenSnapshot:mercadoPotScreen,
+      analysisSource:'client_reviewed'
+    });
+    assert.equal(mercadoPotImport.status,201);
+    assert.equal(mercadoPotImport.json.counts.pots,3);
+    const homeAfterMercadoPots=await post('/api/home',owner.token,{householdId});
+    assert.equal(homeAfterMercadoPots.json.savingsPots.some(item=>item.name==='Fralda'&&item.balanceMinor===20605),true);
+    assert.equal(homeAfterMercadoPots.json.savingsPots.some(item=>item.name==='Dízimo'&&item.balanceMinor===10000),true);
+    assert.equal(homeAfterMercadoPots.json.savingsPots.some(item=>item.name==='Studio Z'&&item.balanceMinor===6847),true);
+
     const receiptEvidenceId='internetmar01';
     await seedDb.doc(`households/${householdId}/evidenceAssets/${receiptEvidenceId}`).set({
       status:'accepted',
