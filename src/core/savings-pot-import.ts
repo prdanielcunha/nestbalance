@@ -1,8 +1,9 @@
 import type { AiFinancialScreenSnapshot } from './ai-financial.js';
 
 const OCR_ICON_PREFIXES=new Set(['t','v','vv','vc','vy','vw','w','ww','e','i','ii','l','ll','c','y','iv','vi']);
+const OCR_PREFIX_WORD_ALLOWLIST=new Set(['a','o','as','os','um','em','de','da','do','no','na','tv']);
 
-function cleanSavingsPotDisplayName(value:string){
+function cleanSavingsPotDisplayName(value:string,inferredPrefixes:Set<string>=new Set()){
   let clean=String(value||'')
     .normalize('NFKC')
     .replace(/^[^\p{L}\p{N}]+/u,'')
@@ -10,7 +11,8 @@ function cleanSavingsPotDisplayName(value:string){
     .replace(/\s+/g,' ')
     .trim();
   const parts=clean.split(' ').filter(Boolean);
-  if(parts.length>=2&&OCR_ICON_PREFIXES.has(parts[0].toLocaleLowerCase('pt-BR'))){
+  const prefix=parts[0]?.toLocaleLowerCase('pt-BR')||'';
+  if(parts.length>=2&&(OCR_ICON_PREFIXES.has(prefix)||inferredPrefixes.has(prefix))){
     clean=parts.slice(1).join(' ');
   }
   return clean.slice(0,120);
@@ -73,6 +75,32 @@ function nameBeforeMoney(line:string,matchIndex:number){
   return cleanLine(line.slice(0,matchIndex).replace(/[·•|]+$/,''));
 }
 
+function normalizedCopy(value:string){
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
+}
+
+function isSavingsPotProgressCopy(value:string){
+  const normalized=normalizedCopy(value);
+  return /\b(falta|faltam|resta|restam|faltan|restan)\b.*\b(meta|objetivo)\b/.test(normalized)
+    || /\b(left|remaining)\b.*\b(goal|target)\b/.test(normalized)
+    || /\bpara\s+(?:atingir|alcancar|chegar\s+(?:na|a))\s+(?:a\s+)?(?:meta|objetivo)\b/.test(normalized);
+}
+
+function inferRepeatedOcrPrefixes(lines:string[]){
+  const counts=new Map<string,number>();
+  for(const line of lines){
+    if(isSavingsPotProgressCopy(line)||POT_SCREEN_HINT.test(line)||/\b(meta|saldo|total|rendimento|rendimentos|cdi)\b/i.test(line)) continue;
+    const money=[...line.matchAll(MONEY)][0];
+    const candidate=money?nameBeforeMoney(line,money.index||0):line;
+    const parts=cleanLine(candidate).replace(/^[^\p{L}\p{N}]+/u,'').split(' ').filter(Boolean);
+    if(parts.length<2) continue;
+    const prefix=parts[0].toLocaleLowerCase('pt-BR');
+    if(prefix.length>2||OCR_PREFIX_WORD_ALLOWLIST.has(prefix)||OCR_ICON_PREFIXES.has(prefix)||!/^[a-z]+$/i.test(prefix)) continue;
+    counts.set(prefix,(counts.get(prefix)||0)+1);
+  }
+  return new Set([...counts.entries()].filter(([,count])=>count>=2).map(([prefix])=>prefix));
+}
+
 function parseTargetDate(line:string){
   const match=EXPLICIT_DATE.exec(line);
   if(!match) return null;
@@ -90,11 +118,13 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
 
   const lines=normalizedText.split(/\n+/).map(cleanLine).filter(Boolean);
   const institution=institutionFromText(normalizedText);
+  const inferredOcrPrefixes=inferRepeatedOcrPrefixes(lines);
   const pots:Array<{name:string;balanceMinor:number;goalMinor:number|null;targetDate:string|null;currency:'BRL';confidence:number}>=[];
   let pendingName:string|null=null;
   let lastPotIndex=-1;
 
   for(const line of lines){
+    if(isSavingsPotProgressCopy(line)) continue;
     const meta=/\bmeta\s*:?\s*(R\$\s*\d(?:[\d.\u00a0 ]*\d)?(?:,\d{1,2})?(?=\s|$|[^\d.,]))/i.exec(line);
     const metaGoalMinor=meta?parseMoneyMinor(meta[1]):null;
     const targetDate=parseTargetDate(line);
@@ -132,7 +162,7 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
       continue;
     }
 
-    const normalizedCandidate=cleanSavingsPotDisplayName(candidate);
+    const normalizedCandidate=cleanSavingsPotDisplayName(candidate,inferredOcrPrefixes);
 
     const existingIndex=pots.findIndex(item=>
       item.name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')===
