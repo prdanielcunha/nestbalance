@@ -2379,3 +2379,36 @@ input,textarea,select{font-size:16px}
   .app-nav-link{font-size:12px;padding-inline:2px}
 }
 @media(min-resolution:2dppx){.app-nav-track{backdrop-filter:blur(22px) saturate(1.18)}}
+
+
+/* Import review: every recognized item can be explicitly left out before commit. */
+.capture-remove-item{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:44px;
+  margin-top:4px;
+  padding:8px 0;
+  border:0;
+  background:transparent;
+  color:var(--danger);
+  font-size:12px;
+  font-weight:800;
+  line-height:1.2;
+}
+.capture-remove-item:hover{text-decoration:underline}
+.capture-remove-movement{align-self:flex-start;margin-top:0}
+.balance-update-shortcuts{display:flex;justify-content:flex-start;margin-top:8px}
+.balance-update-shortcuts button{
+  min-height:44px;
+  border:0;
+  background:transparent;
+  color:var(--danger);
+  font-size:12px;
+  font-weight:800;
+  padding:8px 0;
+}
+@media(max-width:560px){
+  .screen-pot-review-row{align-items:flex-start}
+  .screen-pot-review-row>div:last-child{min-width:118px}
+}
