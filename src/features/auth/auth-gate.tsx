@@ -132,7 +132,7 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
   if (!state && sessionError && authenticatedUser) {
     return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="login-card">
       <div>
-        <div className="eyebrow">MillionsNest</div>
+        <div className="eyebrow"><img src="/brand/millionsnest/v1/mark-192.png" alt="" aria-hidden="true" width={20} height={20} style={{display:"inline-block",width:20,height:20,objectFit:"contain",verticalAlign:"middle",marginRight:8,flexShrink:0}} />MillionsNest</div>
         <BrandLockup className="auth-logo"/>
         <h1 className="sr-only">NestBalance</h1>
         <p>{t.authSessionProblem}</p>
@@ -144,7 +144,7 @@ export function AuthGate({ children }: { children: (ctx: SessionState) => React.
     </section></main></LocaleProvider>;
   }
 
-  if (!state) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="login-card"><div><div className="eyebrow">MillionsNest</div><BrandLockup className="auth-logo"/><h1 className="sr-only">NestBalance</h1><p>{t.brandTagline}</p>{sessionError && <p className="error-copy" role="alert">{t.authSignInProblem}</p>}</div><button className="primary-button" disabled={signingIn} onClick={() => void startGoogleSignIn()}>{signingIn ? t.signingIn : t.signIn}</button></section></main></LocaleProvider>;
+  if (!state) return <LocaleProvider locale={activeLocale} currency={activeCurrency}><main className="center-shell"><section className="login-card"><div><div className="eyebrow"><img src="/brand/millionsnest/v1/mark-192.png" alt="" aria-hidden="true" width={20} height={20} style={{display:"inline-block",width:20,height:20,objectFit:"contain",verticalAlign:"middle",marginRight:8,flexShrink:0}} />MillionsNest</div><BrandLockup className="auth-logo"/><h1 className="sr-only">NestBalance</h1><p>{t.brandTagline}</p>{sessionError && <p className="error-copy" role="alert">{t.authSignInProblem}</p>}</div><button className="primary-button" disabled={signingIn} onClick={() => void startGoogleSignIn()}>{signingIn ? t.signingIn : t.signIn}</button></section></main></LocaleProvider>;
   const activeRole=normalizeHouseholdRole(state.households.find(item=>item.id===state.householdId)?.role||'read_only');
   return <LocaleProvider locale={state.locale} currency={state.currency}><AuthenticatedShell canContribute={activeRole!=='read_only'}>{children(state)}</AuthenticatedShell></LocaleProvider>;
 }
@@ -204,7 +204,7 @@ export function AuthOnlyGate({ children }: { children: (user: User) => React.Rea
   if(loading) return <LocaleProvider locale={browserLocale} currency="BRL"><AppLoadingScreen label={t.loading}/></LocaleProvider>;
   if(!user) return <LocaleProvider locale={browserLocale} currency="BRL"><main className="center-shell"><section className="login-card">
     <div>
-      <div className="eyebrow">MillionsNest</div>
+      <div className="eyebrow"><img src="/brand/millionsnest/v1/mark-192.png" alt="" aria-hidden="true" width={20} height={20} style={{display:"inline-block",width:20,height:20,objectFit:"contain",verticalAlign:"middle",marginRight:8,flexShrink:0}} />MillionsNest</div>
       <BrandLockup className="auth-logo"/>
       <h1 className="sr-only">NestBalance</h1>
       <p>{t.brandTagline}</p>
