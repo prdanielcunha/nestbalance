@@ -446,14 +446,21 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     assert.equal(matchedPayment.json.matches[0]?.commitment?.id,commitment.json.id);
     assert.ok(matchedPayment.json.matches[0]?.score>=82);
 
+    // Home and assistant report the real current month; historical invoice fixtures stay fixed.
+    const paymentNow=new Date();
+    const paymentPeriod=paymentNow.toISOString().slice(0,7);
+    const nextPaymentPeriod=new Date(Date.UTC(paymentNow.getUTCFullYear(),paymentNow.getUTCMonth()+1,10)).toISOString().slice(0,7);
+    const paymentOn=paymentPeriod+'-10';
+    const nextPaymentOn=nextPaymentPeriod+'-10';
+
     const paidInternet=await post('/api/commitments/pay',owner.token,{
       householdId,
       commitmentId:commitment.json.id,
-      paidOn:'2026-09-10'
+      paidOn:paymentOn
     });
     assert.equal(paidInternet.status,201);
     assert.equal(paidInternet.json.status,'paid');
-    assert.equal(paidInternet.json.periodKey,'2026-09');
+    assert.equal(paidInternet.json.periodKey,paymentPeriod);
 
     const homeAfterPayment=await post('/api/home',owner.token,{householdId});
     assert.equal(homeAfterPayment.json.commitments.some(item=>item.id===commitment.json.id&&item.paidThisMonth===true),true);
@@ -471,7 +478,7 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     const undoneInternet=await post('/api/commitments/undo-payment',owner.token,{
       householdId,
       commitmentId:commitment.json.id,
-      periodKey:'2026-09'
+      periodKey:paymentPeriod
     });
     assert.equal(undoneInternet.json.status,'reversed');
 
@@ -490,34 +497,34 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
     await post('/api/commitments/pay',owner.token,{
       householdId,
       commitmentId:commitment.json.id,
-      paidOn:'2026-09-10'
+      paidOn:paymentOn
     });
     await post('/api/commitments/pay',owner.token,{
       householdId,
       commitmentId:commitment.json.id,
-      paidOn:'2026-10-10'
+      paidOn:nextPaymentOn
     });
 
     const blockedOldUndo=await post('/api/commitments/undo-payment',owner.token,{
       householdId,
       commitmentId:commitment.json.id,
-      periodKey:'2026-09'
+      periodKey:paymentPeriod
     },409);
     assert.equal(blockedOldUndo.json.error,'PAYMENT_UNDO_BLOCKED_BY_LATER_PAYMENT');
 
-    const undoOctober=await post('/api/commitments/undo-payment',owner.token,{
+    const undoNextPeriod=await post('/api/commitments/undo-payment',owner.token,{
       householdId,
       commitmentId:commitment.json.id,
-      periodKey:'2026-10'
+      periodKey:nextPaymentPeriod
     });
-    assert.equal(undoOctober.json.status,'reversed');
+    assert.equal(undoNextPeriod.json.status,'reversed');
 
-    const undoSeptemberAfterOctober=await post('/api/commitments/undo-payment',owner.token,{
+    const undoCurrentAfterNext=await post('/api/commitments/undo-payment',owner.token,{
       householdId,
       commitmentId:commitment.json.id,
-      periodKey:'2026-09'
+      periodKey:paymentPeriod
     });
-    assert.equal(undoSeptemberAfterOctober.json.status,'reversed');
+    assert.equal(undoCurrentAfterNext.json.status,'reversed');
 
     const ownerFinal=await post('/api/session/bootstrap',owner.token,{householdId,device:ownerDevice});
     assert.equal(ownerFinal.json.householdId,householdId);
