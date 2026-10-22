@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "firebase": "12.19.0",
-    "next": "16.3.3",
+    "next": "16.3.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "express": "^5.1.0",
@@ -47,5 +47,12 @@
     "@playwright/test": "1.63.0",
     "@axe-core/playwright": "4.13.0",
     "tesseract.js": "7.0.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.13.6",
+    "sharp": "0.35.5",
+    "firebase-tools": {
+      "chokidar": "4.0.3"
+    }
   }
 }
