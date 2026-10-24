@@ -2,6 +2,7 @@ import type { AiFinancialScreenSnapshot } from './ai-financial.js';
 
 const BALANCE_LABEL=/\b(?:saldo(?:\s+dispon[ií]vel)?|dispon[ií]vel\s+agora|available\s+balance)\b/i;
 const EXCLUDE_CONTEXT=/\b(?:limites?|cart[aã]o|cart[oõ]es|faturas?|empr[eé]stimos?|cr[eé]dito|investimentos?|cofrinhos?|reservas?|metas?|deposite|depositar|rendeu|rendimento|score|MUSD)\b/i;
+const ACCOUNT_TABS=/^(?:saldo|cofrinhos|investimentos|cripto)(?:\s+(?:saldo|cofrinhos|investimentos|cripto))*$/i;
 
 export function accountInstitutionFromOcr(text:string):string|null{
   const plain=text.normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
@@ -60,8 +61,9 @@ function parseBalanceToken(raw:string){
 }
 
 function firstMoneyNear(lines:string[],labelIndex:number){
-  for(let i=labelIndex;i<=Math.min(lines.length-1,labelIndex+3);i++){
+  for(let i=labelIndex;i<=Math.min(lines.length-1,labelIndex+7);i++){
     const line=lines[i];
+    if(i!==labelIndex&&ACCOUNT_TABS.test(line)) continue;
     if(i!==labelIndex&&EXCLUDE_CONTEXT.test(line)) break;
     const match=/R\$\s*(\d[\d.,]*)(?:[ \t]+(\d{2})(?![\d.,%]))?/i.exec(line);
     if(!match) continue;
@@ -82,7 +84,7 @@ export function parseAccountBalanceFromOcr(text:string):AiFinancialScreenSnapsho
   for(let i=0;i<lines.length;i++){
     if(!BALANCE_LABEL.test(lines[i])) continue;
     // A tab bar may be one OCR line: "Saldo Cofrinhos Investimentos Cripto".
-    const isTabBar=/^saldo(?:\s+cofrinhos)?(?:\s+investimentos)?(?:\s+cripto)?$/i.test(lines[i]);
+    const isTabBar=ACCOUNT_TABS.test(lines[i]);
     if(EXCLUDE_CONTEXT.test(lines[i])&&!isTabBar) continue;
     const balanceMinor=firstMoneyNear(lines,i);
     if(balanceMinor===null) continue;
