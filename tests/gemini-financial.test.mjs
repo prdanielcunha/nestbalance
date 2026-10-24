@@ -124,3 +124,23 @@ test('screen snapshot keeps only grounded balances and movements',()=>{
   assert.equal(extraction.screen?.movements.length,1);
   assert.equal(extraction.screen?.movements[0]?.amountMinor,3250);
 });
+
+
+test('recovers primary balance and product-grounded institution when AI misses them',()=>{
+  const text='Olá, Daniel\nSaldo Cofrinhos Investimentos Cripto\nR$ 0 09\nDeposite mais R$ 970\nMeli Dólar\nMUSD 0\nEmpréstimos\nR$ 340';
+  const extraction=sanitizeGeminiFinancialExtraction({},text);
+  assert.equal(extraction.screen?.accounts[0].balanceMinor,9);
+  assert.equal(extraction.institution,'Mercado Pago');
+  assert.equal(extraction.amountMinor,null);
+  assert.equal(extraction.needsConfirmation,true);
+});
+test('does not accept a promotion as balance when the primary value is visible',()=>{
+  const text='Saldo\nR$ 0⁰⁹\nDeposite mais R$ 970\nMeli Dólar';
+  const extraction=sanitizeGeminiFinancialExtraction({screen:{screenType:'account_home',institution:null,accounts:[{name:'Conta',balanceMinor:97000,currency:'BRL'}]}},text);
+  assert.equal(extraction.screen?.accounts[0].balanceMinor,9);
+  assert.equal(extraction.screen?.institution,'Mercado Pago');
+});
+test('retains a grounded zero primary balance in the AI path',()=>{
+  const extraction=sanitizeGeminiFinancialExtraction({screen:{screenType:'account_home'}},'Mercado Pago\nSaldo\nR$ 0,00');
+  assert.equal(extraction.screen?.accounts[0].balanceMinor,0);
+});
