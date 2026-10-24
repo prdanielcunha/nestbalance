@@ -1,7 +1,26 @@
 import type { AiFinancialScreenSnapshot } from './ai-financial.js';
 
 const BALANCE_LABEL=/\b(?:saldo(?:\s+dispon[ií]vel)?|dispon[ií]vel\s+agora|available\s+balance)\b/i;
-const EXCLUDE_CONTEXT=/\b(?:limite|cart[aã]o|fatura|empr[eé]stimo|cr[eé]dito|investimento|cofrinho|reserva|meta)\b/i;
+const EXCLUDE_CONTEXT=/\b(?:devedor|bloqueado|limites?|cart[aã]o|cart[oõ]es|faturas?|empr[eé]stimos?|cr[eé]dito|investimentos?|cofrinhos?|reservas?|metas?|deposite|depositar|rendeu|rendimento|score|MUSD)\b/i;
+const ACCOUNT_TABS=/^(?:saldo|cofrinhos|investimentos|cripto)(?:\s+(?:saldo|cofrinhos|investimentos|cripto))*$/i;
+
+export function accountInstitutionFromOcr(text:string):string|null{
+  const plain=text.normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
+  // Product names are useful even when the app only displays its logo.
+  if(/\bmeli\s+dolar\b/i.test(plain)) return 'Mercado Pago';
+  // Only use the account header; bank names in offers or transfers are not
+  // evidence of the institution that owns the primary balance.
+  const header=plain.split(/\bsaldo\b|\bavailable\s+balance\b/i)[0];
+  const institutions=[
+    ['Mercado Pago',/\bmercado\s*pago\b/i],
+    ['Nubank',/\bnubank\b/i],['PicPay',/\bpicpay\b/i],
+    ['Itaú',/\bitau\b/i],['Bradesco',/\bbradesco\b/i],
+    ['Banco do Brasil',/\bbanco\s+do\s+brasil\b/i],
+    ['Santander',/\bsantander\b/i],['Caixa',/\bcaixa\b/i]
+  ] as const;
+  const matches=institutions.filter(([,pattern])=>pattern.test(header));
+  return matches.length===1?matches[0][0]:null;
+}
 
 function cleanLine(value:string){
   return value.normalize('NFKC').replace(/[\t\u00a0]+/g,' ').replace(/\s+/g,' ').trim();
@@ -42,12 +61,19 @@ function parseBalanceToken(raw:string){
 }
 
 function firstMoneyNear(lines:string[],labelIndex:number){
-  for(let i=labelIndex;i<=Math.min(lines.length-1,labelIndex+3);i++){
+  for(let i=labelIndex;i<=Math.min(lines.length-1,labelIndex+7);i++){
     const line=lines[i];
+    if(i!==labelIndex&&ACCOUNT_TABS.test(line)) continue;
     if(i!==labelIndex&&EXCLUDE_CONTEXT.test(line)) break;
-    const match=/R\$\s*(\d[\d.,]*)/i.exec(line);
+    const match=/R\$\s*(\d[\d.,]*)(?:[ \t]+(\d{2})(?![\d.,%]))?/i.exec(line);
     if(!match) continue;
-    const value=parseBalanceToken(match[0]);
+    let raw=match[0];
+    // OCR can separate the raised cents by a space or a line break.
+    if(match[2]&&!/[.,]/.test(match[1])) raw=`R$ ${match[1]},${match[2]}`;
+    else if(!/[.,]/.test(match[1])&&/^\d{2}$/.test(lines[i+1]||'')){
+      raw=`R$ ${match[1]},${lines[i+1]}`;
+    }
+    const value=parseBalanceToken(raw);
     if(value!==null) return value;
   }
   return null;
@@ -56,12 +82,15 @@ function firstMoneyNear(lines:string[],labelIndex:number){
 export function parseAccountBalanceFromOcr(text:string):AiFinancialScreenSnapshot|null{
   const lines=String(text||'').split(/\n+/).map(cleanLine).filter(Boolean);
   for(let i=0;i<lines.length;i++){
-    if(!BALANCE_LABEL.test(lines[i])||EXCLUDE_CONTEXT.test(lines[i])) continue;
+    if(!BALANCE_LABEL.test(lines[i])) continue;
+    // A tab bar may be one OCR line: "Saldo Cofrinhos Investimentos Cripto".
+    const isTabBar=ACCOUNT_TABS.test(lines[i]);
+    if(EXCLUDE_CONTEXT.test(lines[i])&&!isTabBar) continue;
     const balanceMinor=firstMoneyNear(lines,i);
     if(balanceMinor===null) continue;
     return {
       screenType:'account_home',
-      institution:null,
+      institution:accountInstitutionFromOcr(text),
       accounts:[{
         name:'Saldo disponível',
         productType:'account',
@@ -79,3 +108,4 @@ export function parseAccountBalanceFromOcr(text:string):AiFinancialScreenSnapsho
   }
   return null;
 }
+
