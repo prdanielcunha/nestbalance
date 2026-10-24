@@ -1,4 +1,5 @@
 'use client';
+import { savingsPotLabelRegions, applySavingsPotLabel, chooseSavingsPotLabel } from '@/src/core/savings-pot-layout';
 import { normalizeRaisedCents } from '@/src/core/raised-cents';
 import { accountInstitutionFromOcr } from '@/src/core/account-balance-import';
 
@@ -39,6 +40,32 @@ export async function readImageTextLocally(
       const context=canvas.getContext('2d',{willReadFrequently:true});
       if(context){
         context.drawImage(bitmap,0,0);
+        const lines=(result.data.blocks||[]).flatMap(block=>block.paragraphs.flatMap(paragraph=>paragraph.lines));
+        const labels=savingsPotLabelRegions(lines,bitmap.width);
+        if(labels.length){
+          await worker.setParameters({tessedit_pageseg_mode:PSM.SINGLE_LINE,tessedit_char_whitelist:''});
+          for(const label of labels){
+            // The repeated label column excludes icons without a blacklist of
+            // letters, while the currency column and original values stay intact.
+            let name=label.name;
+            const {x0,y0,x1,y1}=label.bbox;
+            const region=document.createElement('canvas');
+            region.width=(x1-x0)*2;region.height=(Math.min(y1,bitmap.height)-y0)*2;
+            const regionContext=region.getContext('2d');
+            if(regionContext&&region.width>0&&region.height>0){
+              regionContext.fillStyle='#fff';regionContext.fillRect(0,0,region.width,region.height);
+              regionContext.drawImage(bitmap,x0,y0,x1-x0,Math.min(y1,bitmap.height)-y0,0,0,region.width,region.height);
+              try{
+                const retry=await worker.recognize(region);
+                const candidate=retry.data.text.trim();
+                name=chooseSavingsPotLabel(label.name,candidate,retry.data.confidence);
+              }catch{
+                // Geometry still removes detached icon words if rereading fails.
+              }
+            }
+            if(name) text=applySavingsPotLabel(text,label,name);
+          }
+        }
         let repaired=0;
         for(const block of result.data.blocks||[]) for(const paragraph of block.paragraphs) for(const line of paragraph.lines){
           if(repaired>=3||!/R\$/i.test(line.text)) continue;
