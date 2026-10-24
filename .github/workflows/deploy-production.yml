@@ -193,9 +193,21 @@ jobs:
         run: |
           set -euo pipefail
           HOSTING_URL="https://$FIREBASE_HOSTING_SITE.web.app"
-          curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors \
-            --output /tmp/prod-health.json "$HOSTING_URL/api/healthz"
-          jq -e --arg sha "$GITHUB_SHA" '.ok == true and .environment == "production" and .release == $sha' /tmp/prod-health.json >/dev/null
+          HEALTH_READY=false
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error --location \
+              --output /tmp/prod-health.json "$HOSTING_URL/api/healthz" \
+              && jq -e --arg sha "$GITHUB_SHA" '.ok == true and .environment == "production" and .release == $sha' /tmp/prod-health.json >/dev/null; then
+              HEALTH_READY=true
+              break
+            fi
+            echo "Waiting for the certified release to propagate (attempt $attempt/20)..."
+            sleep 3
+          done
+          if [[ "$HEALTH_READY" != true ]]; then
+            echo "::error::The published endpoint did not report the certified production release."
+            exit 1
+          fi
 
           curl --fail --silent --show-error --location --retry 12 --retry-delay 3 --retry-all-errors \
             --output /tmp/prod-index.html "$HOSTING_URL/"
