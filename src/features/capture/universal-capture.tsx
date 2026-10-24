@@ -7,6 +7,7 @@ import { parseFinancialCsv } from '@/src/core/csv-import';
 import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
 import { detectDocumentSignals } from '@/src/core/document-signals';
+import { classifyFinancialScreenshot } from '@/src/core/financial-screenshot';
 import { parseSavingsPotsFromOcr } from '@/src/core/savings-pot-import';
 import { parseRecurringCommitmentsFromOcr } from '@/src/core/recurring-commitment-import';
 import { parseAccountBalanceFromOcr } from '@/src/core/account-balance-import';
@@ -417,62 +418,47 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         signals
       });
 
-      const recurringScreen=parseRecurringCommitmentsFromOcr(ocr);
-      if(recurringScreen?.commitments.length){
-        setScreenSnapshot(recurringScreen);
-        setInterpretations([]);
+      const classified=classifyFinancialScreenshot(ocr);
+      if(classified.screen){
+        const screen=classified.screen;
+        const resources=screen.accounts.length+screen.pots.length+screen.cards.length+screen.commitments.length;
+        setScreenSnapshot(resources?screen:null);
+        const imported=buildImportedMovements({
+          documentType:screen.screenType==='transaction_list'?'transaction_list':'bank_screenshot',
+          institution:screen.institution,
+          overallConfidence:0.9,
+          ambiguities:[],
+          items:screen.movements
+        });
+        setInterpretations(imported);
         setAmountChoices([]);
         setDirectionChoice(false);
         setPendingAi(null);
+        const labels={
+          account_home:l('saldo da conta','account balance','saldo de la cuenta'),
+          single_event:l('comprovante de transação','transaction receipt','comprobante de transacción'),
+          transaction_list:l('extrato de movimentações','transaction history','historial de movimientos'),
+          card_home:l('cartão e limites','card and credit limits','tarjeta y límites'),
+          card_statement:l('fatura do cartão','card statement','factura de tarjeta'),
+          savings_pots:l('cofrinhos','savings pots','alcancías'),
+          bill:l('conta a pagar','bill to pay','cuenta por pagar'),
+          mixed:l('tela com vários dados financeiros','screen with several financial records','pantalla con varios datos financieros'),
+          retail_account:l('conta de compras','retail account','cuenta de compras'),
+          other:l('documento financeiro','financial document','documento financiero')
+        };
+        const label=labels[classified.kind];
         setNotice(l(
-          `Encontrei ${recurringScreen.commitments.length} conta${recurringScreen.commitments.length===1?'':'s'} recorrente${recurringScreen.commitments.length===1?'':'s'}. Vou guardar como compromissos mensais, não como movimentos soltos.`,
-          `I found ${recurringScreen.commitments.length} recurring bill${recurringScreen.commitments.length===1?'':'s'}. I will save them as monthly commitments, not isolated movements.`,
-          `Encontré ${recurringScreen.commitments.length} cuenta${recurringScreen.commitments.length===1?'':'s'} recurrente${recurringScreen.commitments.length===1?'':'s'}. Las guardaré como compromisos mensuales, no como movimientos aislados.`
+          'Identifiquei: '+label+'. Separei os dados para você conferir antes de guardar.',
+          'Identified: '+label+'. I separated the records for review before saving.',
+          'Identifiqué: '+label+'. Separé los datos para revisar antes de guardar.'
         ));
         return true;
       }
-
-      const savingsPotsScreen=parseSavingsPotsFromOcr(ocr);
-      if(savingsPotsScreen?.pots.length){
-        setScreenSnapshot(savingsPotsScreen);
-        setInterpretations([]);
-        setAmountChoices([]);
-        setDirectionChoice(false);
-        setPendingAi(null);
-        setNotice(l(
-          `Encontrei ${savingsPotsScreen.pots.length} cofrinho${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' em '+savingsPotsScreen.institution:''}. Confira nomes, saldos e metas antes de guardar.`,
-          `I found ${savingsPotsScreen.pots.length} savings pot${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' at '+savingsPotsScreen.institution:''}. Review names, balances, and goals before saving.`,
-          `Encontré ${savingsPotsScreen.pots.length} alcancía${savingsPotsScreen.pots.length===1?'':'s'}${savingsPotsScreen.institution?' en '+savingsPotsScreen.institution:''}. Revisa nombres, saldos y metas antes de guardar.`
-        ));
-        return true;
-      }
-
-      const balanceScreen=parseAccountBalanceFromOcr(ocr);
-      if(balanceScreen?.accounts.length){
-        setScreenSnapshot(balanceScreen);
-        setInterpretations([]);
-        setAmountChoices([]);
-        setDirectionChoice(false);
-        setPendingAi(null);
-        setNotice(l(
-          'Identifiquei o saldo principal pela posição e pelo rótulo “Saldo”. Valores de cartão, limite e empréstimo ficaram de fora.',
-          'I identified the primary balance by its position and Balance label. Card, limit, and loan amounts were left out.',
-          'Identifiqué el saldo principal por su posición y la etiqueta “Saldo”. Excluí valores de tarjeta, límite y préstamo.'
-        ));
-        return true;
-      }
-
-      const suggestion=suggestCaptureFromDocument(activeFile.name,signals);
-      if(suggestion.state==='suggested'){
-        applySourceText(suggestion.sourceText,true);
-        setNotice(l('Li este print no seu aparelho, sem enviar a imagem para uma IA. Confira antes de guardar.','I read this screenshot on your device without sending the image to AI. Review it before saving.','Leí esta captura en tu dispositivo sin enviar la imagen a una IA. Revísala antes de guardar.'));
-        return true;
-      }
-      if(suggestion.state==='choose_amount'){
-        setAmountChoices(suggestion.amountsMinor);
-        setNotice(l('Li o print no seu aparelho e encontrei mais de um valor. Qual deles representa este movimento?','I read the screenshot on your device and found more than one amount. Which one represents this activity?','Leí la captura en tu dispositivo y encontré más de un valor. ¿Cuál representa este movimiento?'));
-        return true;
-      }
+      // Unresolved screenshots must not fall through to a generic amount picker:
+      // an offer or a credit limit is not evidence of a financial movement.
+      setScreenSnapshot(null);
+      setInterpretations([]);
+      setAmountChoices([]);
 
       try{
         const status=await getGeminiFallbackStatus(householdId);
