@@ -1,4 +1,5 @@
 import { detectDocumentSignals } from './document-signals.js';
+import { parseAccountBalanceFromOcr } from './account-balance-import.js';
 import type {
   AiFinancialDirection,
   AiFinancialExtraction,
@@ -101,7 +102,8 @@ function array(value:unknown,max:number){
 function sanitizeScreen(raw:any,text:string):AiFinancialScreenSnapshot|null{
   if(!raw||typeof raw!=='object') return null;
   const money=moneyEvidence(text),dateSet=dates(text),installmentSet=installments(text);
-  const accounts=array(raw.accounts,12).map((item:any)=>({
+  const localBalance=raw.screenType==='account_home'?parseAccountBalanceFromOcr(text):null;
+  const accounts=localBalance?.accounts??array(raw.accounts,12).map((item:any)=>({
     name:str(item?.name,80)||'Conta',
     productType:enumValue(item?.productType,['account','wallet','savings','investment'] as const,'account'),
     balanceMinor:groundedMinor(item?.balanceMinor,money)??0,
@@ -152,7 +154,7 @@ function sanitizeScreen(raw:any,text:string):AiFinancialScreenSnapshot|null{
   if(!total) return null;
   return {
     screenType:enumValue(raw.screenType,[...screenTypes] as any,'other') as AiFinancialScreenSnapshot['screenType'],
-    institution:groundedLabel(raw.institution,text,80),
+    institution:localBalance?.institution??groundedLabel(raw.institution,text,80),
     accounts,pots,cards,commitments,movements,
     summary:str(raw.summary,240)||'Dados financeiros extraídos do texto visível.'
   };
@@ -172,7 +174,7 @@ export function sanitizeGeminiFinancialExtraction(raw:any,text:string):AiFinanci
   const amountConfidence=amountMinor!==null?conf(raw?.amountConfidence):0;
   const description=str(raw?.description,120);
   const descriptionConfidence=description?conf(raw?.descriptionConfidence):0;
-  const screen=sanitizeScreen(raw?.screen,text);
+  const screen=sanitizeScreen(raw?.screen,text)??parseAccountBalanceFromOcr(text);
 
   const needsConfirmation=Boolean(raw?.needsConfirmation)||
     amountMinor===null||
@@ -194,7 +196,7 @@ export function sanitizeGeminiFinancialExtraction(raw:any,text:string):AiFinanci
     merchant:str(raw?.merchant,100),
     payer:null,
     payee:null,
-    institution:groundedLabel(raw?.institution,text,80),
+    institution:(screen?.screenType==='account_home'?screen.institution:null)??groundedLabel(raw?.institution,text,80),
     paymentMethod:paymentMethods.has(raw?.paymentMethod)?raw.paymentMethod:null,
     transactionId:null,
     pixE2e:null,
@@ -208,3 +210,4 @@ export function sanitizeGeminiFinancialExtraction(raw:any,text:string):AiFinanci
     screen
   };
 }
+
