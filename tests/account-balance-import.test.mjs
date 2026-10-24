@@ -64,3 +64,9 @@ test('does not mistake a credit limit for the primary balance',()=>{
 test('retains a visible zero balance',()=>{
   assert.equal(parseAccountBalanceFromOcr('Mercado Pago\nSaldo\nR$ 0,00')?.accounts[0].balanceMinor,0);
 });
+
+test('reads a balance below separately recognized navigation tabs',()=>{
+  const screen=parseAccountBalanceFromOcr('Saldo\nCofrinhos\nInvestimentos\nCripto\nR$ 0 09\nMeli Dólar');
+  assert.equal(screen?.accounts[0].balanceMinor,9);
+  assert.equal(screen?.institution,'Mercado Pago');
+});
