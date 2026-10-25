@@ -1,6 +1,11 @@
 export type BalanceCoverage='excludes_pots'|'includes_pots'|'unknown';
-export type BalanceAccount={id:string;balanceMinor:number|null;currency:string;status:string;connectedProductType?:string|null;balanceCoverage?:BalanceCoverage;includedSavingsMinor?:number|null;balanceAsOfMs?:number|null};
-export type BalancePot={id:string;balanceMinor:number;currency:string;status:string;updatedAtMs?:number|null};
+export type BalanceAccount={id:string;balanceMinor:number|null;currency:string;status:string;connectedProductType?:string|null;balanceCoverage?:BalanceCoverage;includedSavingsMinor?:number|null;balanceAsOfMs?:number|null;observedOn?:string|null};
+export type BalancePot={id:string;balanceMinor:number;currency:string;status:string;updatedAtMs?:number|null;observedOn?:string|null};
+
+function observationTime(source:{observedOn?:string|null;balanceAsOfMs?:number|null;updatedAtMs?:number|null}){
+  const observed=source.observedOn?Date.parse(source.observedOn+'T12:00:00Z'):NaN;
+  return Number.isFinite(observed)?observed:source.balanceAsOfMs??source.updatedAtMs??null;
+}
 
 // Coverage is explicitly confirmed per account. Never infer that all pots at a
 // bank belong to a particular account, or subtract a partial screenshot total.
@@ -10,10 +15,10 @@ export function deriveBalanceComposition<A extends BalanceAccount,P extends Bala
     const coverage=account.balanceCoverage||'unknown';
     const included=account.includedSavingsMinor;
     const resolved=known&&(coverage==='excludes_pots'||(coverage==='includes_pots'&&Number.isSafeInteger(included)&&included!>=0&&included!<=account.balanceMinor!));
-    return {account,amountMinor:resolved?account.balanceMinor!-(coverage==='includes_pots'?included!:0):null,stale:!account.balanceAsOfMs||now-account.balanceAsOfMs>7*86_400_000};
+    return {account,amountMinor:resolved?account.balanceMinor!-(coverage==='includes_pots'?included!:0):null,stale:!observationTime(account)||now-observationTime(account)!>7*86_400_000};
   });
   const sources=pots.filter(p=>p.status==='active'&&p.currency===currency);
   const savedMinor=sources.reduce((s,p)=>s+(Number.isSafeInteger(p.balanceMinor)?p.balanceMinor:0),0);
   const complete=rows.length>0&&rows.every(r=>r.amountMinor!==null);
-  return {rows,sources,savedMinor,outsideMinor:complete?rows.reduce((s,r)=>s+r.amountMinor!,0):null,complete,stale:rows.some(r=>r.stale)||sources.some(p=>!p.updatedAtMs||now-p.updatedAtMs>7*86_400_000),otherCurrencies:[...new Set([...accounts,...pots].filter(x=>x.status==='active'&&x.currency!==currency).map(x=>x.currency))]};
+  return {rows,sources,savedMinor,outsideMinor:complete?rows.reduce((s,r)=>s+r.amountMinor!,0):null,complete,stale:rows.some(r=>r.stale)||sources.some(p=>!observationTime(p)||now-observationTime(p)!>7*86_400_000),otherCurrencies:[...new Set([...accounts,...pots].filter(x=>x.status==='active'&&x.currency!==currency).map(x=>x.currency))]};
 }
