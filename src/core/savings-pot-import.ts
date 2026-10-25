@@ -1,5 +1,7 @@
 import type { AiFinancialScreenSnapshot } from './ai-financial.js';
 
+export const isDeviceStatusName=(value:string)=>/^\s*\d{1,2}\s*[:：]\s*\d{2,}/u.test(value.normalize('NFKC'));
+
 const OCR_ICON_PREFIXES=new Set(['t','v','vv','vc','vy','vw','w','ww','e','i','ii','l','ll','c','y','iv','vi']);
 const OCR_PREFIX_WORD_ALLOWLIST=new Set(['a','o','as','os','um','em','de','da','do','no','na','tv']);
 
@@ -71,7 +73,7 @@ function isCandidateName(value:string){
     .replace(/^[^a-z0-9]+/,'')
     .trim();
 
-  if(/\b\d{1,2}:\d{2}\b/.test(normalized)||/^(?:saldo|total|balance|available|guardado|criar|reservar|retirar)\b/.test(normalized)) return false;
+  if(isDeviceStatusName(normalized)||/^(?:saldo|total|balance|available|guardado|criar|reservar|retirar)\b/.test(normalized)) return false;
   if(normalized.length<2||normalized.length>80) return false;
   if(POT_SCREEN_HINT.test(normalized)) return false;
   if(/^(meta|saber mais|opcoes|opcao|aproveite|total|saldo|rendimento|rendimentos|cdi|meli\+)$/.test(normalized)) return false;
@@ -125,12 +127,17 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
   const normalizedText=String(text||'').normalize('NFKC');
   if(!POT_SCREEN_HINT.test(normalizedText)) return null;
 
-  const lines=normalizedText.split(/\n+/).map(cleanLine).filter(Boolean);
+  const allLines=normalizedText.split(/\n+/).map(cleanLine).filter(Boolean);
+  // A named list boundary separates summary/header pixels from actual rows.
+  const listStart=allLines.findIndex(line=>/^(?:seus? cofrinhos|suas? caixinhas|your savings pots|tus alcanc[ií]as)\s*:?$/i.test(line));
+  const lines=listStart>=0?allLines.slice(listStart+1):allLines;
+  const header=listStart>=0?allLines.slice(0,listStart):[];
   const explicitInstitution=institutionFromText(normalizedText);
   // A combination of product controls is a suggestion, never proof from colour alone.
   const institutionInferred=!explicitInstitution&&/seus cofrinhos/i.test(normalizedText)&&/\bcriar\b/i.test(normalizedText)&&/\breservar\b/i.test(normalizedText)&&/\bretirar\b/i.test(normalizedText)&&/\bCDI\b/i.test(normalizedText);
   const institution=explicitInstitution||(institutionInferred?'Mercado Pago':null);
-  let savingsTotalMinor:number|null=null;
+  const headerMoney=header.filter(line=>!/%|cdi|rendimento/i.test(line)).flatMap(line=>[...line.matchAll(MONEY)]);
+  let savingsTotalMinor:number|null=headerMoney.length===1?parseMoneyMinor(headerMoney[0][0]):null;
   const inferredOcrPrefixes=inferRepeatedOcrPrefixes(lines);
   const pots:Array<{name:string;balanceMinor:number;goalMinor:number|null;targetDate:string|null;currency:'BRL';confidence:number}>=[];
   let pendingName:string|null=null;
@@ -138,7 +145,7 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
 
   for(const line of lines){
     // Totals and device chrome are context, not savings pots.
-    if(/\b\d{1,2}:\d{2}\b/.test(line)){pendingName=null;continue;}
+    if(isDeviceStatusName(line)){pendingName=null;continue;}
     if(/^(?:saldo|total|balance|available)\b/i.test(normalizedCopy(line))){
       const token=[...line.matchAll(MONEY)][0];
       if(token) savingsTotalMinor=parseMoneyMinor(token[0]);

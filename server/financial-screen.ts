@@ -1,4 +1,5 @@
 
+import { isDeviceStatusName } from '../src/core/savings-pot-import.js';
 import { createHash } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -79,6 +80,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
       if(!extractionSnap.exists&&req.body?.screenSnapshot===undefined) return error(res,409,'SCREEN_ANALYSIS_REQUIRED');
       return error(res,409,'SCREEN_SNAPSHOT_UNAVAILABLE');
     }
+    if(screen.pots.some(item=>isDeviceStatusName(item.name))) return error(res,409,'SCREEN_POT_NAME_INVALID');
     const analysisSource=reviewedScreen
       ? 'client_reviewed'
       : persistedScreen.success
@@ -329,7 +331,7 @@ export async function commitFinancialScreen(req:Request,res:Response){
       counts:{accounts,pots,cards,commitments,movements,skipped}
     });
   }catch(err:any){
-    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','EVIDENCE_NOT_FOUND','SCREEN_ANALYSIS_REQUIRED','SCREEN_SNAPSHOT_UNAVAILABLE'];
+    const safe=['AUTH_REQUIRED','INVALID_SESSION','HOUSEHOLD_ACCESS_DENIED','PRIVATE_RECORD_ACCESS_DENIED','EVIDENCE_NOT_FOUND','SCREEN_ANALYSIS_REQUIRED','SCREEN_SNAPSHOT_UNAVAILABLE','SCREEN_POT_NAME_INVALID'];
     return error(res,err.statusCode||500,safe.includes(err.message)?err.message:'FINANCIAL_SCREEN_COMMIT_FAILED');
   }
 }

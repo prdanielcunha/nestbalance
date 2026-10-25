@@ -154,3 +154,15 @@ test('named aggregate and clock are excluded even after list heading',()=>{
  assert.equal(screen.pots.length,1);
  assert.equal(screen.savingsTotalMinor,50025);
 });
+
+test('attached device digits from real screenshot never double the aggregate',()=>{
+ const screen=parseSavingsPotsFromOcr('10:224 USE\nR$ 4.519,29\n115% do CDI\nCriar Reservar Retirar\nSeus cofrinhos\nAniversário Davi R$ 3.244,42\nDavi R$ 623,06\nAniversário R$ 301,25\nReservas R$ 208,05\nFralda R$ 75,50\nDízimo R$ 50,22\nStudio Z R$ 16,71\nCarro R$ 0,08\nMeta: R$ 1.250');
+ assert.equal(screen.pots.length,8);
+ assert.equal(screen.savingsTotalMinor,451929);
+ assert.equal(screen.pots.reduce((sum,p)=>sum+p.balanceMinor,0),451929);
+});
+test('noisy clock digits are rejected even without a named list boundary',()=>{
+ const screen=parseSavingsPotsFromOcr('Caixinhas\n10:224 USE\nR$ 500,00\nViagem R$ 500,00');
+ assert.equal(screen.pots.length,1);
+ assert.equal(screen.pots[0].name,'Viagem');
+});
