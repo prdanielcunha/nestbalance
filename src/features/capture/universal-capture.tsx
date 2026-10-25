@@ -8,7 +8,7 @@ import type { FinancialInterpretation } from '@/src/core/types';
 import { sourceTextForChosenDocumentAmount, suggestCaptureFromDocument } from '@/src/core/document-suggestion';
 import { detectDocumentSignals } from '@/src/core/document-signals';
 import { classifyFinancialScreenshot } from '@/src/core/financial-screenshot';
-import { parseSavingsPotsFromOcr } from '@/src/core/savings-pot-import';
+import { parseSavingsPotsFromOcr, isDeviceStatusName } from '@/src/core/savings-pot-import';
 import { parseRecurringCommitmentsFromOcr } from '@/src/core/recurring-commitment-import';
 import { parseAccountBalanceFromOcr } from '@/src/core/account-balance-import';
 import {
@@ -816,7 +816,8 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const readyInterpretations=indexedInterpretations.filter(({item})=>item.confidence==='high'&&!item.needsReview.includes('direction'));
   const reviewCount = attentionInterpretations.length;
   const unresolvedDirectionCount=interpretations.filter(x=>x.needsReview.includes('direction')).length;
-  const missingScreenInstitution=Boolean(screenSnapshot&&(screenSnapshot.pots.length>0||screenSnapshot.accounts.length>0)&&!screenSnapshot.institution?.trim());
+  const invalidPotName=Boolean(screenSnapshot?.pots.some(pot=>isDeviceStatusName(pot.name)));
+  const missingScreenInstitution=invalidPotName||Boolean(screenSnapshot&&(screenSnapshot.pots.length>0||screenSnapshot.accounts.length>0)&&!screenSnapshot.institution?.trim());
   const visibleInterpretations=showAllReview
     ? indexedInterpretations
     : attentionInterpretations.length
@@ -1080,7 +1081,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   autoComplete="organization"
                 />
                 {screenSnapshot.institutionInferred&&<small>{l('Banco sugerido pelo padrão da tela. Confirme ou edite.','Bank suggested from the screen layout. Confirm or edit.','Banco sugerido por el patrón de pantalla. Confirma o edita.')}</small>}
-                <small>{l('Confira a origem antes de guardar. O campo fica aberto enquanto você digita e pode ser corrigido mesmo quando eu reconhecer o banco sozinho.','Review the source before saving. The field stays open while you type and can be corrected even when I recognize the bank automatically.','Revisa el origen antes de guardar. El campo permanece abierto mientras escribes y puede corregirse incluso cuando reconozco el banco automáticamente.')}</small>
+                <small>{l('Você pode editar o banco antes de guardar.','Review the source before saving. The field stays open while you type and can be corrected even when I recognize the bank automatically.','Revisa el origen antes de guardar. El campo permanece abierto mientras escribes y puede corregirse incluso cuando reconozco el banco automáticamente.')}</small>
               </div>
               <div className="screen-pot-review">
               {screenSnapshot.pots.map((pot,index)=><div className="screen-pot-review-row screen-pot-review-editable" key={index}>
