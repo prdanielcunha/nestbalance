@@ -840,3 +840,14 @@ html[data-theme="dark"] .home-hero-grid .first-money-card {
     max-width:900px;
   }
 }
+
+/* Five visible mobile destinations need five columns, without the hidden Accounts slot. */
+.app-nav-label-mobile{display:none}
+@media(max-width:720px){
+ .app-nav-track{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 52px minmax(0,1fr) minmax(0,1fr);gap:2px;padding:5px}
+ .app-nav-link.nav-accounts{display:none}
+ .app-nav-link{padding-inline:2px;font-size:12px;letter-spacing:-.02em;min-width:0}
+ .app-nav-label-full{display:none}
+ .app-nav-label-mobile{display:inline}
+ .app-nav-add{width:52px}
+}
