@@ -16,6 +16,9 @@ export type SavingsPotLike={
   automation?:SavingsPotAutomation|null;
   trackingMode?:'manual'|'bank_mirror';
   scope?:'household'|'personal';
+  ownerUid?:string|null;
+  goalGroupId?:string|null;
+  sourceAccountLabel?:string|null;
 };
 
 export type SavingsPotGroup<T extends SavingsPotLike=SavingsPotLike>={
@@ -68,8 +71,7 @@ export function groupSavingsPots<T extends SavingsPotLike>(items:T[]):SavingsPot
   for(const item of items){
     if(item.status!=='active') continue;
     const scope=item.scope==='personal'?'personal':'household';
-    const normalized=normalizeSavingsPotName(item.name)||item.id;
-    const key=[scope,item.currency||'BRL',normalized].join('|');
+    const key=[scope,scope==='personal'?item.ownerUid||item.id:'',item.currency||'BRL',item.goalGroupId||item.id].join('|');
     const current=grouped.get(key)||[];
     current.push(item);
     grouped.set(key,current);
@@ -81,9 +83,10 @@ export function groupSavingsPots<T extends SavingsPotLike>(items:T[]):SavingsPot
       .map(item=>item.goalMinor)
       .filter((value):value is number=>Number.isSafeInteger(value)&&value!>0);
     const uniqueGoals=[...new Set(goals)];
-    const goalMinor=uniqueGoals.length?Math.max(...uniqueGoals):null;
+    const goalMinor=uniqueGoals.length===1?uniqueGoals[0]:null;
     const progress=goalMinor&&goalMinor>0?Math.max(0,Math.min(1,balanceMinor/goalMinor)):null;
-    const preferred=[...sources].sort((a,b)=>{
+    const rootId=sources.find(s=>s.goalGroupId)?.goalGroupId;
+    const preferred=sources.find(s=>s.id===rootId)||[...sources].sort((a,b)=>{
       const scoreA=(a.hasCover?1000:0)+(a.targetDate?100:0)+(a.note?10:0)+a.name.length;
       const scoreB=(b.hasCover?1000:0)+(b.targetDate?100:0)+(b.note?10:0)+b.name.length;
       return scoreB-scoreA;

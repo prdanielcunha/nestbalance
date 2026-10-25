@@ -16,8 +16,9 @@ function accountDto(doc:any){
   return {
     id:doc.id,
     name:String(data.name||'Conta'),
-    balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
-    status:String(data.status||'active')
+    balanceMinor:data.balanceCoverage==='excludes_pots'&&Number.isSafeInteger(data.balanceMinor)?data.balanceMinor:
+      data.balanceCoverage==='includes_pots'&&Number.isSafeInteger(data.balanceMinor)&&Number.isSafeInteger(data.includedSavingsMinor)&&data.includedSavingsMinor>=0&&data.includedSavingsMinor<=data.balanceMinor?data.balanceMinor-data.includedSavingsMinor:null,
+    status:data.connectedProductType==='investment'||String(data.currency||'BRL')!=='BRL'?'inactive':String(data.status||'active')
   };
 }
 

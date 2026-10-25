@@ -12,6 +12,7 @@ import type { FinancialScope } from '@/src/core/privacy';
 import { loadHomeData, type HomeSavingsPot } from '@/src/lib/repositories/home';
 import {
   archiveSavingsPot,
+  separateSavingsPotGroup,
   deleteSavingsPotCover,
   getSavingsPotDetail,
   moveSavingsPot,
@@ -50,6 +51,9 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   const [goalInput,setGoalInput]=useState('');
   const [targetDate,setTargetDate]=useState('');
   const [note,setNote]=useState('');
+  const [grouping,setGrouping]=useState<'goal'|'bank'>('goal');
+  const [goalGroupId,setGoalGroupId]=useState('');
+  const [sourceAccountLabel,setSourceAccountLabel]=useState('');
   const [institution,setInstitution]=useState('');
   const [scope,setScope]=useState<FinancialScope>('household');
   const [coverFile,setCoverFile]=useState<File|null>(null);
@@ -111,11 +115,12 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
   useEffect(()=>()=>{if(coverPreview)URL.revokeObjectURL(coverPreview);},[coverPreview]);
 
   const visible=useMemo(()=>pots.filter(item=>inFinancialView(item.scope,view)),[pots,view]);
-  const groups=useMemo(()=>groupSavingsPots(visible),[visible]);
-  const total=useMemo(()=>groups.reduce((sum,item)=>sum+item.balanceMinor,0),[groups]);
-  const goalsTotal=useMemo(()=>groups.filter(item=>item.goalMinor&&item.goalMinor>0).reduce((sum,item)=>sum+(item.goalMinor||0),0),[groups]);
-  const remainingTotal=useMemo(()=>groups.reduce((sum,item)=>sum+Math.max(0,(item.goalMinor||0)-item.balanceMinor),0),[groups]);
-  const reachedCount=useMemo(()=>groups.filter(item=>item.goalMinor&&item.balanceMinor>=item.goalMinor).length,[groups]);
+  const groups=useMemo(()=>{const grouped=groupSavingsPots(grouping==='goal'?visible:visible.map(p=>({...p,goalGroupId:null})));return grouping==='bank'?grouped.sort((a,b)=>String(a.sources[0].institutionName||'').localeCompare(String(b.sources[0].institutionName||''))):grouped;},[visible,grouping]);
+  const objectiveGroups=useMemo(()=>groupSavingsPots(visible),[visible]);
+  const total=useMemo(()=>groups.filter(item=>item.currency==='BRL').reduce((sum,item)=>sum+item.balanceMinor,0),[groups]);
+  const goalsTotal=useMemo(()=>objectiveGroups.filter(item=>item.currency==='BRL'&&item.goalMinor&&item.goalMinor>0).reduce((sum,item)=>sum+(item.goalMinor||0),0),[objectiveGroups]);
+  const remainingTotal=useMemo(()=>objectiveGroups.filter(item=>item.currency==='BRL').reduce((sum,item)=>sum+Math.max(0,(item.goalMinor||0)-item.balanceMinor),0),[objectiveGroups]);
+  const reachedCount=useMemo(()=>objectiveGroups.filter(item=>item.goalMinor&&item.balanceMinor>=item.goalMinor).length,[objectiveGroups]);
   const institutionCount=useMemo(()=>new Set(visible.map(item=>item.institutionName||l('NestBalance','NestBalance','NestBalance'))).size,[visible,locale]);
 
   function formatInput(value:number){
@@ -131,6 +136,8 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     setTargetDate('');
     setNote('');
     setInstitution('');
+    setGoalGroupId('');
+    setSourceAccountLabel('');
     setScope('household');
     setCoverFile(null);
     setRemoveCover(false);
@@ -158,6 +165,8 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     setTargetDate(item.targetDate||'');
     setNote(item.note||'');
     setInstitution(item.institutionName||'');
+    setGoalGroupId(item.goalGroupId||'');
+    setSourceAccountLabel(item.sourceAccountLabel||'');
     setScope(item.scope==='personal'?'personal':'household');
   }
 
@@ -212,6 +221,9 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
         targetDate:targetDate||null,
         note:note.trim()||null,
         institutionName:institution.trim()||null,
+        sourceAccountLabel:sourceAccountLabel.trim()||null,
+        goalGroupId:goalGroupId||null,
+        expectedUpdatedAtMs:editing?.updatedAtMs??null,
         scope:editing?.scope==='personal'?'personal':editing?'household':scope
       });
 
@@ -477,10 +489,14 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
     </section>}
 
     <section className="savings-pots-section">
+      <div className="pot-view-switch" role="group" aria-label={l('Organizar cofrinhos','Organize savings pots','Organizar alcancías')}>
+        <button type="button" aria-pressed={grouping==='goal'} onClick={()=>setGrouping('goal')}>{l('Por objetivo','By goal','Por objetivo')}</button>
+        <button type="button" aria-pressed={grouping==='bank'} onClick={()=>setGrouping('bank')}>{l('Por banco','By bank','Por banco')}</button>
+      </div>
       <div className="section-title">
         <div>
           <h2>{l('Seus cofrinhos','Your savings pots','Tus alcancías')}</h2>
-          <span>{l('o mesmo objetivo em bancos diferentes aparece junto','the same goal across different banks appears together','el mismo objetivo en bancos distintos aparece junto')}</span>
+          <span>{l('você escolhe quais origens pertencem ao mesmo objetivo','you choose which sources belong to the same goal','tú eliges qué orígenes pertenecen al mismo objetivo')}</span>
         </div>
       </div>
 
@@ -514,7 +530,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                       {group.scope==='personal'&&<em className="personal-pill">{l('Só eu','Only me','Solo yo')}</em>}
                     </div>
                     <h3>{group.name}</h3>
-                    <strong>{formatMoney(group.balanceMinor)}</strong>
+                    <strong>{new Intl.NumberFormat(intlLocale,{style:'currency',currency:group.currency}).format(group.balanceMinor/100)}</strong>
 
                     {group.goalMinor&&group.goalMinor>0
                       ? <>
@@ -536,8 +552,14 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                       : <small>{l('Defina uma meta para acompanhar o progresso.','Set a goal to track progress.','Define una meta para seguir el progreso.')}</small>}
 
                     {group.automation?.enabled&&<div className="savings-pot-automation-pill">{automationLabel(group.automation)}</div>}
-                    {group.goalConflict&&<small className="pot-warning">{l('As origens têm metas diferentes; mostramos a maior.','Sources have different goals; we show the highest.','Los orígenes tienen metas distintas; mostramos la mayor.')}</small>}
+                    {group.goalConflict&&<small className="pot-warning">{l('As origens têm metas diferentes. Edite as origens para definir uma meta comum; o progresso fica pendente.','Sources have different goals. Edit the sources to set a common target; progress stays pending.','Los orígenes tienen metas distintas. Edita los orígenes para definir una meta común; el progreso queda pendiente.')}</small>}
 
+                    {canContribute&&group.sources.length>1&&<button type="button" className="text-button" disabled={saving} onClick={async()=>{
+                      setSaving(true);setError('');
+                      try{await separateSavingsPotGroup(householdId,group.sources[0].id);await load();setNotice(l('Origens separadas. Saldos e históricos foram preservados.','Sources separated. Balances and history were preserved.','Orígenes separados. Se conservaron saldos e historiales.'));}
+                      catch{setError(l('Não foi possível separar as origens agora.','Could not separate sources now.','No se pudieron separar los orígenes ahora.'));}
+                      finally{setSaving(false);}
+                    }}>{l('Separar origens deste objetivo','Separate this goal’s sources','Separar orígenes de este objetivo')}</button>}
                     <div className="savings-pot-card-actions">
                       {group.sources.length===1
                         ? <>
@@ -545,7 +567,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                             {canContribute&&<button type="button" className="secondary" onClick={()=>openEdit(group.sources[0])}>{l('Editar','Edit','Editar')}</button>}
                           </>
                         : group.sources.map(source=><button type="button" key={source.id} onClick={()=>void openDetail(source)}>
-                            {source.institutionName||l('Manual','Manual','Manual')} · {formatMoney(source.balanceMinor)}
+                            {source.institutionName||l('Manual','Manual','Manual')}{source.sourceAccountLabel?` · ${source.sourceAccountLabel}`:''} · {new Intl.NumberFormat(intlLocale,{style:'currency',currency:source.currency}).format(source.balanceMinor/100)}
                           </button>)}
                     </div>
                   </div>
@@ -620,6 +642,18 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
             <input className="pot-text-input" value={institution} onChange={e=>setInstitution(e.target.value)} placeholder={l('Ex.: Mercado Pago, Nubank, dinheiro em casa…','E.g. Mercado Pago, Nubank, cash at home…','Ej.: Mercado Pago, Nubank, efectivo en casa…')} maxLength={80}/>
           </label>
 
+          <label className="pot-editor-wide">
+            <span className="field-label">{l('Conta ou titular (opcional)','Account or holder (optional)','Cuenta o titular (opcional)')}</span>
+            <input className="pot-text-input" maxLength={80} value={sourceAccountLabel} onChange={e=>setSourceAccountLabel(e.target.value)}/>
+          </label>
+          <label className="pot-editor-wide">
+            <span className="field-label">{l('Mostrar junto de outro objetivo','Show with another goal','Mostrar junto a otro objetivo')}</span>
+            <select className="pot-text-input" value={goalGroupId} onChange={e=>setGoalGroupId(e.target.value)}>
+              <option value="">{l('Manter separado','Keep separate','Mantener separado')}</option>
+              {pots.filter(p=>p.id!==editing?.id&&(p.scope||'household')===scope&&p.currency==='BRL').map(p=><option key={p.id} value={p.goalGroupId||p.id}>{p.name} · {p.institutionName||'NestBalance'}{p.sourceAccountLabel?` · ${p.sourceAccountLabel}`:''}</option>)}
+            </select>
+            <small>{l('Agrupa a visualização. O saldo e o histórico de cada origem continuam separados.','Groups the view. Each source keeps its own balance and history.','Agrupa la vista. Cada origen conserva su saldo e historial.')}</small>
+          </label>
           <label className="pot-editor-wide">
             <span className="field-label">{l('Uma frase para lembrar o porquê (opcional)','A note to remember why (optional)','Una frase para recordar por qué (opcional)')}</span>
             <textarea className="pot-note-input" value={note} onChange={e=>setNote(e.target.value)} placeholder={l('Ex.: Festa de 2 anos do Davi','E.g. Davi’s 2nd birthday','Ej.: Fiesta de 2 años de Davi')} maxLength={280} rows={3}/>

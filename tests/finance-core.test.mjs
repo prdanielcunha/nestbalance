@@ -33,3 +33,11 @@ test('home calcula quanto deve sobrar', () => {
 test('parcelas restantes não contam a atual', () => {
   assert.equal(remainingInstallments(5,12), 7);
 });
+
+
+test('bank identity and direction distinguish equal-looking financial operations',()=>{
+ const i=parseFinancialText('paguei 50 mercado');
+ assert.notEqual(fingerprintForInterpretation(i,'2026-09-20','Nubank'),fingerprintForInterpretation(i,'2026-09-20','Inter'));
+ assert.notEqual(fingerprintForInterpretation(i,'2026-09-20'),fingerprintForInterpretation({...i,direction:'income'},'2026-09-20'));
+ assert.notEqual(canonicalFingerprint({amountMinor:100,externalId:'123',accountId:'bank-one'}),canonicalFingerprint({amountMinor:100,externalId:'123',accountId:'bank-two'}));
+});

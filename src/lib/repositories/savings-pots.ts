@@ -6,6 +6,9 @@ import type { SavingsPotAutomation } from '@/src/core/savings-pot-automation';
 export type SavingsPotUpsertInput={
   householdId:string;
   potId?:string|null;
+  sourceAccountLabel?:string|null;
+  goalGroupId?:string|null;
+  expectedUpdatedAtMs?:number|null;
   name:string;
   balanceMinor:number;
   goalMinor:number|null;
@@ -110,4 +113,8 @@ export async function getSavingsPotCover(householdId:string,potId:string){
 
 export async function deleteSavingsPotCover(householdId:string,potId:string){
   return postJson<{ok:true;potId:string}>('/api/savings-pots/cover/delete',{householdId,potId});
+}
+
+export async function separateSavingsPotGroup(householdId:string,potId:string){
+ return postJson<{ok:true}>('/api/savings-pots/separate-group',{householdId,potId});
 }

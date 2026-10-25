@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import {BalanceOverview} from './balance-overview';
+import {deriveBalanceComposition} from '@/src/core/balance-composition';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { deriveCashView } from '@/src/core/cash-view';
 import { projectHouseholdFuture } from '@/src/core/future-projection';
@@ -13,7 +15,7 @@ import { useI18n } from '@/src/i18n/locale-provider';
 import { useHouseholdRevisionRefresh } from '@/src/features/realtime/use-household-revision';
 import { canHouseholdRole, type HouseholdRole } from '@/src/core/household';
 import { ScopeViewSwitch, inFinancialView, useFinancialView } from '@/src/features/privacy/scope-view-switch';
-import { loadHomeData, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
+import { loadHomeData, type HomeSavingsPot, type HomeAccount, type HomeCreditCard, type HomeInstallmentPlan, type HomeInvoiceImport, type HomeRow } from '@/src/lib/repositories/home';
 import { DEFAULT_PROACTIVITY_PREFERENCES, type ProactivityPreferences } from '@/src/core/proactivity';
 import { dismissAttention } from '@/src/lib/repositories/attention';
 import { isDismissibleAttentionKind } from '@/src/core/attention';
@@ -28,6 +30,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   const [transactions, setTransactions] = useState<HomeRow[]>([]);
   const [commitments, setCommitments] = useState<HomeRow[]>([]);
   const [accounts, setAccounts] = useState<HomeAccount[]>([]);
+  const [savingsPots,setSavingsPots]=useState<HomeSavingsPot[]>([]);
   const [cards, setCards] = useState<HomeCreditCard[]>([]);
   const [installmentPlans,setInstallmentPlans]=useState<HomeInstallmentPlan[]>([]);
   const [invoiceImports,setInvoiceImports]=useState<HomeInvoiceImport[]>([]);
@@ -47,6 +50,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     try{
       const data=await loadHomeData(householdId);
       setAccounts(data.accounts);
+      setSavingsPots(data.savingsPots||[]);
       setCards(data.cards||[]);
       setTransactions(data.transactions);
       setCommitments(data.commitments);
@@ -74,6 +78,8 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   }, [householdId, accountCreated, cardCreated]);
 
   const viewAccounts=useMemo(()=>accounts.filter(item=>inFinancialView(item.scope,view)),[accounts,view]);
+  const viewPots=useMemo(()=>savingsPots.filter(item=>inFinancialView(item.scope,view)),[savingsPots,view]);
+  const balanceComposition=useMemo(()=>deriveBalanceComposition(viewAccounts,viewPots),[viewAccounts,viewPots]);
   const viewCards=useMemo(()=>cards.filter(item=>inFinancialView(item.scope,view)),[cards,view]);
   const viewTransactions=useMemo(()=>transactions.filter(item=>inFinancialView(item.scope,view)),[transactions,view]);
   const viewCommitments=useMemo(()=>commitments.filter(item=>inFinancialView(item.scope,view)),[commitments,view]);
@@ -118,8 +124,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   );
 
   const snapshot = useMemo(() => {
-    const availableMinor = cashAccounts
-      .reduce((sum, account) => sum + Number(account.balanceMinor ?? 0), 0);
+    const availableMinor = balanceComposition.outsideMinor??0;
     return deriveHomeSnapshot({
       availableMinor,
       incomeMinor:0,
@@ -127,7 +132,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
       futureCommitmentsMinor:cashView.futureCommitmentsMinor,
       dueSoonMinor:cashView.futureCommitmentsMinor
     });
-  }, [cashAccounts, cashView]);
+  }, [balanceComposition, cashView]);
 
   const safeToUseMinor=Math.max(snapshot.projectedRemainderMinor,0);
   const coverageGapMinor=Math.max(-snapshot.projectedRemainderMinor,0);
@@ -262,55 +267,9 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
 
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
     <div className={`home-hero-grid ${viewAccounts.length===0?'is-empty':'has-balance'}`}>
-    <section className="hero-balance home-balance-card">
-      <span>{`${t.availableNow} ${viewLabel}`}</span>
-      <strong>{viewAccounts.length ? formatMoney(snapshot.availableMinor) : '—'}</strong>
-      <p>{viewAccounts.length ? (snapshot.futureCommitmentsMinor > 0 ? l(`${formatMoney(snapshot.futureCommitmentsMinor)} ainda estão comprometidos ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} is still committed ${viewLabel}.`,`${formatMoney(snapshot.futureCommitmentsMinor)} todavía está comprometido ${viewLabel}.`) : l(`Sem contas pendentes ${viewLabel}.`,`No pending bills ${viewLabel}.`,`Sin cuentas pendientes ${viewLabel}.`)) : l('Ainda não há saldo informado nesta visão. Adicione uma conta, saldo ou envie um print para começar.','There is no balance entered in this view yet. Add an account, balance, or send a screenshot to get started.','Aún no hay saldo informado en esta vista. Agrega una cuenta, saldo o envía una captura para comenzar.')}</p>
-      {viewAccounts.length>0&&<details className="balance-explanation">
-        <summary>{l('Como calculamos','How this is calculated','Cómo lo calculamos')}</summary>
-        <div className="balance-explanation-grid">
-          <div>
-            <span>{l('SALDOS INCLUÍDOS','BALANCES INCLUDED','SALDOS INCLUIDOS')}</span>
-            <strong>{formatMoney(snapshot.availableMinor)}</strong>
-            <small>{l(
-              `${cashAccounts.length} conta${cashAccounts.length===1?'':'s'} com saldo disponível nesta visão.`,
-              `${cashAccounts.length} account${cashAccounts.length===1?'':'s'} with available balance in this view.`,
-              `${cashAccounts.length} cuenta${cashAccounts.length===1?'':'s'} con saldo disponible en esta vista.`
-            )}</small>
-          </div>
-          <div>
-            <span>{l('AINDA COMPROMETIDO','STILL COMMITTED','TODAVÍA COMPROMETIDO')}</span>
-            <strong>{formatMoney(snapshot.futureCommitmentsMinor)}</strong>
-            <small>{l(
-              `${formatMoney(cashView.knownCommitmentsMinor)} em contas + ${formatMoney(cashView.openCardInvoicesMinor)} em faturas abertas.`,
-              `${formatMoney(cashView.knownCommitmentsMinor)} in bills + ${formatMoney(cashView.openCardInvoicesMinor)} in open statements.`,
-              `${formatMoney(cashView.knownCommitmentsMinor)} en cuentas + ${formatMoney(cashView.openCardInvoicesMinor)} en resúmenes abiertos.`
-            )}</small>
-          </div>
-          <div className="projected">
-            <span>{l('DEVE SOBRAR','PROJECTED LEFT','DEBERÍA QUEDAR')}</span>
-            <strong>{formatMoney(snapshot.projectedRemainderMinor)}</strong>
-            <small>{l(
-              'Saldo disponível menos compromissos conhecidos. É uma estimativa, não uma garantia.',
-              'Available balance minus known commitments. This is an estimate, not a guarantee.',
-              'Saldo disponible menos compromisos conocidos. Es una estimación, no una garantía.'
-            )}</small>
-          </div>
-        </div>
-        {investmentAccounts.length>0&&<p>{l(
-          `Não contamos ${formatMoney(excludedInvestmentMinor)} em ${investmentAccounts.length} investimento${investmentAccounts.length===1?'':'s'} como dinheiro disponível para gastar.`,
-          `We do not count ${formatMoney(excludedInvestmentMinor)} across ${investmentAccounts.length} investment account${investmentAccounts.length===1?'':'s'} as money available to spend.`,
-          `No contamos ${formatMoney(excludedInvestmentMinor)} en ${investmentAccounts.length} inversión${investmentAccounts.length===1?'':'es'} como dinero disponible para gastar.`
-        )}</p>}
-        {partialInvoiceCount>0&&<p>{l(
-          `${partialInvoiceCount} fatura${partialInvoiceCount===1?' ainda está':'s ainda estão'} em revisão. O valor comprometido pode mudar quando a revisão terminar.`,
-          `${partialInvoiceCount} statement${partialInvoiceCount===1?' is':'s are'} still under review. The committed amount may change when review finishes.`,
-          `${partialInvoiceCount} resumen${partialInvoiceCount===1?' sigue':'es siguen'} en revisión. El valor comprometido puede cambiar cuando termine la revisión.`
-        )}</p>}
-      </details>}
-    </section>
-    {viewAccounts.length>0&&<section className={coverageGapMinor>0?'home-safe-card warning':'home-safe-card'}>
-      <span>{coverageGapMinor>0?l('Falta cobrir','Gap to cover','Falta cubrir'):l('Você pode usar','You can use','Puedes usar')}</span>
+    <BalanceOverview householdId={householdId} accounts={viewAccounts} pots={viewPots} canManage={canManage} onChanged={()=>void refreshHome(true)}/>
+    {balanceComposition.complete&&<section className={coverageGapMinor>0?'home-safe-card warning':'home-safe-card'}>
+      <span>{coverageGapMinor>0?l('Falta cobrir','Gap to cover','Falta cubrir'):l('Previsão após as contas','Forecast after bills','Previsión después de cuentas')}</span>
       <strong>{formatMoney(coverageGapMinor>0?coverageGapMinor:safeToUseMinor)}</strong>
       <p>{coverageGapMinor>0
         ? l('Com os saldos e contas que já conhecemos, falta esse valor para cobrir os compromissos atuais.','With the balances and bills we already know, this amount is still missing to cover current commitments.','Con los saldos y cuentas que ya conocemos, todavía falta este valor para cubrir los compromisos actuales.')
