@@ -302,6 +302,9 @@ test('Values can be hidden globally, revealed individually, and stay private aft
  await mockAuthenticatedApi(page);
  await gotoAuthenticated(page);
  await expect(page.getByTestId('home-account-balance')).toContainText('8.450');
+ await page.getByRole('button',{name:'Ocultar: Saldo fora dos cofrinhos',exact:true}).first().click();
+ await expect(page.getByTestId('home-account-balance')).toContainText('••••');
+ await expect(page.getByTestId('home-savings-balance')).toContainText('6.050');
  await page.getByRole('button',{name:'Ocultar todos os valores',exact:true}).click();
  for(const id of ['home-account-balance','home-savings-balance','home-spending-balance']){
   await expect(page.getByTestId(id)).toContainText('••••');
@@ -323,7 +326,7 @@ test('Values can be hidden globally, revealed individually, and stay private aft
  await expect(page.locator('body')).not.toContainText('2.250,00');
  await page.screenshot({path:testInfo.outputPath('private-values-pots.png'),fullPage:true});
  await page.getByRole('button',{name:'Mostrar todos os valores',exact:true}).click();
- await expect(page.locator('.savings-pot-card-body').first()).toContainText('2.250,00');
+ await expect(page.locator('.savings-pot-card-body').filter({has:page.getByRole('heading',{name:'Viagem',exact:true})})).toContainText('2.250,00');
  await assertNoHorizontalOverflow(page);
  await assertNoSeriousA11y(page);
 });
