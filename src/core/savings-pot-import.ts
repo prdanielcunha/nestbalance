@@ -1,3 +1,4 @@
+import {parseBalanceToken} from './account-balance-import.js';
 import type { AiFinancialScreenSnapshot } from './ai-financial.js';
 
 export const isDeviceStatusName=(value:string)=>/^\s*\d{1,2}\s*[:：]\s*\d{2,}/u.test(value.normalize('NFKC'));
@@ -124,7 +125,7 @@ function parseTargetDate(line:string){
 }
 
 export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|null{
-  const normalizedText=String(text||'').normalize('NFKC');
+  const normalizedText=String(text||'').replace(/(R\$\s*[\d.]+)([⁰¹²³⁴⁵⁶⁷⁸⁹]{2})/g,(_m,whole,cents)=>whole+','+cents.normalize('NFKC')).normalize('NFKC');
   if(!POT_SCREEN_HINT.test(normalizedText)) return null;
 
   const allLines=normalizedText.split(/\n+/).map(cleanLine).filter(Boolean);
@@ -137,7 +138,7 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
   const institutionInferred=!explicitInstitution&&/seus cofrinhos/i.test(normalizedText)&&/\bcriar\b/i.test(normalizedText)&&/\breservar\b/i.test(normalizedText)&&/\bretirar\b/i.test(normalizedText)&&/\bCDI\b/i.test(normalizedText);
   const institution=explicitInstitution||(institutionInferred?'Mercado Pago':null);
   const headerMoney=header.filter(line=>!/%|cdi|rendimento/i.test(line)).flatMap(line=>[...line.matchAll(MONEY)]);
-  let savingsTotalMinor:number|null=headerMoney.length===1?parseMoneyMinor(headerMoney[0][0]):null;
+  let savingsTotalMinor:number|null=headerMoney.length===1?(/\d{1,3}(?:\.\d{3})+\d{2}$/.test(headerMoney[0][0].replace(/\s/g,''))?parseBalanceToken(headerMoney[0][0]):parseMoneyMinor(headerMoney[0][0])):null;
   const inferredOcrPrefixes=inferRepeatedOcrPrefixes(lines);
   const pots:Array<{name:string;balanceMinor:number;goalMinor:number|null;targetDate:string|null;currency:'BRL';confidence:number}>=[];
   let pendingName:string|null=null;

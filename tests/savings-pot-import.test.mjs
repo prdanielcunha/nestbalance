@@ -166,3 +166,18 @@ test('noisy clock digits are rejected even without a named list boundary',()=>{
  assert.equal(screen.pots.length,1);
  assert.equal(screen.pots[0].name,'Viagem');
 });
+
+
+test('checks the supplied eight-pot screenshot against raised header cents without fixing rows by guessing',async()=>{
+ const {screenTotalCheck}=await import('../.core-dist/core/screen-total-check.js');
+ const rows=['Aniversário Davi R$ 3.244,42','Davi R$ 623,06','Aniversário R$ 301,25','Reservas R$ 208,05','Fralda R$ 75,50','Dízimo R$ 50,22','Studio Z R$ 16,71','Carro R$ 0,08','Meta: R$ 1.250'];
+ for(const header of ['R$ 4.519²⁹','R$ 4.51929','R$ 4.519,29']){
+  const text=[header,'115% do CDI','Criar Reservar Retirar','Seus cofrinhos',...rows].join('\n');
+  const screen=parseSavingsPotsFromOcr(text);
+  assert.equal(screen.institution,'Mercado Pago');assert.equal(screen.screenType,'savings_pots');assert.equal(screen.pots.length,8);
+  assert.equal(screen.savingsTotalMinor,451929);assert.equal(screenTotalCheck(screen).mismatch,false);
+  assert.equal(screen.pots.find(p=>p.name==='Carro').goalMinor,125000);
+  screen.pots.find(p=>p.name==='Dízimo').balanceMinor=10022;
+  assert.equal(screenTotalCheck(screen).differenceMinor,5000);assert.equal(screenTotalCheck(screen).mismatch,true);
+ }
+});

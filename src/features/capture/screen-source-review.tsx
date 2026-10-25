@@ -1,4 +1,5 @@
 'use client';
+import {screenTotalCheck} from '@/src/core/screen-total-check';
 import {useEffect,useMemo,useState} from 'react';
 import type {AiFinancialScreenSnapshot} from '@/src/core/ai-financial';
 import {screenChangeKind,screenSourceCandidates,validObservationDate,type ScreenDecision,type ScreenReview,type ScreenSource} from '@/src/core/screen-reconciliation';
@@ -15,6 +16,7 @@ export function ScreenSourceReview({householdId,uid,scope,screen,onReady}:{house
   const [refresh,setRefresh]=useState(0);
   const [observedOn,setObservedOn]=useState('');
   const [overrides,setOverrides]=useState<Record<string,ScreenDecision>>({});
+  const totals=screenTotalCheck(screen);
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*60_000).toISOString().slice(0,10);
   useEffect(()=>{
     let cancelled=false;setData(null);setError(false);setOverrides({});
@@ -45,27 +47,37 @@ export function ScreenSourceReview({householdId,uid,scope,screen,onReady}:{house
     });
   },[data,rows]);
   const review=useMemo<ScreenReview|null>(()=>{
-    if(!data||!validObservationDate(observedOn)||observedOn>today||rows.some(r=>r.ambiguous||(!r.choice.targetId&&!r.choice.createNew)||(r.choice.balanceCoverage==='includes_pots'&&(!Number.isSafeInteger(r.choice.includedSavingsMinor)||r.choice.includedSavingsMinor!>r.item.balanceMinor)))) return null;
+    if(totals.mismatch||!data||!validObservationDate(observedOn)||observedOn>today||rows.some(r=>r.ambiguous||(!r.choice.targetId&&!r.choice.createNew)||(r.choice.balanceCoverage==='includes_pots'&&(!Number.isSafeInteger(r.choice.includedSavingsMinor)||r.choice.includedSavingsMinor!>r.item.balanceMinor)))) return null;
     if(new Set(rows.filter(r=>r.choice.targetId).map(r=>r.kind+':'+r.choice.targetId)).size!==rows.filter(r=>r.choice.targetId).length) return null;
     if(rows.some(r=>r.existing?.observedOn&&observedOn<r.existing.observedOn)) return null;
     return {observedOn,accounts:rows.filter(r=>r.kind==='accounts').map(r=>r.choice),pots:rows.filter(r=>r.kind==='pots').map(r=>r.choice)};
-  },[data,observedOn,rows,today]);
+  },[data,observedOn,rows,today,totals.mismatch]);
   useEffect(()=>{onReady(review);return ()=>onReady(null);},[review,onReady]);
   function update(key:string,current:ScreenDecision,patch:Partial<ScreenDecision>){setOverrides(o=>({...o,[key]:{...current,...patch}}));}
   const counts=rows.reduce((c,r)=>{c[screenChangeKind(r.existing,r.item.balanceMinor,'goalMinor' in r.item?r.item.goalMinor:null,'targetDate' in r.item?r.item.targetDate:null)]++;return c;},{create:0,update:0,unchanged:0});
   return <section className="screen-reconciliation" aria-label={l('Comparar com seus dados','Compare with your data','Comparar con tus datos')}>
+    <div className="screen-import-identity">
+      <strong>{screen.institution||l('Banco a confirmar','Bank to confirm','Banco por confirmar')} · {screen.pots.length?l(`${screen.pots.length} cofrinhos`,`${screen.pots.length} savings pots`,`${screen.pots.length} alcancías`):l('Saldos e registros','Balances and records','Saldos y registros')}</strong>
+      {screen.institutionInferred&&<small>{l('Banco sugerido pelo padrão da tela. Confirme ou edite acima.','Bank suggested from layout. Confirm or edit above.','Banco sugerido por el diseño. Confirma o edita arriba.')}</small>}
+      {screen.pots.length>0&&<>
+        <p>{l('Total lido no print: ','Screenshot total: ','Total leído: ')}<b>{totals.totalMinor===null?l('Não identificado','Not identified','No identificado'):formatMoney(totals.totalMinor)}</b></p>
+        <p>{l('Soma dos cofrinhos: ','Savings sum: ','Suma de alcancías: ')}<b>{formatMoney(totals.sumMinor)}</b></p>
+        {totals.mismatch?<p role="alert" className="error-copy">{l('Os valores não conferem. Diferença: ','Amounts do not match. Difference: ','Los importes no coinciden. Diferencia: ')}{formatMoney(Math.abs(totals.differenceMinor!))}. {l('Confira os valores em “Conferir ou corrigir nomes e valores” e se todos os cofrinhos aparecem no print. A aplicação está bloqueada até a soma conferir.','Review amounts and whether all pots appear in the screenshot. Applying is blocked until totals match.','Revisa los importes y si aparecen todas las alcancías. No se puede aplicar hasta que coincidan.')}</p>:totals.totalMinor!==null&&<small>{l('A soma confere com o total do print.','The sum matches the screenshot total.','La suma coincide con el total.')}</small>}
+      </>}
+    </div>
     <h3>{l('O que este print vai mudar','What this screenshot will change','Qué cambiará esta captura')}</h3>
     <p>{l('Comparamos com seus registros. O mesmo nome em outro banco continua separado.','We compare with your records. The same name at another bank stays separate.','Comparamos con tus registros. El mismo nombre en otro banco sigue separado.')}</p>
     {!data&&!error&&<p role="status">{l('Comparando com seus dados…','Comparing with your data…','Comparando con tus datos…')}</p>}
     {error&&<p role="alert">{l('Não conseguimos carregar os registros. Tente comparar novamente.','Could not load records. Try comparing again.','No pudimos cargar registros. Intenta comparar otra vez.')}</p>}
     <button type="button" className="text-button" onClick={()=>setRefresh(v=>v+1)}>{l('Comparar novamente','Compare again','Comparar de nuevo')}</button>
     <label>{l('De quando são os dados deste print?','When are the data in this screenshot from?','¿De cuándo son los datos de esta captura?')}<input type="date" max={today} value={observedOn} onChange={e=>setObservedOn(e.target.value)}/></label>
+    {!observedOn&&<small>{l('Para aplicar, informe a data do print ou toque em “Acabei de tirar este print”.','To apply, enter the screenshot date or tap “I just took this screenshot”.','Para aplicar, indica la fecha de la captura.')}</small>}
     <button className="text-button" type="button" onClick={()=>setObservedOn(today)}>{l('Acabei de tirar este print','I just took this screenshot','Acabo de tomar esta captura')}</button>
     {data&&<>
       <p role="status">{l(`${counts.update} para atualizar · ${counts.create} para adicionar · ${counts.unchanged} sem alteração`,`${counts.update} to update · ${counts.create} to add · ${counts.unchanged} unchanged`,`${counts.update} para actualizar · ${counts.create} para agregar · ${counts.unchanged} sin cambios`)}</p>
       <div className="screen-reconciliation-list">{rows.map(r=><article key={r.key} className={r.ambiguous?'needs-choice':''}>
         <details open={r.ambiguous||r.item.confidence<0.86||Boolean(r.existing?.observedOn&&observedOn&&observedOn<r.existing.observedOn)}>
-        <summary><b>{r.item.name}</b>
+        <summary><b>{r.item.name}</b><span>{r.kind==='pots'?l('Cofrinho','Savings pot','Alcancía'):l('Conta','Account','Cuenta')} · {screen.institution||l('Banco a confirmar','Bank to confirm','Banco por confirmar')}</span>
         <strong>{r.existing?`${(r.existing.balanceMinor===null?'—':formatMoney(r.existing.balanceMinor))} → `:''}{formatMoney(r.item.balanceMinor)}</strong></summary>
         <span>{r.ambiguous?l('Qual registro corresponde a este cofrinho ou conta?','Which record matches this savings pot or account?','¿Qué registro corresponde a esta alcancía o cuenta?'):r.existing?screenChangeKind(r.existing,r.item.balanceMinor,'goalMinor' in r.item?r.item.goalMinor:null,'targetDate' in r.item?r.item.targetDate:null)==='unchanged'?l('Sem alteração de valor ou meta · vincular evidência','Amount and goal unchanged · link evidence','Sin cambios de valor o meta · vincular evidencia'):l('Atualizar registro existente','Update existing record','Actualizar registro existente'):l('Adicionar um registro separado','Add a separate record','Agregar un registro separado')}</span>
         <label>{l('Organizar como','Organize as','Organizar como')}<select value={r.choice.targetId||(r.choice.createNew?'new':'')} onChange={e=>{
