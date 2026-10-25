@@ -1,4 +1,5 @@
 'use client';
+import {MoneyValue} from '@/src/features/privacy/money-value';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ProductTopbar } from '@/src/features/navigation/product-topbar';
@@ -443,7 +444,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
       <h1>{loading
         ? l('Organizando seus cofrinhos…','Organizing your savings pots…','Organizando tus alcancías…')
         : groups.length
-          ? formatMoney(total)
+          ? <MoneyValue id={`${householdId}:pots:total`} minor={total} label={l('Total nos cofrinhos','Savings total','Total en alcancías')}/>
           : l('Crie uma meta. Ou mande um print.','Create a goal. Or send a screenshot.','Crea una meta. O envía una captura.')}</h1>
       <p>{groups.length
         ? l(
@@ -457,7 +458,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
             'Puedes crear una alcancía completa manualmente o enviar una captura del banco para que NestBalance reconozca varias de una vez.'
           )}</p>
       {groups.length>0&&goalsTotal>0&&<div className="pots-hero-facts">
-        <div><span>{l('Ainda falta nas metas','Still needed for goals','Aún falta en las metas')}</span><strong>{formatMoney(remainingTotal)}</strong></div>
+        <div><span>{l('Ainda falta nas metas','Still needed for goals','Aún falta en las metas')}</span><strong><MoneyValue id={`${householdId}:pots:remaining`} minor={remainingTotal} label={l('Falta nas metas','Remaining goals','Falta en metas')}/></strong></div>
         <div><span>{l('Metas definidas','Goals defined','Metas definidas')}</span><strong>{groups.filter(item=>item.goalMinor).length}</strong></div>
       </div>}
     </section>
@@ -530,7 +531,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                       {group.scope==='personal'&&<em className="personal-pill">{l('Só eu','Only me','Solo yo')}</em>}
                     </div>
                     <h3>{group.name}</h3>
-                    <strong>{new Intl.NumberFormat(intlLocale,{style:'currency',currency:group.currency}).format(group.balanceMinor/100)}</strong>
+                    <strong><MoneyValue id={group.sources.length===1?`${householdId}:pot:${group.sources[0].id}`:`${householdId}:pot-group:${group.key}`} minor={group.balanceMinor} label={group.name} currency={group.currency}/></strong>
 
                     {group.goalMinor&&group.goalMinor>0
                       ? <>
@@ -567,7 +568,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                             {canContribute&&<button type="button" className="secondary" onClick={()=>openEdit(group.sources[0])}>{l('Editar','Edit','Editar')}</button>}
                           </>
                         : group.sources.map(source=><button type="button" key={source.id} onClick={()=>void openDetail(source)}>
-                            {source.institutionName||l('Manual','Manual','Manual')}{source.sourceAccountLabel?` · ${source.sourceAccountLabel}`:''} · {new Intl.NumberFormat(intlLocale,{style:'currency',currency:source.currency}).format(source.balanceMinor/100)}
+                            {source.institutionName||l('Manual','Manual','Manual')}{source.sourceAccountLabel?` · ${source.sourceAccountLabel}`:''} · {formatMoney(source.balanceMinor,source.currency)}
                           </button>)}
                     </div>
                   </div>
@@ -689,7 +690,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
 
         <div className="pot-detail-balance">
           <span>{l('Guardado agora','Saved now','Guardado ahora')}</span>
-          <strong>{formatMoney(selected.balanceMinor)}</strong>
+          <strong><MoneyValue id={`${householdId}:pot:${selected.id}`} minor={selected.balanceMinor} label={selected.name} currency={selected.currency}/></strong>
           {selected.goalMinor&&selected.goalMinor>0&&<>
             <div><span>{l('Meta','Goal','Meta')} {formatMoney(selected.goalMinor)}</span><b>{Math.round(Math.min(1,selected.balanceMinor/selected.goalMinor)*100)}%</b></div>
             <progress max={selected.goalMinor} value={Math.min(selected.balanceMinor,selected.goalMinor)}/>

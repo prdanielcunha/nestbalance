@@ -1,5 +1,6 @@
 'use client';
 import type { ReactNode } from 'react';
+import {ValuesVisibilityToggle} from '@/src/features/privacy/money-value';
 import { BrandLockup } from '@/src/features/brand/brand-lockup';
 import { HouseholdLink } from '@/src/features/navigation/household-link';
 
@@ -22,6 +23,7 @@ export function ProductTopbar({
       <span className="topbar-subtitle">{section}</span>
     </div>
     <div className="topbar-actions">
+      <ValuesVisibilityToggle/>
       {children}
       {showHousehold&&<HouseholdLink detailed={detailedHousehold}/>}
     </div>

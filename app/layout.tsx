@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import {ValuesVisibilityProvider} from '@/src/features/privacy/values-visibility-provider';
 import './home-premium.css';
 import '../design-system/nestbalance-tokens.css';
 import './nestbalance-brand.css';
@@ -54,6 +55,6 @@ export default function RootLayout({ children }: Readonly<{children: React.React
       <script dangerouslySetInnerHTML={{__html:themeBootScript}}/>
       <link rel="apple-touch-startup-image" href="/splash/splash-iphone-1290x2796.png" media="(max-width: 767px) and (orientation: portrait)"/>
     </head>
-    <body><PwaRuntime/><ThemeRuntime/>{children}</body>
+    <body><ValuesVisibilityProvider><PwaRuntime/><ThemeRuntime/>{children}</ValuesVisibilityProvider></body>
   </html>;
 }

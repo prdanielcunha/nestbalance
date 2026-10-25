@@ -20,5 +20,17 @@ export function deriveBalanceComposition<A extends BalanceAccount,P extends Bala
   const sources=pots.filter(p=>p.status==='active'&&p.currency===currency);
   const savedMinor=sources.reduce((s,p)=>s+(Number.isSafeInteger(p.balanceMinor)?p.balanceMinor:0),0);
   const complete=rows.length>0&&rows.every(r=>r.amountMinor!==null);
-  return {rows,sources,savedMinor,outsideMinor:complete?rows.reduce((s,r)=>s+r.amountMinor!,0):null,complete,stale:rows.some(r=>r.stale)||sources.some(p=>!observationTime(p)||now-observationTime(p)!>7*86_400_000),otherCurrencies:[...new Set([...accounts,...pots].filter(x=>x.status==='active'&&x.currency!==currency).map(x=>x.currency))]};
+  const knownRows=rows.filter(r=>Number.isSafeInteger(r.account.balanceMinor));
+  const reportedMinor=knownRows.length?knownRows.reduce((sum,r)=>sum+r.account.balanceMinor!,0):null;
+  const provisionalOutsideMinor=knownRows.length?knownRows.reduce((sum,r)=>sum+(r.amountMinor??r.account.balanceMinor!),0):null;
+  const pendingCount=rows.filter(r=>r.amountMinor===null).length;
+  return {rows,sources,savedMinor,reportedMinor,provisionalOutsideMinor,pendingCount,outsideMinor:complete?rows.reduce((s,r)=>s+r.amountMinor!,0):null,complete,stale:rows.some(r=>r.stale)||sources.some(p=>!observationTime(p)||now-observationTime(p)!>7*86_400_000),otherCurrencies:[...new Set([...accounts,...pots].filter(x=>x.status==='active'&&x.currency!==currency).map(x=>x.currency))]};
+}
+
+// Unresolved coverage may contain savings: expose an explicit provisional
+// ceiling, never silently treat the reported bank balance as spendable money.
+export function deriveSpendingAvailability(input:{outsideMinor:number|null;provisionalOutsideMinor:number|null;complete:boolean},commitmentsMinor:number){
+  const base=input.complete?input.outsideMinor:input.provisionalOutsideMinor;
+  const pending=Number.isSafeInteger(commitmentsMinor)?Math.max(0,commitmentsMinor):0;
+  return {amountMinor:base===null?null:Math.max(0,base-pending),shortfallMinor:base===null?null:Math.max(0,pending-base),provisional:!input.complete,commitmentsMinor:pending};
 }

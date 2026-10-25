@@ -1,4 +1,5 @@
 'use client';
+import {MoneyValue} from '@/src/features/privacy/money-value';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ProductTopbar } from '@/src/features/navigation/product-topbar';
@@ -126,7 +127,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
 
     <section className="area-hero accounts-hero">
       <span>{l('Onde seu dinheiro está','Where your money is','Dónde está tu dinero')}</span>
-      <h1>{viewAccounts.length?formatMoney(spendableTotal):l('Suas contas em um só lugar.','Your accounts in one place.','Tus cuentas en un solo lugar.')}</h1>
+      <h1>{viewAccounts.length?<MoneyValue id={`${householdId}:accounts:total`} minor={spendableTotal} label={l('Total nas contas','Account total','Total en cuentas')}/>:l('Suas contas em um só lugar.','Your accounts in one place.','Tus cuentas en un solo lugar.')}</h1>
       <p>{viewAccounts.length
         ? investmentTotal>0
           ? l(
@@ -166,7 +167,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
               {viewAccounts.map(account=><article className="account-balance-tile" key={account.id}>
                 <span>{accountTypeLabel(account)}{account.scope==='personal'&&<em className="personal-pill">{t.scopePersonal}</em>}</span>
                 <h3>{account.name}</h3>
-                <strong>{account.balanceMinor===null?'—':new Intl.NumberFormat(intlLocale,{style:'currency',currency:account.currency}).format(account.balanceMinor/100)}</strong>
+                <strong><MoneyValue id={`${householdId}:account:${account.id}`} minor={account.balanceMinor} label={account.name} currency={account.currency}/></strong>
                 {account.automaticallyInvestedMinor&&account.automaticallyInvestedMinor>0
                   ? <small>{l(
                       `${formatMoney(account.automaticallyInvestedMinor)} reservado nesta conta`,
@@ -188,9 +189,9 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
         {viewSnapshots.map(card=><article className="recognized-card" key={card.id}>
           <span>{card.institutionName||l('Cartão','Card','Tarjeta')}{card.scope==='personal'&&<em className="personal-pill">{t.scopePersonal}</em>}</span>
           <h3>{card.name}{card.last4?' · '+card.last4:''}</h3>
-          {card.statementAmountMinor!==null&&<strong>{formatMoney(card.statementAmountMinor)}</strong>}
+          {card.statementAmountMinor!==null&&<strong><MoneyValue id={`${householdId}:statement:${card.id}`} minor={card.statementAmountMinor} label={card.name}/></strong>}
           {card.dueOn&&<small>{l('Vence em','Due','Vence')} {formatDate(new Date(card.dueOn+'T12:00:00'),{day:'2-digit',month:'2-digit',year:'numeric'})}</small>}
-          {card.availableLimitMinor!==null&&<small>{l('Limite disponível','Available limit','Límite disponible')}: {formatMoney(card.availableLimitMinor)}</small>}
+          {card.availableLimitMinor!==null&&<small>{l('Limite disponível','Available limit','Límite disponible')}: <MoneyValue id={`${householdId}:limit:${card.id}`} minor={card.availableLimitMinor} label={l('Limite disponível','Available limit','Límite disponible')}/></small>}
         </article>)}
       </div>
     </section>}

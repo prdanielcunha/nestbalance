@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {BalanceOverview} from './balance-overview';
+import {MoneyValue} from '@/src/features/privacy/money-value';
 import {deriveBalanceComposition} from '@/src/core/balance-composition';
 import { deriveHomeSnapshot } from '@/src/core/summary';
 import { deriveCashView } from '@/src/core/cash-view';
@@ -101,8 +102,8 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
   );
 
   const cashView=useMemo(()=>deriveCashView({
-    transactions:monthTransactions,
-    commitments:currentMonthCommitments,
+    transactions:monthTransactions.filter(x=>x.currency==='BRL'),
+    commitments:currentMonthCommitments.filter(x=>x.currency==='BRL'),
     invoices:viewInvoiceImports
   }),[monthTransactions,currentMonthCommitments,viewInvoiceImports]);
 
@@ -134,8 +135,6 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
     });
   }, [balanceComposition, cashView]);
 
-  const safeToUseMinor=Math.max(snapshot.projectedRemainderMinor,0);
-  const coverageGapMinor=Math.max(-snapshot.projectedRemainderMinor,0);
   const futureMonths=useMemo(()=>projectHouseholdFuture(viewCommitments,viewInstallmentPlans,new Date(),3),[viewCommitments,viewInstallmentPlans]);
   const expandedProjection=futureMonths.find(x=>x.key===expandedFuture)||null;
   const hasData = viewTransactions.length + viewCommitments.length + viewInstallmentPlans.length + viewInvoiceImports.length > 0;
@@ -267,16 +266,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
 
     {homeError && <p className="error-copy" role="alert">{homeError}</p>}
     <div className={`home-hero-grid ${viewAccounts.length===0?'is-empty':'has-balance'}`}>
-    <BalanceOverview householdId={householdId} accounts={viewAccounts} pots={viewPots} canManage={canManage} onChanged={()=>void refreshHome(true)}/>
-    {balanceComposition.complete&&<section className={coverageGapMinor>0?'home-safe-card warning':'home-safe-card'}>
-      <span>{coverageGapMinor>0?l('Falta cobrir','Gap to cover','Falta cubrir'):l('Previsão após as contas','Forecast after bills','Previsión después de cuentas')}</span>
-      <strong>{formatMoney(coverageGapMinor>0?coverageGapMinor:safeToUseMinor)}</strong>
-      <p>{coverageGapMinor>0
-        ? l('Com os saldos e contas que já conhecemos, falta esse valor para cobrir os compromissos atuais.','With the balances and bills we already know, this amount is still missing to cover current commitments.','Con los saldos y cuentas que ya conocemos, todavía falta este valor para cubrir los compromisos actuales.')
-        : l('Sem encostar no que já sabemos que vai sair. É uma estimativa baseada apenas nos saldos e compromissos confirmados.','Without touching what we already know must leave. This estimate uses only confirmed balances and commitments.','Sin tocar lo que ya sabemos que saldrá. Esta estimación usa solo saldos y compromisos confirmados.')
-      }</p>
-      <Link href="/assistant">{l('Entender esse valor','Understand this amount','Entender este valor')}</Link>
-    </section>}
+    <BalanceOverview loading={loadingHome} commitmentsMinor={cashView.futureCommitmentsMinor} householdId={householdId} accounts={viewAccounts} pots={viewPots} canManage={canManage} onChanged={()=>void refreshHome(true)}/>
     {viewAccounts.length===0 && canManage && <AccountOnboarding householdId={householdId} defaultScope={defaultCreateScope} onCreated={()=>{setAccountCreated(v=>v+1);void refreshHome(true);}} />}
     </div>
 
@@ -342,7 +332,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
         <div><span>{t.moneyIn}</span><strong>{monthHasKnownData?formatMoney(monthTransactions.filter(x=>x.direction==='income').reduce((s,x)=>s+x.amountMinor,0)):'—'}</strong></div>
         <div><span>{t.moneyOut}</span><strong>{monthHasKnownData?formatMoney(snapshot.paidExpenseMinor):'—'}</strong></div>
         <div><span>{t.moneyToGo}</span><strong>{monthHasKnownData?formatMoney(snapshot.futureCommitmentsMinor):'—'}</strong></div>
-        <div className="projected"><span>{t.projectedLeft}{monthHasKnownData&&<small className="estimate-badge">{l('estimado','estimate','estimado')}</small>}</span><strong>{monthHasKnownData&&viewAccounts.length ? formatMoney(snapshot.projectedRemainderMinor) : '—'}</strong></div>
+        <div className="projected"><span>{t.projectedLeft}{monthHasKnownData&&<small className="estimate-badge">{l('estimado','estimate','estimado')}</small>}</span><strong>{monthHasKnownData&&balanceComposition.complete ? formatMoney(snapshot.projectedRemainderMinor) : '—'}</strong></div>
       </div>
     </section>
 
@@ -377,7 +367,7 @@ export function HomeScreen({ householdId, role }: { householdId: string; role: H
 
     {hasData&&<section className="timeline-section">
       <div className="section-title"><h2>{t.movements}</h2><span>{t.timeline}</span></div>
-      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?l('No cartão','On card','En tarjeta'):x.source==='credit_card_invoice_payment'?l('Fatura paga','Statement paid','Tarjeta pagada'):x.direction==='income'?t.moneyIn:x.direction==='transfer'?l('Transferência','Transfer','Transferencia'):l('Saiu','Money out','Salió')}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {formatMoney(x.amountMinor)}</b></article>)}</div>}
+      {!hasData ? <div className="empty-state"><h3>{t.emptyTitle}</h3><p>{t.emptyBody}</p></div> : <div className="timeline">{viewTransactions.slice(0,8).map(x=><article key={x.id} className="timeline-row"><div className={`movement-dot ${x.direction==='income'?'in':''}`} /><div><strong>{x.description}</strong><span>{x.source==='credit_card_invoice'?l('No cartão','On card','En tarjeta'):x.source==='credit_card_invoice_payment'?l('Fatura paga','Statement paid','Tarjeta pagada'):x.direction==='income'?t.moneyIn:x.direction==='transfer'?l('Transferência','Transfer','Transferencia'):l('Saiu','Money out','Salió')}</span></div><b>{x.source==='credit_card_invoice'?'•':x.direction==='income'?'+':x.direction==='transfer'?'↔':'−'} {<MoneyValue id={`${householdId}:transaction:${x.id}`} minor={x.amountMinor} label={x.description} currency={x.currency}/>}</b></article>)}</div>}
     </section>}
 
   </main>;
