@@ -262,7 +262,7 @@ test('capture review keeps account origin and distinct operations understandable
   await page.goto('/add?e2eAuth=1&e2eRole=owner');
   await page.locator('textarea').first().fill('paguei 50 no mercado');
   await page.getByRole('button',{name:'Organizar',exact:true}).click();
-  await expect(page.getByText('Origem deste item',{exact:true})).toBeVisible();
+  await expect(page.getByLabel('Origem deste item',{exact:true})).toBeVisible();
   await expect(page.getByText('É uma operação distinta, mesmo que já exista outra igual',{exact:true})).toBeVisible();
   await assertNoHorizontalOverflow(page);
   await assertNoSeriousA11y(page);
