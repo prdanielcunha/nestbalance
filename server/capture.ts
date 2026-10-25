@@ -38,9 +38,26 @@ export async function commitCapture(req: Request, res: Response) {
     const learnedCategory=interpretation.kind==='transaction'&&interpretation.direction==='expense'
       ? await learnedCategoryForDescription(household,privacy.scope,privacy.ownerUid,interpretation.description)
       : null;
-    const fingerprint = fingerprintForInterpretation(interpretation, observedOn);
-    const fingerprintId = createHash('sha256').update(privacy.scope+'|'+(privacy.ownerUid||'')+'|'+fingerprint).digest('hex');
+    const accountId=String(req.body?.accountId||'');
+    let sourceAccountLabel:string|null=null;
+    let institutionName=String(req.body?.institutionName||'').normalize('NFKC').trim().slice(0,120)||null;
+    if(accountId){
+      if(!/^[A-Za-z0-9_-]{6,128}$/.test(accountId)) return error(res,400,'INVALID_ACCOUNT');
+      const account=await household.collection('accounts').doc(accountId).get();
+      if(!account.exists) return error(res,404,'ACCOUNT_NOT_FOUND');
+      const data=account.data()!;assertScopedAccess(data,user.uid);
+      if((data.scope||'household')!==privacy.scope||data.status!=='active') return error(res,409,'PRIVACY_SCOPE_MISMATCH');
+      institutionName=typeof data.institutionName==='string'?data.institutionName:null;
+      sourceAccountLabel=String(data.name||'')+(data.last4?' · '+String(data.last4):'');
+    }
+    const requestId=String(req.body?.requestId||'');
+    const separate=req.body?.keepSeparate===true;
+    if(separate&&!/^[A-Za-z0-9_-]{8,128}$/.test(requestId)) return error(res,400,'INVALID_CAPTURE_REQUEST');
+    const fingerprint = fingerprintForInterpretation(interpretation, observedOn,accountId||institutionName?.toLowerCase());
+    const fingerprintId = createHash('sha256').update(privacy.scope+'|'+(privacy.ownerUid||'')+'|'+fingerprint+(separate?'|distinct|'+requestId:'')).digest('hex');
     const target = interpretation.kind === 'commitment' ? 'commitments' : 'transactions';
+    const existingMovementId=String(req.body?.existingMovementId||'');
+    if(existingMovementId&&!/^[A-Za-z0-9_-]{6,128}$/.test(existingMovementId)) return error(res,400,'INVALID_CAPTURE_REQUEST');
     const entityRef = household.collection(target).doc();
     const fingerprintRef = adminDb.doc(`households/${householdId}/captureFingerprints/${fingerprintId}`);
     const auditRef = adminDb.collection('households').doc(householdId).collection('auditEvents').doc();
@@ -50,9 +67,34 @@ export async function commitCapture(req: Request, res: Response) {
     };
 
     await adminDb.runTransaction(async tx => {
-      const existing = await tx.get(fingerprintRef);
+      if(existingMovementId){
+        const linkedRef=household.collection(target).doc(existingMovementId);
+        const linked=await tx.get(linkedRef);
+        if(!linked.exists) throw Object.assign(new Error('CAPTURE_RECORD_MISSING'),{statusCode:409});
+        const data=linked.data()!;assertScopedAccess(data,user.uid);
+        if((data.scope||'household')!==privacy.scope||data.amountMinor!==interpretation.money.amountMinor||data.currency!==interpretation.money.currency||data.direction!==interpretation.direction||(data.status==='cancelled')) throw Object.assign(new Error('CAPTURE_MATCH_CONFLICT'),{statusCode:409});
+        if((accountId&&data.accountId&&accountId!==data.accountId)||(institutionName&&data.institutionName&&interpretation.direction!=='transfer'&&institutionName.toLowerCase()!==String(data.institutionName).toLowerCase())) throw Object.assign(new Error('CAPTURE_MATCH_CONFLICT'),{statusCode:409});
+        tx.update(linkedRef,{...(evidenceId?{evidenceIds:FieldValue.arrayUnion(evidenceId)}:{}),updatedAt:FieldValue.serverTimestamp()});
+        tx.create(auditRef,{type:'capture.evidence_linked',scope:privacy.scope,ownerUid:privacy.ownerUid,actorUid:user.uid,entityType:interpretation.kind,entityId:linkedRef.id,evidenceId,createdAt:FieldValue.serverTimestamp()});
+        result={status:'duplicate',id:linkedRef.id,evidenceId};return;
+      }
+      let existing = await tx.get(fingerprintRef);
+      // Honor fingerprints written before direction became part of identity.
+      // This compatibility lookup applies only when no bank/account is known.
+      if(!existing.exists&&!separate&&!accountId&&!institutionName){
+        const legacy=fingerprint.split('|').filter((_,index)=>index!==1).join('|');
+        const legacyId=createHash('sha256').update(privacy.scope+'|'+(privacy.ownerUid||'')+'|'+legacy).digest('hex');
+        const old=await tx.get(household.collection('captureFingerprints').doc(legacyId));
+        if(old.exists) existing=old;
+      }
       if (existing.exists) {
         const data = existing.data()!;
+        const existingRef=household.collection(target).doc(String(data.entityId));
+        const existingRecord=await tx.get(existingRef);
+        if(!existingRecord.exists) throw Object.assign(new Error('CAPTURE_RECORD_MISSING'),{statusCode:409});
+        assertScopedAccess(existingRecord.data()!,user.uid);
+        if(existingRecord.data()?.direction!==interpretation.direction) throw Object.assign(new Error('CAPTURE_MATCH_CONFLICT'),{statusCode:409});
+        if(evidenceId) tx.update(existingRef,{evidenceIds:FieldValue.arrayUnion(evidenceId),updatedAt:FieldValue.serverTimestamp()});
         result = { status: 'duplicate', id: String(data.entityId), evidenceId };
         return;
       }
@@ -65,6 +107,9 @@ export async function commitCapture(req: Request, res: Response) {
         currency: interpretation.money.currency,
         direction: interpretation.direction,
         source: 'universal_capture',
+        accountId:accountId||null,
+        institutionName,
+        sourceAccountLabel,
         sourceText,
         confidence: interpretation.confidence,
         needsReview: interpretation.needsReview,

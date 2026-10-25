@@ -45,8 +45,8 @@ Meta: R$ 1.250
 
 test('groups same goal across institutions without double counting the goal',()=>{
   const groups=groupSavingsPots([
-    {id:'a',name:'Aniversário Davi',balanceMinor:100000,goalMinor:255000,currency:'BRL',institutionName:'Mercado Pago',source:'screen_import',status:'active',scope:'household'},
-    {id:'b',name:'Aniversario Davi',balanceMinor:50000,goalMinor:255000,currency:'BRL',institutionName:'Nubank',source:'screen_import',status:'active',scope:'household'}
+    {id:'a',goalGroupId:'birthday',name:'Aniversário Davi',balanceMinor:100000,goalMinor:255000,currency:'BRL',institutionName:'Mercado Pago',source:'screen_import',status:'active',scope:'household'},
+    {id:'b',goalGroupId:'birthday',name:'Aniversario Davi',balanceMinor:50000,goalMinor:255000,currency:'BRL',institutionName:'Nubank',source:'screen_import',status:'active',scope:'household'}
   ]);
   assert.equal(groups.length,1);
   assert.equal(groups[0].balanceMinor,150000);
@@ -83,12 +83,12 @@ test('OCR com espaços no milhar preserva saldo e meta do cofrinho',()=>{
 
 test('metas conflitantes entre bancos ficam explícitas sem somar metas',()=>{
   const groups=groupSavingsPots([
-    {id:'a',name:'Viagem',balanceMinor:100000,goalMinor:300000,currency:'BRL',institutionName:'Nubank',source:'screen_import',status:'active',scope:'household'},
-    {id:'b',name:'Viagem',balanceMinor:50000,goalMinor:350000,currency:'BRL',institutionName:'Inter',source:'screen_import',status:'active',scope:'household'}
+    {id:'a',goalGroupId:'travel',name:'Viagem',balanceMinor:100000,goalMinor:300000,currency:'BRL',institutionName:'Nubank',source:'screen_import',status:'active',scope:'household'},
+    {id:'b',goalGroupId:'travel',name:'Viagem',balanceMinor:50000,goalMinor:350000,currency:'BRL',institutionName:'Inter',source:'screen_import',status:'active',scope:'household'}
   ]);
   assert.equal(groups.length,1);
   assert.equal(groups[0].balanceMinor,150000);
-  assert.equal(groups[0].goalMinor,350000);
+  assert.equal(groups[0].goalMinor,null);
   assert.equal(groups[0].goalConflict,true);
 });
 

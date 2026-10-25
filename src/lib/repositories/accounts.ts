@@ -1,10 +1,10 @@
 'use client';
-import { auth } from '@/src/lib/firebase/client';
+import {getBrowserAuthToken} from '@/src/lib/browser-auth-token';
 import type { AccountType } from '@/src/core/accounts';
 import type { FinancialScope } from '@/src/core/privacy';
 
 export async function createHouseholdAccount(input:{householdId:string;name:string;type:AccountType;balanceMinor:number;scope?:FinancialScope}){
-  const token=await auth?.currentUser?.getIdToken();
+  const token=await getBrowserAuthToken();
   if(!token) throw new Error('AUTH_REQUIRED');
   const response=await fetch('/api/accounts/create',{
     method:'POST',
@@ -17,8 +17,8 @@ export async function createHouseholdAccount(input:{householdId:string;name:stri
 }
 
 
-export async function updateHouseholdAccountBalance(input:{householdId:string;accountId:string;balanceMinor:number}){
-  const token=await auth?.currentUser?.getIdToken();
+export async function updateHouseholdAccountBalance(input:{householdId:string;accountId:string;balanceMinor:number;balanceCoverage?:'includes_pots'|'excludes_pots'|'unknown';includedSavingsMinor?:number|null;expectedUpdatedAtMs?:number|null;coverageOnly?:boolean}){
+  const token=await getBrowserAuthToken();
   if(!token) throw new Error('AUTH_REQUIRED');
   const response=await fetch('/api/accounts/update-balance',{
     method:'POST',

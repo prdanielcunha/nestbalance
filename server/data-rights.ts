@@ -8,11 +8,11 @@ import { deleteBelvoLink } from './open-finance/belvo.js';
 const PRIVACY_VERSION='nestbalance-privacy-v1';
 const EXPORT_COLLECTIONS=[
   'accounts','creditCards','transactions','commitments','installmentPlans','invoiceImports',
-  'commitmentPayments','savingsPots','savingsPotActivities','savingsPotAutomationEvents','cardSnapshots','evidenceAssets','bankConnections'
+  'commitmentPayments','savingsPots','savingsPotActivities','savingsPotAutomationEvents','screenImports','cardSnapshots','evidenceAssets','bankConnections'
 ] as const;
 const PERSONAL_DELETE_COLLECTIONS=[
   'transactions','commitments','commitmentPayments','installmentPlans','invoiceImports',
-  'accounts','creditCards','savingsPots','savingsPotActivities','savingsPotAutomationEvents','cardSnapshots','evidenceAssets'
+  'accounts','creditCards','savingsPots','savingsPotActivities','savingsPotAutomationEvents','screenImports','cardSnapshots','evidenceAssets'
 ] as const;
 
 function error(res:Response,status:number,code:string){ return res.status(status).json({ok:false,error:code}); }
@@ -32,6 +32,7 @@ function sanitize(collection:string,data:any){
   const copy={...asJson(data)};
   if(collection==='evidenceAssets'){ delete copy.storagePath; delete copy.uploadPath; }
   if(collection==='savingsPots'){ delete copy.coverStoragePath; }
+  if(collection==='screenImports'&&Array.isArray(copy.changes)) copy.changes=copy.changes.map((change:any)=>({...change,before:change.before?sanitize(change.collection,change.before):null}));
   if(collection==='bankConnections'){ delete copy.linkId; delete copy.externalId; }
   return copy;
 }

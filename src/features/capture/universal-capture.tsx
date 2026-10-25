@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
 import { buildImportedMovements, resolveImportedMovementDirection } from '@/src/core/movement-import';
@@ -21,7 +21,10 @@ import {
 } from '@/src/core/ai-financial';
 import { commitInterpretation } from '@/src/lib/repositories/finance';
 import { findCommitmentPaymentMatches, payCommitment, type CommitmentPaymentCandidate } from '@/src/lib/repositories/commitment-payments';
-import { commitFinancialScreen } from '@/src/lib/repositories/financial-screen';
+import {loadHomeData,type HomeAccount,type HomeRow} from '@/src/lib/repositories/home';
+import {ScreenSourceReview} from './screen-source-review';
+import type {ScreenReview} from '@/src/core/screen-reconciliation';
+import { commitFinancialScreen,undoFinancialScreen,type FinancialScreenCommitResult } from '@/src/lib/repositories/financial-screen';
 import {
   analyzeEvidenceAi,
   analyzeEvidenceText,
@@ -74,6 +77,17 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const [paymentMatchDismissed,setPaymentMatchDismissed]=useState(false);
   const [payingMatchId,setPayingMatchId]=useState('');
   const [screenSnapshot,setScreenSnapshot]=useState<AiFinancialScreenSnapshot|null>(null);
+  const [existingRows,setExistingRows]=useState<HomeRow[]>([]);
+  const [movementLinks,setMovementLinks]=useState<Record<number,string>>({});
+  const [originAccounts,setOriginAccounts]=useState<HomeAccount[]>([]);
+  const [captureAccountId,setCaptureAccountId]=useState('');
+  const [captureInstitution,setCaptureInstitution]=useState<string|null>(null);
+  const [itemAccountIds,setItemAccountIds]=useState<Record<number,string>>({});
+  const [separateItems,setSeparateItems]=useState<Record<number,boolean>>({});
+  const requestIdRef=useRef('');
+  const [screenReview,setScreenReview]=useState<ScreenReview|null>(null);
+  const [screenResult,setScreenResult]=useState<FinancialScreenCommitResult|null>(null);
+  const acceptScreenReview=useCallback((review:ScreenReview|null)=>setScreenReview(review),[]);
   const [scope,setScope]=useState<FinancialScope>('household');
   const [localOcrText,setLocalOcrText]=useState('');
   const [localOcrPercent,setLocalOcrPercent]=useState(0);
@@ -87,6 +101,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   const recorderChunksRef=useRef<BlobPart[]>([]);
   const recorderStreamRef=useRef<MediaStream|null>(null);
 
+  useEffect(()=>{
+    if(!open) return;
+    let cancelled=false;
+    void loadHomeData(householdId).then(d=>{if(!cancelled){setOriginAccounts(d.accounts);setExistingRows([...d.transactions,...d.commitments]);}}).catch(()=>undefined);
+    return ()=>{cancelled=true;};
+  },[open,householdId]);
   const working = saving || analyzing || recording || geminiWorking;
   const moneyInputValue=(minor:number)=>(minor/100).toLocaleString(intlLocale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
 
@@ -167,11 +187,19 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     stopRecorderTracks();
     setRecording(false);
     setShowAllReview(false);
+    setSeparateItems({});
+    setCaptureAccountId('');
+    setCaptureInstitution(null);
+    setItemAccountIds({});
+    setMovementLinks({});
+    requestIdRef.current='';
     setPaymentMatches([]);
     setMatchingPayments(false);
     setPaymentMatchDismissed(false);
     setPayingMatchId('');
     setScreenSnapshot(null);
+    setScreenReview(null);
+    setScreenResult(null);
     setScope('household');
     setLocalOcrText('');
     setLocalOcrPercent(0);
@@ -423,6 +451,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
         const screen=classified.screen;
         const resources=screen.accounts.length+screen.pots.length+screen.cards.length+screen.commitments.length;
         setScreenSnapshot(resources?screen:null);
+        setCaptureInstitution(screen.institution);
         const imported=buildImportedMovements({
           documentType:screen.screenType==='transaction_list'?'transaction_list':'bank_screenshot',
           institution:screen.institution,
@@ -496,6 +525,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
       if(extraction.screen){
         const screen=extraction.screen;
+        setCaptureInstitution(screen.institution);
         const resourceCount=screen.accounts.length+screen.pots.length+screen.cards.length+screen.commitments.length;
         if(resourceCount>0) setScreenSnapshot(screen);
         const imported=buildImportedMovements({
@@ -585,6 +615,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           setAiAnalysis(ai);
           if(ai.kind==='image'&&ai.extraction?.screen){
             const screen=ai.extraction.screen;
+            setCaptureInstitution(screen.institution);
             const resourceCount=screen.accounts.length+screen.pots.length+screen.cards.length+screen.commitments.length;
             if(resourceCount>0) setScreenSnapshot(screen);
             if(ai.parsedInterpretations?.length) setInterpretations(ai.parsedInterpretations);
@@ -730,6 +761,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   }
 
   function removeInterpretation(index:number){
+    setMovementLinks({});
+    setSeparateItems({});
+    setItemAccountIds({});
     setInterpretations(current=>current.filter((_,itemIndex)=>itemIndex!==index));
     setPaymentMatches([]);
     setMatchingPayments(false);
@@ -740,7 +774,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   }
 
   async function confirm() {
+    if(saving) return;
     if (!interpretations.length&&!screenSnapshot) return;
+    if(screenSnapshot&&!screenReview){setError(l('Confira a data e as correspondências do print.','Review the screenshot date and matches.','Revisa la fecha y correspondencias de la captura.'));return;}
     if(paymentMatches.length&&!paymentMatchDismissed){
       setError(l('Escolha a conta que este pagamento quitou ou toque em “Nenhuma dessas”.','Choose the bill this payment settled or tap “None of these”.','Elige la cuenta que este pago liquidó o toca “Ninguna de estas”.'));
       return;
@@ -763,30 +799,37 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       }
 
       let created = 0;
+      let completedScreen:FinancialScreenCommitResult|null=null;
       if(screenSnapshot&&finalEvidenceId){
-        await commitFinancialScreen({
+        const screenCommit=await commitFinancialScreen({
           householdId,
           evidenceId:finalEvidenceId,
           scope,
           screenSnapshot,
+          review:screenReview!,
           analysisSource:geminiUsed?'gemini_text':aiAnalysis?'server_vision':'local_ocr'
         });
+        completedScreen=screenCommit;
+        if(!interpretations.length){setScreenResult(screenCommit);return;}
         created++;
       }
       let duplicates = 0;
+      if(!requestIdRef.current) requestIdRef.current=crypto.randomUUID();
       for (let i = 0; i < interpretations.length; i++) {
         const result = await commitInterpretation({
           householdId,
           uid,
           interpretation: interpretations[i],
-          evidenceId: i === 0 ? finalEvidenceId : null,
+          evidenceId: finalEvidenceId,
           file: i === 0 && !finalEvidenceId ? file : null,
           onUploadProgress: progress => setUpload(progress),
-          scope
+          scope,
+          origin:{accountId:(itemAccountIds[i]??captureAccountId)||undefined,institutionName:screenSnapshot?.institution||captureInstitution||pendingAi?.extraction.institution||null,keepSeparate:separateItems[i]===true,requestId:requestIdRef.current+'_'+i,existingMovementId:movementLinks[i]||undefined}
         });
         if (result.status === 'duplicate') duplicates++;
         else created++;
       }
+      if(completedScreen){setScreenResult({...completedScreen,includesSeparateMovements:true});return;}
       if (duplicates && !created) {
         setNotice(l('Isso já parece estar registrado. Não criamos uma cópia.','This already appears to be recorded. We did not create a copy.','Esto ya parece estar registrado. No creamos una copia.'));
         setSaving(false);
@@ -797,7 +840,9 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       onCommitted?.();
     } catch (err:any) {
       const code=String(err?.message||'');
-      setError(code==='EVIDENCE_UPLOAD_FAILED'
+      setError(['SCREEN_REVIEW_CONFLICT','SCREEN_REVIEW_REQUIRED','SCREEN_OBSERVATION_OLDER','SCREEN_SOURCE_MISMATCH'].includes(code)
+        ? l('Os dados mudaram ou este print é mais antigo. Toque em Comparar novamente e confira as correspondências.','Data changed or this screenshot is older. Tap Compare again and review matches.','Los datos cambiaron o esta captura es anterior. Toca Comparar de nuevo y revisa las correspondencias.')
+        : code==='EVIDENCE_UPLOAD_FAILED'
         ? l('Não conseguimos enviar o print original. Sua revisão ficou preservada; confira a conexão e toque em Guardar novamente.','We could not upload the original screenshot. Your review is preserved; check your connection and tap Save again.','No pudimos enviar la captura original. Tu revisión quedó preservada; revisa la conexión y toca Guardar de nuevo.')
         : code==='EVIDENCE_NOT_FOUND'
           ? l('O print original não ficou disponível para concluir esta importação. Tente guardar novamente; se continuar, troque o arquivo e reimporte.','The original screenshot was not available to finish this import. Try saving again; if it continues, replace the file and reimport.','La captura original no quedó disponible para terminar esta importación. Intenta guardar de nuevo; si continúa, cambia el archivo y vuelve a importar.')
@@ -844,11 +889,25 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
     {showTrigger&&<button className="capture-fab" onClick={() => setOpen(true)} aria-label={t.add}>＋ <span>{t.add}</span></button>}
     {open && <div className="sheet-backdrop" role="presentation" onMouseDown={e => e.target === e.currentTarget && reset()}>
       <section className="capture-sheet universal-capture-sheet" role="dialog" aria-modal="true" aria-label={t.captureTitle}>
-        {!interpretations.length&&!screenSnapshot ? <>
+        {screenResult?<div className="screen-import-success" role="status">
+          <h2>{screenResult.undone?l('Este print já foi desfeito','This screenshot import was undone','La importación de esta captura ya se deshizo'):screenResult.replayed?l('Este print já foi organizado','This screenshot was already organized','Esta captura ya se organizó'):l('Seus dados foram organizados','Your data is organized','Tus datos están organizados')}</h2>
+          {screenResult.replayed&&<p>{l('Nenhuma alteração foi repetida.','No changes were repeated.','No se repitió ningún cambio.')}</p>}
+          <p>{l(`${screenResult.counts.updated||0} atualizados · ${screenResult.counts.created||0} adicionados · ${screenResult.counts.unchanged||0} sem alteração`,`${screenResult.counts.updated||0} updated · ${screenResult.counts.created||0} added · ${screenResult.counts.unchanged||0} unchanged`,`${screenResult.counts.updated||0} actualizados · ${screenResult.counts.created||0} agregados · ${screenResult.counts.unchanged||0} sin cambios`)}</p>
+          <p>{l('O print original e o histórico foram preservados.','The original screenshot and history were preserved.','La captura original y el historial se conservaron.')}</p>
+          {screenResult.importId&&!screenResult.undone&&!screenResult.includesSeparateMovements&&<button type="button" className="ghost-button" disabled={saving} onClick={async()=>{
+            setSaving(true);setError('');
+            try{await undoFinancialScreen(householdId,screenResult.importId!);setScreenResult(null);setScreenSnapshot(null);setInterpretations([]);setPreparedEvidenceId(null);setNotice(l('Alterações desfeitas. O original e o histórico continuam guardados.','Changes undone. The original and history remain preserved.','Cambios deshechos. El original y el historial se conservan.'));}
+            catch{setError(l('Não foi possível desfazer: existem alterações posteriores. Confira os registros para preservar o trabalho mais recente.','Cannot undo: later changes exist. Review the records to preserve the latest work.','No se puede deshacer: hay cambios posteriores. Revisa los registros para conservar el trabajo más reciente.'));}
+            finally{setSaving(false);}
+          }}>{l('Desfazer importação','Undo import','Deshacer importación')}</button>}
+          {screenResult.includesSeparateMovements&&<p>{l('As movimentações também foram conferidas. Você pode consultar cada registro em Movimentos.','Movements were also reviewed. You can view each record in Movements.','También se revisaron los movimientos. Puedes consultar cada registro en Movimientos.')}</p>}
+          {error&&<p className="error-copy" role="alert">{error}</p>}
+          <button className="primary-button" disabled={saving} onClick={()=>{clearAll();onCommitted?.();}}>{l('Concluir','Done','Finalizar')}</button>
+        </div>:!interpretations.length&&!screenSnapshot ? <>
           <div className="sheet-handle" />
           <div className="eyebrow">{l('Jogue aqui. A gente organiza.','Drop it here. We organize it.','Déjalo aquí. Lo organizamos.')}</div>
           <h2>{l('O que aconteceu?','What happened?','¿Qué pasó?')}</h2>
-          <p>{l('Escreva, fale, mande um print ou um arquivo. Você não precisa decidir antes se foi dinheiro que entrou, saiu ou uma conta para pagar.','Write, speak, send a screenshot or a file. You do not need to decide first whether money came in, went out, or is a bill to pay.','Escribe, habla, envía una captura o un archivo. No necesitas decidir antes si entró dinero, salió o es una cuenta por pagar.')}</p>
+          <p>{l('Envie um print, comprovante ou documento para adicionar informações ou atualizar seus dados. Você não precisa escolher o tipo antes.','Send a screenshot, receipt or document to add information or update your data. No need to choose the type first.','Envía una captura, comprobante o documento para agregar información o actualizar tus datos. No necesitas elegir el tipo antes.')}</p>
 
           <ScopeChoice value={scope} onChange={setScope} disabled={working||Boolean(preparedEvidenceId)}/>
 
@@ -1011,6 +1070,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             </div>
           </div>
 
+          {screenSnapshot&&<ScreenSourceReview key={`${scope}:${file?.name||preparedEvidenceId||'screen'}:${screenSnapshot.institution}:${screenSnapshot.accounts.length}:${screenSnapshot.pots.length}`} householdId={householdId} uid={uid} scope={scope} screen={screenSnapshot} onReady={acceptScreenReview}/>}
           {screenSnapshot&&<div className="financial-screen-summary">
             <div className="financial-screen-summary-head">
               <span>{screenSnapshot.institution||l('Tela financeira','Financial screen','Pantalla financiera')}</span>
@@ -1216,8 +1276,12 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             <div className={attentionInterpretations.length?'attention':''}><strong>{attentionInterpretations.length}</strong><span>{l('para conferir','to review','para revisar')}</span></div>
           </div>}
 
+          {interpretations.length>0&&<label className="capture-origin-choice">{l('Conta de origem (se souber)','Source account (if known)','Cuenta de origen (si sabes)')}<select value={captureAccountId} onChange={e=>setCaptureAccountId(e.target.value)}><option value="">{l('Não informada','Not specified','No informada')}</option>{originAccounts.filter(a=>(a.scope||'household')===scope).map(a=><option key={a.id} value={a.id}>{a.institutionName||a.name} · {a.name}{a.last4?` · ${a.last4}`:''}</option>)}</select></label>}
           <div className="review-list">{visibleInterpretations.map(({item:interpretation,index}) => <div className={interpretation.needsReview.includes('direction')?'interpretation-card needs-choice':'interpretation-card'} key={`${interpretation.description}-${index}`}>
             <div className="interpretation-card-head"><strong>{interpretation.description}</strong><b>{formatMoney(interpretation.money.amountMinor)}</b></div>
+            <label className="capture-origin-choice">{l('Origem deste item','Source of this item','Origen de este elemento')}<select value={itemAccountIds[index]??captureAccountId} onChange={e=>setItemAccountIds(items=>({...items,[index]:e.target.value}))}><option value="">{captureInstitution||l('Não informada','Not specified','No informada')}</option>{originAccounts.filter(a=>(a.scope||'household')===scope).map(a=><option key={a.id} value={a.id}>{a.institutionName||a.name} · {a.name}{a.last4?` · ${a.last4}`:''}</option>)}</select></label>
+            {existingRows.some(r=>r.amountMinor===interpretation.money.amountMinor&&r.direction===interpretation.direction&&(r.scope||'household')===scope)&&<label className="capture-origin-choice">{l('Este item já está registrado?','Is this item already recorded?','¿Este elemento ya está registrado?')}<select value={movementLinks[index]||''} onChange={e=>setMovementLinks(links=>({...links,[index]:e.target.value}))}><option value="">{l('Não vincular manualmente','Do not link manually','No vincular manualmente')}</option>{existingRows.filter(r=>r.amountMinor===interpretation.money.amountMinor&&r.direction===interpretation.direction&&(r.scope||'household')===scope&&r.status!=='cancelled').map(r=><option key={r.id} value={r.id}>{r.description} · {[r.institutionName,r.sourceAccountLabel,r.observedOn].filter(Boolean).join(' · ')}</option>)}</select></label>}
+            <label className="capture-distinct-choice"><input type="checkbox" checked={separateItems[index]===true} onChange={e=>setSeparateItems(items=>({...items,[index]:e.target.checked}))}/>{l('É uma operação distinta, mesmo que já exista outra igual','This is a separate operation, even if an identical one exists','Es una operación distinta, aunque ya exista otra igual')}</label>
             <button type="button" className="capture-remove-item capture-remove-movement" onClick={()=>removeInterpretation(index)}>{l('Não importar este item','Do not import this item','No importar este elemento')}</button>
             <span>{interpretation.kind === 'commitment'
               ? (interpretation.recurring ? l(`Todo mês${interpretation.dueDay ? ` · dia ${interpretation.dueDay}` : ''}`,`Every month${interpretation.dueDay ? ` · day ${interpretation.dueDay}` : ''}`,`Cada mes${interpretation.dueDay ? ` · día ${interpretation.dueDay}` : ''}`) : l('Conta para pagar','Bill to pay','Cuenta por pagar'))
@@ -1259,7 +1323,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           <div className="sheet-actions">
             <button className="ghost-button" disabled={working} onClick={()=>{ setInterpretations([]); setScreenSnapshot(null); setUpload(null); }}>{l('Corrigir','Correct','Corregir')}</button>
-            <button className="primary-button" disabled={working||totalOrganizedCount===0||unresolvedDirectionCount>0||Boolean(missingScreenInstitution)||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
+            <button className="primary-button" disabled={working||Boolean(screenSnapshot&&!screenReview)||totalOrganizedCount===0||unresolvedDirectionCount>0||Boolean(missingScreenInstitution)||(paymentMatches.length>0&&!paymentMatchDismissed)} onClick={confirm}>{saving
               ? (upload?.phase === 'verifying' ? l('Conferindo…','Checking…','Revisando…') : l('Guardando…','Saving…','Guardando…'))
               : unresolvedDirectionCount
                 ? l(`Falta ${unresolvedDirectionCount} confirmação${unresolvedDirectionCount===1?'':'ões'}`,`${unresolvedDirectionCount} confirmation${unresolvedDirectionCount===1?'':'s'} remaining`,`Falta${unresolvedDirectionCount===1?'':'n'} ${unresolvedDirectionCount} confirmación${unresolvedDirectionCount===1?'':'es'}`)
@@ -1269,7 +1333,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   ? l('Escolha a conta acima','Choose the bill above','Elige la cuenta de arriba')
                   : totalOrganizedCount===0
                     ? l('Nada para guardar','Nothing to save','Nada para guardar')
-                    : l('Guardar','Save','Guardar')}</button>
+                    : screenSnapshot?l(`Aplicar revisão de ${screenResourceCount} itens`,`Apply review of ${screenResourceCount} items`,`Aplicar revisión de ${screenResourceCount} elementos`):l('Guardar','Save','Guardar')}</button>
           </div>
         </>}
       </section>

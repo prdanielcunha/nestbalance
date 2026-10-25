@@ -1,5 +1,6 @@
 'use client';
-import { auth } from '@/src/lib/firebase/client';
+import type {ScreenReview} from '@/src/core/screen-reconciliation';
+import {getBrowserAuthToken} from '@/src/lib/browser-auth-token';
 import type { FinancialScope } from '@/src/core/privacy';
 import type { AiFinancialScreenSnapshot } from '@/src/core/ai-financial';
 
@@ -9,7 +10,14 @@ export type FinancialScreenCommitResult={
   screenType:string;
   institution:string|null;
   analysisSource:string;
+  importId?:string;
+  replayed?:boolean;
+  undone?:boolean;
+  includesSeparateMovements?:boolean;
   counts:{
+    created?:number;
+    updated?:number;
+    unchanged?:number;
     accounts:number;
     pots:number;
     cards:number;
@@ -24,9 +32,10 @@ export async function commitFinancialScreen(input:{
   evidenceId:string;
   scope?:FinancialScope;
   screenSnapshot?:AiFinancialScreenSnapshot|null;
+  review?:ScreenReview;
   analysisSource?:'server_vision'|'gemini_text'|'local_ocr'|'client_reviewed';
 }){
-  const token=await auth?.currentUser?.getIdToken();
+  const token=await getBrowserAuthToken();
   if(!token) throw new Error('AUTH_REQUIRED');
 
   let lastError:unknown=null;
@@ -53,4 +62,12 @@ export async function commitFinancialScreen(input:{
     }
   }
   throw lastError instanceof Error?lastError:new Error('FINANCIAL_SCREEN_COMMIT_FAILED');
+}
+
+export async function undoFinancialScreen(householdId:string,importId:string){
+  const token=await getBrowserAuthToken();
+  if(!token) throw new Error('AUTH_REQUIRED');
+  const response=await fetch('/api/financial-screen/undo',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${token}`},body:JSON.stringify({householdId,importId})});
+  const result=await response.json();
+  if(!response.ok) throw new Error(result.error||'SCREEN_UNDO_CONFLICT');
 }

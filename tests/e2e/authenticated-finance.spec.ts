@@ -4,7 +4,7 @@ import AxeBuilder from '@axe-core/playwright';
 const fullHome={
   ok:true,
   accounts:[
-    {id:'acc-1',name:'Conta principal',type:'bank',balanceMinor:845000,currency:'BRL',status:'active',scope:'household',institutionName:'Banco Exemplo',source:'manual',connectedProductType:null,connectionId:null,automaticallyInvestedMinor:null},
+    {id:'acc-1',name:'Conta principal',type:'bank',balanceCoverage:'excludes_pots',balanceAsOfMs:Date.now(),balanceMinor:845000,currency:'BRL',status:'active',scope:'household',institutionName:'Banco Exemplo',source:'manual',connectedProductType:null,connectionId:null,automaticallyInvestedMinor:null},
     {id:'acc-2',name:'Reserva investida',type:'bank',balanceMinor:1200000,currency:'BRL',status:'active',scope:'household',institutionName:'Banco Exemplo',source:'manual',connectedProductType:'investment',connectionId:null,automaticallyInvestedMinor:null}
   ],
   cards:[
@@ -88,8 +88,12 @@ test('authenticated finance screens stay usable from 320px to desktop',async({br
     await mockAuthenticatedApi(page);
     await gotoAuthenticated(page,'/');
     await expect(page.locator('.hero-balance > strong')).toContainText('8.450');
+    await expect(page.locator('.balance-savings-secondary > strong')).toContainText('6.050');
+    await page.getByText('Ver detalhes das contas',{exact:false}).click();
+    await expect(page.locator('.balance-source-list').first()).toContainText('Conta principal');
     await assertNoHorizontalOverflow(page);
     await assertNoSeriousA11y(page);
+    await page.screenshot({path:testInfo.outputPath(`balance-details-${viewport.width}.png`),fullPage:true});
 
     const accountsNav=page.locator('.app-nav-link.nav-accounts');
     if(viewport.width<=720) await expect(accountsNav).toBeHidden();
@@ -250,4 +254,16 @@ test('desktop shell can collapse to the open-B symbol without losing navigation'
   await assertNoHorizontalOverflow(page);
   await assertNoSeriousA11y(page);
   await context.close();
+});
+
+
+test('capture review keeps account origin and distinct operations understandable on mobile',async({page})=>{
+  await mockAuthenticatedApi(page);
+  await page.goto('/add?e2eAuth=1&e2eRole=owner');
+  await page.locator('textarea').first().fill('paguei 50 no mercado');
+  await page.getByRole('button',{name:'Organizar',exact:true}).click();
+  await expect(page.getByText('Origem deste item',{exact:true})).toBeVisible();
+  await expect(page.getByText('É uma operação distinta, mesmo que já exista outra igual',{exact:true})).toBeVisible();
+  await assertNoHorizontalOverflow(page);
+  await assertNoSeriousA11y(page);
 });

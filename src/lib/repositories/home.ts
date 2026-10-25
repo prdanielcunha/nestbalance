@@ -5,6 +5,9 @@ import type { ProactivityPreferences } from '@/src/core/proactivity';
 import type { SavingsPotAutomation } from '@/src/core/savings-pot-automation';
 
 export type HomeRow={
+  accountId?:string|null;
+  institutionName?:string|null;
+  sourceAccountLabel?:string|null;
   id:string;
   description:string;
   amountMinor:number;
@@ -36,7 +39,15 @@ export type HomeAccount={
   institutionName?:string|null;
   connectionId?:string|null;
   automaticallyInvestedMinor?:number|null;
-  balanceMinor:number;
+  balanceMinor:number|null;
+  balanceCoverage?:'includes_pots'|'excludes_pots'|'unknown';
+  includedSavingsMinor?:number|null;
+  balanceAsOfMs?:number|null;
+  last4?:string|null;
+  updatedAtMs?:number|null;
+  observedOn?:string|null;
+  ownerUid?:string|null;
+  sourceAccountLabel?:string|null;
   currency:string;
   status:string;
   scope?:'household'|'personal';
@@ -70,6 +81,11 @@ export type HomeInvoiceImport={
 };
 
 export type HomeSavingsPot={
+  ownerUid?:string|null;
+  sourceAccountLabel?:string|null;
+  updatedAtMs?:number|null;
+  observedOn?:string|null;
+  goalGroupId?:string|null;
   id:string;
   name:string;
   balanceMinor:number;

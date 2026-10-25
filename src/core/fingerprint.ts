@@ -11,6 +11,7 @@ export type FingerprintInput = {
   dueDay?: number;
   recurrence?: string;
   kind?: string;
+  direction?: string;
 };
 
 function normalizeText(value = "") {
@@ -18,9 +19,10 @@ function normalizeText(value = "") {
 }
 
 export function canonicalFingerprint(input: FingerprintInput): string {
-  if (input.externalId) return `ext:${normalizeText(input.externalId)}`;
+  if (input.externalId) return `ext:${input.accountId?normalizeText(input.accountId)+':':''}${normalizeText(input.externalId)}`;
   return [
     input.kind ?? 'movement',
+    input.direction ?? 'unknown',
     input.amountMinor,
     input.date?.slice(0, 10) ?? "nodate",
     normalizeText(input.description).slice(0, 48),
@@ -32,9 +34,11 @@ export function canonicalFingerprint(input: FingerprintInput): string {
   ].join("|");
 }
 
-export function fingerprintForInterpretation(interpretation: FinancialInterpretation, todayIso: string): string {
+export function fingerprintForInterpretation(interpretation: FinancialInterpretation, todayIso: string, origin?:string): string {
   return canonicalFingerprint({
     kind: interpretation.kind,
+    direction:interpretation.direction,
+    accountId:origin,
     amountMinor: interpretation.money.amountMinor,
     date: interpretation.kind === 'transaction' ? todayIso : undefined,
     description: interpretation.description,
