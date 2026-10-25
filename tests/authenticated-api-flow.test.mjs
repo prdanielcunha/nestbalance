@@ -272,65 +272,54 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
       summary:'Cofrinho Viagem'
     };
 
-    const firstScreenImport=await post('/api/financial-screen/commit',owner.token,{
-      householdId,
-      evidenceId:screenEvidenceId,
-      screenSnapshot:potScreen,
-      analysisSource:'client_reviewed',
-      includeMovements:true
-    });
-    assert.equal(firstScreenImport.status,201);
-    assert.equal(firstScreenImport.json.counts.pots,1);
-    assert.equal(firstScreenImport.json.counts.movements,0);
-    assert.equal(firstScreenImport.json.counts.skipped,1);
-
-    await post('/api/financial-screen/commit',owner.token,{
-      householdId,
-      evidenceId:screenEvidenceId,
-      screenSnapshot:potScreen,
-      analysisSource:'client_reviewed',
-      includeMovements:true
-    });
-
-    await post('/api/financial-screen/commit',owner.token,{
-      householdId,
-      evidenceId:screenEvidenceId,
-      screenSnapshot:{...potScreen,pots:[{...potScreen.pots[0],balanceMinor:120000}],movements:[]},
-      analysisSource:'client_reviewed'
-    });
-
-    const homeAfterPotSync=await post('/api/home',owner.token,{householdId});
-    const syncedPots=homeAfterPotSync.json.savingsPots.filter(item=>item.name==='Viagem'&&item.institutionName==='Nubank');
-    assert.equal(syncedPots.length,1);
-    assert.equal(syncedPots[0].balanceMinor,120000);
+    const seedScreenEvidence=async evidenceId=>seedDb.doc(`households/${householdId}/evidenceAssets/${evidenceId}`).set({status:'accepted',immutable:true,scope:'household',ownerUid:null});
+    const reviewNew={observedOn:'2026-09-20',accounts:[],pots:[{createNew:true,sourceAccountLabel:'Daniel'}]};
+    await post('/api/financial-screen/commit',owner.token,{householdId,evidenceId:screenEvidenceId,screenSnapshot:potScreen},409);
+    const firstScreenImport=await post('/api/financial-screen/commit',owner.token,{householdId,evidenceId:screenEvidenceId,screenSnapshot:potScreen,review:reviewNew});
+    assert.equal(firstScreenImport.json.counts.created,1);
+    const replay=await post('/api/financial-screen/commit',owner.token,{householdId,evidenceId:screenEvidenceId,screenSnapshot:potScreen,review:reviewNew});
+    assert.equal(replay.json.replayed,true);
+    let homeAfterPotSync=await post('/api/home',owner.token,{householdId});
+    const originalPot=homeAfterPotSync.json.savingsPots.find(p=>p.name==='Viagem'&&p.institutionName==='Nubank');
+    const target={targetId:originalPot.id,expectedUpdatedAtMs:originalPot.updatedAtMs,expectedBalanceMinor:originalPot.balanceMinor,sourceAccountLabel:'Daniel'};
+    const revisedPotScreen={...potScreen,pots:[{...potScreen.pots[0],balanceMinor:120000}],movements:[]};
+    await seedScreenEvidence('review_update_0001');
+    const revised=await post('/api/financial-screen/commit',owner.token,{householdId,evidenceId:'review_update_0001',screenSnapshot:revisedPotScreen,review:{...reviewNew,observedOn:'2026-09-21',pots:[target]}});
+    assert.equal(revised.json.counts.updated,1);
+    await seedScreenEvidence('review_conflict_01');
+    const conflict=await post('/api/financial-screen/commit',owner.token,{householdId,evidenceId:'review_conflict_01',screenSnapshot:revisedPotScreen,review:{...reviewNew,pots:[target]}},409);
+    assert.equal(conflict.json.error,'SCREEN_REVIEW_CONFLICT');
+    const undoOld=await post('/api/financial-screen/undo',owner.token,{householdId,importId:firstScreenImport.json.importId},409);
+    assert.equal(undoOld.json.error,'SCREEN_UNDO_CONFLICT');
+    homeAfterPotSync=await post('/api/home',owner.token,{householdId});
+    const fresh=homeAfterPotSync.json.savingsPots.find(p=>p.id===originalPot.id);
+    assert.equal(fresh.balanceMinor,120000);
     assert.equal(homeAfterPotSync.json.transactions.some(item=>item.source==='screen_import'),false);
-
+    await seedScreenEvidence('review_older_0001');
+    const stale=await post('/api/financial-screen/commit',owner.token,{householdId,evidenceId:'review_older_0001',screenSnapshot:potScreen,review:{...reviewNew,pots:[{targetId:fresh.id,expectedUpdatedAtMs:fresh.updatedAtMs,expectedBalanceMinor:fresh.balanceMinor}]}},409);
+    assert.equal(stale.json.error,'SCREEN_OBSERVATION_OLDER');
     const partnerAfterPotSync=await post('/api/home',partner.token,{householdId});
-    assert.equal(partnerAfterPotSync.json.savingsPots.some(item=>item.name==='Viagem'&&item.balanceMinor===120000),true);
-
-    const mercadoPotScreen={
-      ...potScreen,
-      institution:'Mercado Pago',
-      pots:[
-        {name:'Fralda',balanceMinor:20605,goalMinor:125000,targetDate:null,currency:'BRL',confidence:0.99},
-        {name:'Dízimo',balanceMinor:10000,goalMinor:null,targetDate:null,currency:'BRL',confidence:0.99},
-        {name:'Studio Z',balanceMinor:6847,goalMinor:null,targetDate:null,currency:'BRL',confidence:0.99}
-      ],
-      movements:[],
-      summary:'3 cofrinhos identificados em Mercado Pago.'
-    };
-    const mercadoPotImport=await post('/api/financial-screen/commit',owner.token,{
-      householdId,
-      evidenceId:screenEvidenceId,
-      screenSnapshot:mercadoPotScreen,
-      analysisSource:'client_reviewed'
-    });
-    assert.equal(mercadoPotImport.status,201);
-    assert.equal(mercadoPotImport.json.counts.pots,3);
-    const homeAfterMercadoPots=await post('/api/home',owner.token,{householdId});
-    assert.equal(homeAfterMercadoPots.json.savingsPots.some(item=>item.name==='Fralda'&&item.balanceMinor===20605),true);
-    assert.equal(homeAfterMercadoPots.json.savingsPots.some(item=>item.name==='Dízimo'&&item.balanceMinor===10000),true);
-    assert.equal(homeAfterMercadoPots.json.savingsPots.some(item=>item.name==='Studio Z'&&item.balanceMinor===6847),true);
+    assert.equal(partnerAfterPotSync.json.savingsPots.some(p=>p.id===fresh.id&&p.balanceMinor===120000),true);
+    // A same-name source at another bank is distinct, and grouping is explicit.
+    await seedScreenEvidence('review_other_bank');
+    await post('/api/financial-screen/commit',owner.token,{householdId,evidenceId:'review_other_bank',screenSnapshot:{...revisedPotScreen,institution:'Mercado Pago'},review:{...reviewNew,pots:[{createNew:true,goalGroupId:fresh.id,sourceAccountLabel:'Ayessa'}]}});
+    const groupedHome=await post('/api/home',owner.token,{householdId});
+    assert.equal(groupedHome.json.savingsPots.filter(p=>p.name==='Viagem').length,2);
+    assert.equal(groupedHome.json.savingsPots.find(p=>p.institutionName==='Mercado Pago').goalGroupId,fresh.id);
+    await post('/api/savings-pots/separate-group',owner.token,{householdId,potId:fresh.id});
+    const separatedHome=await post('/api/home',owner.token,{householdId});
+    assert.equal(separatedHome.json.savingsPots.find(p=>p.institutionName==='Mercado Pago').goalGroupId,null);
+    // Equal names in the same bank are also legitimate separate sources.
+    await seedScreenEvidence('review_other_acct');
+    const separate=await post('/api/financial-screen/commit',owner.token,{householdId,evidenceId:'review_other_acct',screenSnapshot:revisedPotScreen,review:{...reviewNew,pots:[{createNew:true,sourceAccountLabel:'Ayessa'}]}});
+    await post('/api/financial-screen/undo',owner.token,{householdId,importId:separate.json.importId});
+    await post('/api/financial-screen/undo',owner.token,{householdId,importId:separate.json.importId});
+    const afterUndo=await post('/api/home',owner.token,{householdId});
+    assert.equal(afterUndo.json.savingsPots.filter(p=>p.name==='Viagem'&&p.institutionName==='Nubank').length,1);
+    // Restores prior balance; original evidence remains immutable.
+    await post('/api/financial-screen/undo',owner.token,{householdId,importId:revised.json.importId});
+    const restored=await post('/api/home',owner.token,{householdId});
+    assert.equal(restored.json.savingsPots.find(p=>p.id===fresh.id).balanceMinor,101568);
 
     const receiptEvidenceId='internetmar01';
     await seedDb.doc(`households/${householdId}/evidenceAssets/${receiptEvidenceId}`).set({
@@ -525,6 +514,24 @@ test('authenticated API flow: first login, couple invite, daily finance and pers
       periodKey:paymentPeriod
     });
     assert.equal(undoCurrentAfterNext.json.status,'reversed');
+
+    // Capture identity includes origin; legitimate repeated operations are explicit.
+    const captureBase={householdId,sourceText:'paguei 50 mercado',observedOn:'2026-09-22',scope:'household'};
+    const bankOne=await post('/api/capture/commit',owner.token,{...captureBase,institutionName:'Nubank'});
+    const bankTwo=await post('/api/capture/commit',owner.token,{...captureBase,institutionName:'Mercado Pago'});
+    assert.notEqual(bankOne.json.id,bankTwo.json.id);
+    const secondPurchase=await post('/api/capture/commit',owner.token,{...captureBase,institutionName:'Nubank',keepSeparate:true,requestId:'distinct_purchase_001'});
+    assert.notEqual(bankOne.json.id,secondPurchase.json.id);
+    const repeatPurchase=await post('/api/capture/commit',owner.token,{...captureBase,institutionName:'Nubank',keepSeparate:true,requestId:'distinct_purchase_001'});
+    assert.equal(repeatPurchase.json.id,secondPurchase.json.id);
+    const linkedPurchase=await post('/api/capture/commit',owner.token,{...captureBase,sourceText:'paguei 50 supermercado',existingMovementId:bankOne.json.id});
+    assert.equal(linkedPurchase.json.id,bankOne.json.id);
+    await post('/api/capture/commit',owner.token,{...captureBase,sourceText:'paguei 60 supermercado',existingMovementId:bankOne.json.id},409);
+    const coverageHome=await post('/api/home',owner.token,{householdId});
+    const coverageAccount=coverageHome.json.accounts.find(a=>a.id===account.json.id);
+    await post('/api/accounts/update-balance',owner.token,{householdId,accountId:coverageAccount.id,balanceMinor:coverageAccount.balanceMinor,balanceCoverage:'includes_pots',includedSavingsMinor:10000,coverageOnly:true,expectedUpdatedAtMs:coverageAccount.updatedAtMs});
+    const staleCoverage=await post('/api/accounts/update-balance',owner.token,{householdId,accountId:coverageAccount.id,balanceMinor:coverageAccount.balanceMinor,balanceCoverage:'excludes_pots',coverageOnly:true,expectedUpdatedAtMs:coverageAccount.updatedAtMs},409);
+    assert.equal(staleCoverage.status,409);
 
     const ownerFinal=await post('/api/session/bootstrap',owner.token,{householdId,device:ownerDevice});
     assert.equal(ownerFinal.json.householdId,householdId);

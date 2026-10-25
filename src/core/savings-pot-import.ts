@@ -193,11 +193,6 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
 
     const normalizedCandidate=cleanSavingsPotDisplayName(candidate,inferredOcrPrefixes);
 
-    const existingIndex=pots.findIndex(item=>
-      item.name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')===
-      normalizedCandidate.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
-    );
-
     const pot={
       name:normalizedCandidate.slice(0,80),
       balanceMinor,
@@ -207,18 +202,9 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
       confidence:first[0].includes(',')?0.94:0.87
     };
 
-    if(existingIndex>=0){
-      pots[existingIndex]={
-        ...pots[existingIndex],
-        balanceMinor,
-        goalMinor:metaGoalMinor??pots[existingIndex].goalMinor,
-        targetDate:targetDate??pots[existingIndex].targetDate
-      };
-      lastPotIndex=existingIndex;
-    }else{
-      pots.push(pot);
-      lastPotIndex=pots.length-1;
-    }
+    // Repeated labels can be different pots. Let source review resolve them.
+    pots.push(pot);
+    lastPotIndex=pots.length-1;
     pendingName=null;
   }
   if(!pots.length) return null;

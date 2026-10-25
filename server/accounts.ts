@@ -96,13 +96,19 @@ export async function updateAccountBalance(req:Request,res:Response){
       const data=snap.data()!;
       assertScopedAccess(data,user.uid);
       if(data.status!=='active') throw Object.assign(new Error('ACCOUNT_NOT_ACTIVE'),{statusCode:409});
+      const coverage=req.body?.balanceCoverage;
+      const included=req.body?.includedSavingsMinor;
+      if(coverage!==undefined&&!['includes_pots','excludes_pots','unknown'].includes(coverage)) throw Object.assign(new Error('INVALID_BALANCE'),{statusCode:400});
+      if(coverage==='includes_pots'&&(!Number.isSafeInteger(included)||included<0||included>balanceMinor)) throw Object.assign(new Error('INVALID_BALANCE'),{statusCode:400});
+      if(req.body?.coverageOnly===true&&(req.body?.expectedUpdatedAtMs!==(data.updatedAt?.toMillis?.()??null)||balanceMinor!==data.balanceMinor)) throw Object.assign(new Error('ACCOUNT_CHANGED'),{statusCode:409});
       const wasLegacySync=data.readOnlySync===true||data.source==='open_finance';
       previousBalanceMinor=Number(data.balanceMinor??data.amountMinor??0);
 
       tx.update(accountRef,{
         balanceMinor,
         amountMinor:balanceMinor,
-        balanceAsOf:FieldValue.serverTimestamp(),
+        ...(req.body?.coverageOnly===true?{}:{balanceAsOf:FieldValue.serverTimestamp()}),
+        ...(coverage!==undefined?{balanceCoverage:coverage,includedSavingsMinor:coverage==='includes_pots'?included:null}:{}),
         updatedAt:FieldValue.serverTimestamp(),
         lastBalanceUpdatedBy:user.uid,
         ...(wasLegacySync?{

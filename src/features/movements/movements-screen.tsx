@@ -237,6 +237,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
               <div className="movement-full-copy">
                 <strong>{row.description}</strong>
                 <span>{label(row,locale)}{row.scope==='personal'?` · ${t.scopePersonal}`:''}{row.observedOn?' · '+date.format(new Date(row.observedOn+'T12:00:00')):''}</span>
+                {(row.institutionName||row.sourceAccountLabel)&&<small className="movement-origin">{[row.institutionName,row.sourceAccountLabel].filter(Boolean).join(' · ')}</small>}
                 {row.direction==='expense'&&row.source!=='credit_card_invoice_payment'&&<>
                   <div className="movement-category-stack">
                     {role==='read_only'

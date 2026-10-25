@@ -15,6 +15,10 @@ function accountDto(doc:any){
   const data=doc.data();
   return {
     id:doc.id,
+    ownerUid:data.ownerUid||null,
+    updatedAtMs:data.updatedAt?.toMillis?.()??null,
+    observedOn:data.observedOn||null,
+    sourceAccountLabel:data.sourceAccountLabel||null,
     name:String(data.name||'Conta'),
     type:String(data.type||'bank'),
     connectedProductType:typeof data.connectedProductType==='string'?data.connectedProductType:null,
@@ -22,7 +26,11 @@ function accountDto(doc:any){
     institutionName:typeof data.institutionName==='string'?data.institutionName:null,
     connectionId:typeof data.connectionId==='string'?data.connectionId:null,
     automaticallyInvestedMinor:Number.isSafeInteger(data.automaticallyInvestedMinor)?data.automaticallyInvestedMinor:null,
-    balanceMinor:Number(data.balanceMinor??data.amountMinor??0),
+    balanceMinor:Number.isSafeInteger(data.balanceMinor??data.amountMinor)?Number(data.balanceMinor??data.amountMinor):null,
+    balanceCoverage:['includes_pots','excludes_pots'].includes(data.balanceCoverage)?data.balanceCoverage:'unknown',
+    includedSavingsMinor:Number.isSafeInteger(data.includedSavingsMinor)?data.includedSavingsMinor:null,
+    balanceAsOfMs:data.balanceAsOf?.toMillis?.()??data.updatedAt?.toMillis?.()??null,
+    last4:data.last4||null,
     currency:String(data.currency||'BRL'),
     status:String(data.status||'active'),
     scope:data.scope==='personal'?'personal':'household'
@@ -33,9 +41,14 @@ function savingsPotDto(doc:any){
   const data=doc.data();
   return {
     id:doc.id,
+    ownerUid:data.ownerUid||null,
+    updatedAtMs:data.updatedAt?.toMillis?.()??null,
+    observedOn:data.observedOn||null,
+    sourceAccountLabel:data.sourceAccountLabel||null,
     name:String(data.name||'Dinheiro guardado'),
     balanceMinor:Number(data.balanceMinor||0),
     goalMinor:Number.isSafeInteger(data.goalMinor)?data.goalMinor:null,
+    goalGroupId:data.goalGroupId||null,
     targetDate:typeof data.targetDate==='string'?data.targetDate:null,
     note:typeof data.note==='string'?data.note:null,
     currency:String(data.currency||'BRL'),
@@ -54,6 +67,10 @@ function cardSnapshotDto(doc:any){
   const data=doc.data();
   return {
     id:doc.id,
+    ownerUid:data.ownerUid||null,
+    updatedAtMs:data.updatedAt?.toMillis?.()??null,
+    observedOn:data.observedOn||null,
+    sourceAccountLabel:data.sourceAccountLabel||null,
     name:String(data.name||'Cartão'),
     last4:typeof data.last4==='string'?data.last4:null,
     statementAmountMinor:Number.isSafeInteger(data.statementAmountMinor)?data.statementAmountMinor:null,
@@ -70,6 +87,10 @@ function cardDto(doc:any){
   const data=doc.data();
   return {
     id:doc.id,
+    ownerUid:data.ownerUid||null,
+    updatedAtMs:data.updatedAt?.toMillis?.()??null,
+    observedOn:data.observedOn||null,
+    sourceAccountLabel:data.sourceAccountLabel||null,
     name:String(data.name||'Cartão'),
     brand:String(data.brand||'other'),
     closingDay:Number.isInteger(data.closingDay)?data.closingDay:1,
@@ -124,6 +145,9 @@ function movementDto(doc:any,categoryRules:LearnedCategoryRule[]=[]){
   return {
     id:doc.id,
     description:String(data.description||'Movimento'),
+    accountId:typeof data.accountId==='string'?data.accountId:null,
+    institutionName:typeof data.institutionName==='string'?data.institutionName:null,
+    sourceAccountLabel:typeof data.sourceAccountLabel==='string'?data.sourceAccountLabel:null,
     amountMinor:Number(data.amountMinor||0),
     currency:String(data.currency||'BRL'),
     direction:data.direction||'expense',
@@ -196,7 +220,7 @@ export async function getHomeData(req:Request,res:Response){
       installmentPlans:visibleDocs(installmentPlans.docs,user.uid).map(installmentPlanDto),
       invoiceImports:visibleDocs(invoiceImports.docs,user.uid).map(invoiceImportDto),
       savingsPots:visibleDocs(savingsPots.docs,user.uid).map(savingsPotDto),
-      cardSnapshots:visibleDocs(cardSnapshots.docs,user.uid).map(cardSnapshotDto),
+      cardSnapshots:visibleDocs(cardSnapshots.docs,user.uid).filter(doc=>doc.data().status!=='archived').map(cardSnapshotDto),
       proactivityPreferences:normalizeProactivityPreferences(currentMember.proactivityPreferences),
       dismissedAttentionKeys:activeAttentionDismissals(attentionDismissalsSnap.docs.map(doc=>doc.data()),user.uid,Date.now()),
       dismissedRecurrenceKeys:visibleDocs(recurrenceDismissals.docs,user.uid)

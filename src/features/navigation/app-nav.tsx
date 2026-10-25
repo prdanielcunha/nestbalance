@@ -41,11 +41,11 @@ export function AppNav({
       >{collapsed?'›':'‹'}</button>}
     </div>
     <div className="app-nav-track">
-      {items.slice(0,2).map(item=><Link key={item.href} title={collapsed?item.label:undefined} href={item.href} aria-current={pathname===item.href?'page':undefined} className={(pathname===item.href?'app-nav-link active':'app-nav-link')+' '+item.className}><span className="app-nav-short" aria-hidden="true">{item.short}</span><span className="app-nav-label">{item.label}</span></Link>)}
+      {items.slice(0,2).map(item=><Link key={item.href} title={collapsed?item.label:undefined} aria-label={item.label} href={item.href} aria-current={pathname===item.href?'page':undefined} className={(pathname===item.href?'app-nav-link active':'app-nav-link')+' '+item.className}><span className="app-nav-short" aria-hidden="true">{item.short}</span><span className="app-nav-label"><span className="app-nav-label-full">{item.label}</span><span className="app-nav-label-mobile">{item.href==='/movements'?l('Mov.','Activity','Mov.'):item.label}</span></span></Link>)}
       {canContribute
         ? <Link href="/add" className="app-nav-add" title={collapsed?t.add:undefined} aria-label={t.add}>＋<span>{t.add}</span></Link>
         : <span className="app-nav-add readonly" aria-disabled="true"><span>{t.readOnly}</span></span>}
-      {items.slice(2).map(item=><Link key={item.href} title={collapsed?item.label:undefined} href={item.href} aria-current={pathname===item.href?'page':undefined} className={(pathname===item.href?'app-nav-link active':'app-nav-link')+' '+item.className}><span className="app-nav-short" aria-hidden="true">{item.short}</span><span className="app-nav-label">{item.label}</span></Link>)}
+      {items.slice(2).map(item=><Link key={item.href} title={collapsed?item.label:undefined} aria-label={item.label} href={item.href} aria-current={pathname===item.href?'page':undefined} className={(pathname===item.href?'app-nav-link active':'app-nav-link')+' '+item.className}><span className="app-nav-short" aria-hidden="true">{item.short}</span><span className="app-nav-label"><span className="app-nav-label-full">{item.label}</span><span className="app-nav-label-mobile">{item.href==='/movements'?l('Mov.','Activity','Mov.'):item.label}</span></span></Link>)}
     </div>
   </nav>;
 }

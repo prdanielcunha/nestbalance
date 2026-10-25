@@ -5,7 +5,7 @@ import { localeForIntl, type AppLocale } from './locale.js';
 export type AssistantAccount={
   id:string;
   name:string;
-  balanceMinor:number;
+  balanceMinor:number|null;
   status?:string;
 };
 
@@ -212,6 +212,9 @@ export function answerAssistantQuestion(input:{
   const prompts=assistantPrompts(locale);
   const intent=classifyAssistantIntent(input.question);
 
+  if((intent==='available_now'||intent==='spending_simulation')&&input.accounts.some(a=>a.status!=='inactive'&&a.balanceMinor===null)){
+    return {intent,title:tr(locale,'Confira a composição dos saldos','Review balance coverage','Revisa la composición de saldos'),summary:tr(locale,'Antes de calcular, confirme na tela inicial quais saldos incluem cofrinhos. Assim não contamos o mesmo dinheiro duas vezes.','Before calculating, confirm on Home which balances include savings pots so the same money is not counted twice.','Antes de calcular, confirma en Inicio qué saldos incluyen alcancías para no contar el mismo dinero dos veces.'),answerMinor:null,sources:[],cards:[],suggestions:[prompts.remaining,prompts.future]};
+  }
   if(intent==='spending_simulation'){
     const spendMinor=parseRequestedMoneyMinor(input.question);
     if(!spendMinor){

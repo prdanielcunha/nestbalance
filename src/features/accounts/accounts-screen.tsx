@@ -65,10 +65,10 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
 
   const spendableTotal=useMemo(()=>viewAccounts
     .filter(item=>item.connectedProductType!=='investment')
-    .reduce((sum,item)=>sum+item.balanceMinor,0),[viewAccounts]);
+    .filter(item=>item.currency==='BRL').reduce((sum,item)=>sum+(item.balanceMinor??0),0),[viewAccounts]);
   const investmentTotal=useMemo(()=>viewAccounts
     .filter(item=>item.connectedProductType==='investment')
-    .reduce((sum,item)=>sum+item.balanceMinor,0),[viewAccounts]);
+    .filter(item=>item.currency==='BRL').reduce((sum,item)=>sum+(item.balanceMinor??0),0),[viewAccounts]);
 
   function refreshed(){
     setRefreshKey(value=>value+1);
@@ -83,7 +83,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
 
   function openBalance(account:HomeAccount){
     setEditingAccount(account);
-    setBalanceInput((account.balanceMinor/100).toLocaleString(intlLocale,{
+    setBalanceInput(account.balanceMinor===null?'':(account.balanceMinor/100).toLocaleString(intlLocale,{
       minimumFractionDigits:2,
       maximumFractionDigits:2,
       useGrouping:false
@@ -166,7 +166,7 @@ export function AccountsScreen({householdId,role}:{householdId:string;role:House
               {viewAccounts.map(account=><article className="account-balance-tile" key={account.id}>
                 <span>{accountTypeLabel(account)}{account.scope==='personal'&&<em className="personal-pill">{t.scopePersonal}</em>}</span>
                 <h3>{account.name}</h3>
-                <strong>{formatMoney(account.balanceMinor)}</strong>
+                <strong>{account.balanceMinor===null?'—':new Intl.NumberFormat(intlLocale,{style:'currency',currency:account.currency}).format(account.balanceMinor/100)}</strong>
                 {account.automaticallyInvestedMinor&&account.automaticallyInvestedMinor>0
                   ? <small>{l(
                       `${formatMoney(account.automaticallyInvestedMinor)} reservado nesta conta`,
