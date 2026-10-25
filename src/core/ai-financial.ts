@@ -52,6 +52,8 @@ export type AiFinancialMovementSnapshot={
 export type AiFinancialScreenSnapshot={
   screenType:'single_event'|'account_home'|'transaction_list'|'card_home'|'card_statement'|'retail_account'|'savings_pots'|'mixed'|'other';
   institution:string|null;
+  institutionInferred?:boolean;
+  savingsTotalMinor?:number|null;
   accounts:AiFinancialAccountSnapshot[];
   pots:AiFinancialPotSnapshot[];
   cards:AiFinancialCardSnapshot[];

@@ -842,7 +842,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
   return <>
     {showTrigger&&<button className="capture-fab" onClick={() => setOpen(true)} aria-label={t.add}>＋ <span>{t.add}</span></button>}
     {open && <div className="sheet-backdrop" role="presentation" onMouseDown={e => e.target === e.currentTarget && reset()}>
-      <section className="capture-sheet" role="dialog" aria-modal="true" aria-label={t.captureTitle}>
+      <section className="capture-sheet universal-capture-sheet" role="dialog" aria-modal="true" aria-label={t.captureTitle}>
         {!interpretations.length&&!screenSnapshot ? <>
           <div className="sheet-handle" />
           <div className="eyebrow">{l('Jogue aqui. A gente organiza.','Drop it here. We organize it.','Déjalo aquí. Lo organizamos.')}</div>
@@ -1063,6 +1063,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             </div>}
 
             {screenSnapshot.pots.length>0&&<>
+              <div className="screen-pot-totals">
+                <strong>{l('Saldo dos cofrinhos identificados','Balance of identified savings pots','Saldo de alcancías identificadas')}: {formatMoney(screenSnapshot.pots.reduce((sum,pot)=>sum+pot.balanceMinor,0))}</strong>
+                {screenSnapshot.savingsTotalMinor!=null&&<span>{l('Total lido no print','Total read from screenshot','Total leído en captura')}: {formatMoney(screenSnapshot.savingsTotalMinor)}</span>}
+                {screenSnapshot.savingsTotalMinor!=null&&screenSnapshot.savingsTotalMinor!==screenSnapshot.pots.reduce((sum,pot)=>sum+pot.balanceMinor,0)&&<p className="error-copy">{l('A soma difere do total lido. Confira os centavos e se o print mostra todos os cofrinhos.','The sum differs from the total read. Check cents and whether all pots are visible.','La suma difiere del total leído. Revisa centavos y si aparecen todas las alcancías.')}</p>}
+              </div>
               <div className="screen-pot-source-confirm">
                 <label htmlFor="screen-pot-institution">{l('Banco ou origem destes cofrinhos','Bank or source of these savings pots','Banco u origen de estas alcancías')}</label>
                 <input
@@ -1074,6 +1079,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                   maxLength={120}
                   autoComplete="organization"
                 />
+                {screenSnapshot.institutionInferred&&<small>{l('Banco sugerido pelo padrão da tela. Confirme ou edite.','Bank suggested from the screen layout. Confirm or edit.','Banco sugerido por el patrón de pantalla. Confirma o edita.')}</small>}
                 <small>{l('Confira a origem antes de guardar. O campo fica aberto enquanto você digita e pode ser corrigido mesmo quando eu reconhecer o banco sozinho.','Review the source before saving. The field stays open while you type and can be corrected even when I recognize the bank automatically.','Revisa el origen antes de guardar. El campo permanece abierto mientras escribes y puede corregirse incluso cuando reconozco el banco automáticamente.')}</small>
               </div>
               <div className="screen-pot-review">
@@ -1090,7 +1096,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                 </div>
                 <div>
                   <label className="screen-money-edit">
-                    <span>{l('Guardado','Saved','Guardado')}</span>
+                    <span>{l('Saldo guardado (R$)','Saved balance (R$)','Saldo guardado (R$)')}</span>
                     <input
                       inputMode="decimal"
                       defaultValue={moneyInputValue(pot.balanceMinor)}
@@ -1102,7 +1108,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
                       }}
                     />
                   </label>
-                  <small>{pot.goalMinor&&pot.goalMinor>0?l(`Meta ${formatMoney(pot.goalMinor)}`,`Goal ${formatMoney(pot.goalMinor)}`,`Meta ${formatMoney(pot.goalMinor)}`):l('Sem meta encontrada','No goal found','Sin meta encontrada')}</small>
+                  <small>{pot.goalMinor&&pot.goalMinor>0?l(`Meta ${formatMoney(pot.goalMinor)}`,`Goal ${formatMoney(pot.goalMinor)}`,`Meta ${formatMoney(pot.goalMinor)}`):l('Meta não informada no print','Goal not specified in screenshot','Meta no informada en captura')}</small>
                   <button type="button" className="capture-remove-item" onClick={()=>removeScreenResource('pots',index)}>{l('Não importar','Do not import','No importar')}</button>
                 </div>
               </div>)}
