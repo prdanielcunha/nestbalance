@@ -29,6 +29,7 @@ const ModelScreenCommitmentSchema=ScreenCommitmentBaseSchema.extend({
 });
 
 export const ScreenSnapshotSchema=z.object({
+  savingsTotalMinor:z.number().int().min(0).max(1_000_000_000_000).nullable().optional(),
   screenType:z.enum(['single_event','account_home','transaction_list','card_home','card_statement','retail_account','savings_pots','mixed','other']),
   institution:z.string().max(120).nullable(),
   accounts:z.array(z.object({
@@ -70,6 +71,7 @@ export const ScreenSnapshotSchema=z.object({
 });
 
 const ModelScreenSnapshotSchema=ScreenSnapshotSchema.extend({
+  savingsTotalMinor:z.number().int().min(0).max(1_000_000_000_000).nullable(),
   commitments:z.array(ModelScreenCommitmentSchema).max(50)
 });
 

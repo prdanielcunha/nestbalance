@@ -26,7 +26,7 @@ function cleanLine(value:string){
   return value.normalize('NFKC').replace(/[\t\u00a0]+/g,' ').replace(/\s+/g,' ').trim();
 }
 
-function parseBalanceToken(raw:string){
+export function parseBalanceToken(raw:string){
   const token=raw.replace(/R\$/gi,'').replace(/\s+/g,'').trim();
   if(!token||!/^\d[\d.,]*$/.test(token)) return null;
 

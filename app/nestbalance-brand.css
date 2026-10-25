@@ -928,3 +928,6 @@ html[data-theme="dark"] .home-hero-grid .first-money-card {
   .app-nav .app-nav-track{grid-template-columns:minmax(0,.85fr) minmax(0,.9fr) 52px minmax(0,1.1fr) minmax(0,1.15fr)}
 }
 @media(max-width:360px){.app-nav .app-nav-link{font-size:11px}}
+
+.screen-import-identity{display:grid;gap:8px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface-strong)}
+.screen-import-identity p{margin:0;font-size:14px;line-height:1.5}.screen-import-identity small{color:var(--muted);font-size:12px;line-height:1.5}

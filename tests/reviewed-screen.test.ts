@@ -51,6 +51,9 @@ test('reviewed screenshot handler preserves sources, versions, privacy and undo'
   const screen={screenType:'savings_pots',institution:'Nubank',accounts:[],pots:[{name:'Viagem',balanceMinor:10000,goalMinor:null,targetDate:null,currency:'BRL',confidence:0.99}],cards:[],commitments:[],movements:[],summary:'Viagem'};
   const review={observedOn:'2026-09-20',accounts:[],pots:[{createNew:true}]};
   try{
+    ev('evidence_badtotal');
+    assert.equal((await call(commitReviewedScreen,{evidenceId:'evidence_badtotal',screenSnapshot:{...screen,savingsTotalMinor:9999},review})).code,409);
+    assert.equal([...docs.keys()].filter(p=>p.includes('/savingsPots/')).length,0);
     ev('evidence_first');
     assert.equal((await call(commitReviewedScreen,{evidenceId:'evidence_first',screenSnapshot:screen})).code,409);
     assert.equal((await call(commitReviewedScreen,{evidenceId:'evidence_first',screenSnapshot:screen,review},'viewer_test')).code,403);

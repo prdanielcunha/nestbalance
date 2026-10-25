@@ -1040,7 +1040,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
           <div className="eyebrow">{t.understood}</div>
           <h2>{interpretations.length === 1&&screenResourceCount===0
             ? interpretations[0].description
-            : `Encontrei ${totalOrganizedCount} item${totalOrganizedCount===1?'':'s'} nesta tela`}</h2>
+            : screenSnapshot?.pots.length?l(`Encontrei ${screenSnapshot.pots.length} cofrinhos`, `Found ${screenSnapshot.pots.length} savings pots`, `Encontré ${screenSnapshot.pots.length} alcancías`): `Encontrei ${totalOrganizedCount} item${totalOrganizedCount===1?'':'s'} nesta tela`}</h2>
 
           <div className="evidence-stack" aria-label={l('Como o NestBalance entendeu','How NestBalance understood it','Cómo lo entendió NestBalance')}>
             <div>
@@ -1072,7 +1072,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
 
           {screenSnapshot&&<label className="capture-origin-choice">{l('Banco identificado — você pode corrigir','Identified bank — you can correct it','Banco identificado — puedes corregirlo')}<input className="pot-text-input" maxLength={120} value={screenSnapshot.institution||''} onChange={e=>setScreenSnapshot(current=>current?{...current,institution:e.target.value}:current)}/></label>}
           {screenSnapshot&&<ScreenSourceReview key={`${scope}:${file?.name||preparedEvidenceId||'screen'}:${screenSnapshot.institution}:${screenSnapshot.accounts.length}:${screenSnapshot.pots.length}`} householdId={householdId} uid={uid} scope={scope} screen={screenSnapshot} onReady={acceptScreenReview}/>}
-          {screenSnapshot&&<details className="financial-screen-fields" open={screenSnapshot.commitments.some(c=>c.needsReview)||invalidPotName}>
+          {screenSnapshot&&<details className="financial-screen-fields" open={screenSnapshot.pots.length>0||screenSnapshot.commitments.some(c=>c.needsReview)||invalidPotName}>
             <summary>{l('Conferir ou corrigir nomes e valores','Review or correct names and amounts','Revisar o corregir nombres e importes')}</summary>
             <div className="financial-screen-summary">
             <div className="financial-screen-summary-head">

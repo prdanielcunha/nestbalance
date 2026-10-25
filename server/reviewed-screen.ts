@@ -1,3 +1,4 @@
+import {screenTotalCheck} from '../src/core/screen-total-check.js';
 import {createHash} from 'node:crypto';
 import type {Request,Response} from 'express';
 import {FieldValue} from 'firebase-admin/firestore';
@@ -29,6 +30,7 @@ export async function commitReviewedScreen(req:Request,res:Response){
     const reviewed=Review.safeParse(req.body?.review);
     if(!parsed.success||!reviewed.success) throw fail('SCREEN_REVIEW_REQUIRED');
     const screen=normalizeFinancialScreenSnapshot(parsed.data);
+    if(screenTotalCheck(screen).mismatch) throw fail('SCREEN_REVIEW_REQUIRED');
     const review=reviewed.data;
     if(screen.pots.some(p=>isDeviceStatusName(p.name))) throw fail('SCREEN_REVIEW_REQUIRED');
     if(review.accounts.length!==screen.accounts.length||review.pots.length!==screen.pots.length||req.body?.includeMovements===true) throw fail('SCREEN_REVIEW_REQUIRED');
