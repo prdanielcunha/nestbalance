@@ -1,4 +1,5 @@
 'use client';
+import {MoneyValue} from '@/src/features/privacy/money-value';
 import { useMemo, useState } from 'react';
 import type { HomeRow } from '@/src/lib/repositories/home';
 import { payCommitment, undoCommitmentPayment } from '@/src/lib/repositories/commitment-payments';
@@ -111,7 +112,7 @@ export function MonthlyPayments({
           {item.recurring&&<small>{l('Repete todo mês','Repeats every month','Se repite cada mes')}</small>}
         </div>
         <div className="monthly-payment-action">
-          <b>{formatMoney(item.amountMinor)}</b>
+          <b><MoneyValue id={`${householdId}:commitment:${item.id}`} minor={item.amountMinor} label={item.description} currency={item.currency}/></b>
           {canContribute
             ? item.paidThisMonth
               ? <div className="paid-actions">

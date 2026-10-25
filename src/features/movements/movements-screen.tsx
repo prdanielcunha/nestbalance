@@ -1,4 +1,5 @@
 'use client';
+import {MoneyValue} from '@/src/features/privacy/money-value';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ProductTopbar } from '@/src/features/navigation/product-topbar';
@@ -207,10 +208,10 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
     </section>}
 
     <section className="movement-summary-grid">
-      <article><span>{l('Recebi','Money in','Recibí')}</span><strong>{formatMoney(summary.income)}</strong></article>
-      <article><span>{l('Paguei','Paid','Pagué')}</span><strong>{formatMoney(summary.cashExpense)}</strong></article>
-      <article><span>{l('No cartão','On card','En tarjeta')}</span><strong>{formatMoney(summary.card)}</strong></article>
-      <article><span>{l('Entre contas','Between accounts','Entre cuentas')}</span><strong>{formatMoney(summary.transfers)}</strong></article>
+      <article><span>{l('Recebi','Money in','Recibí')}</span><strong><MoneyValue id={`${householdId}:movements:income`} minor={summary.income} label={l('Resumo dos movimentos','Movement summary','Resumen de movimientos')}/></strong></article>
+      <article><span>{l('Paguei','Paid','Pagué')}</span><strong><MoneyValue id={`${householdId}:movements:cashExpense`} minor={summary.cashExpense} label={l('Resumo dos movimentos','Movement summary','Resumen de movimientos')}/></strong></article>
+      <article><span>{l('No cartão','On card','En tarjeta')}</span><strong><MoneyValue id={`${householdId}:movements:card`} minor={summary.card} label={l('Resumo dos movimentos','Movement summary','Resumen de movimientos')}/></strong></article>
+      <article><span>{l('Entre contas','Between accounts','Entre cuentas')}</span><strong><MoneyValue id={`${householdId}:movements:transfers`} minor={summary.transfers} label={l('Resumo dos movimentos','Movement summary','Resumen de movimientos')}/></strong></article>
     </section>
 
     <section className="movement-controls">
@@ -281,7 +282,7 @@ export function MovementsScreen({householdId,role}:{householdId:string;role:Hous
                 </>}
                 {row.installment&&<small>{l(`Parcela ${row.installment.current} de ${row.installment.total}`,`Installment ${row.installment.current} of ${row.installment.total}`,`Cuota ${row.installment.current} de ${row.installment.total}`)}</small>}
               </div>
-              <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} {formatMoney(row.amountMinor)}</b>
+              <b className={row.direction==='income'?'positive':''}>{row.source==='credit_card_invoice'?'•':row.direction==='income'?'+':row.direction==='transfer'?'↔':'−'} <MoneyValue id={`${householdId}:transaction:${row.id}`} minor={row.amountMinor} label={row.description} currency={row.currency}/></b>
             </article>)}
           </section>}
   </main>;

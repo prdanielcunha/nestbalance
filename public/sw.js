@@ -1,4 +1,4 @@
-const CACHE_VERSION='v2';
+const CACHE_VERSION='v3';
 const SHELL_CACHE='nestbalance-shell-'+CACHE_VERSION;
 const STATIC_CACHE='nestbalance-static-'+CACHE_VERSION;
 const SHARE_CACHE='nestbalance-share-target-v1';
