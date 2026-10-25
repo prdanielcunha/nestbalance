@@ -305,6 +305,9 @@ test('Values can be hidden globally, revealed individually, and stay private aft
  await page.getByRole('button',{name:'Ocultar: Saldo fora dos cofrinhos',exact:true}).first().click();
  await expect(page.getByTestId('home-account-balance')).toContainText('••••');
  await expect(page.getByTestId('home-savings-balance')).toContainText('6.050');
+ await page.reload();
+ await expect(page.getByTestId('home-account-balance')).toContainText('••••');
+ await expect(page.getByTestId('home-savings-balance')).toContainText('6.050');
  await page.getByRole('button',{name:'Ocultar todos os valores',exact:true}).click();
  for(const id of ['home-account-balance','home-savings-balance','home-spending-balance']){
   await expect(page.getByTestId(id)).toContainText('••••');
