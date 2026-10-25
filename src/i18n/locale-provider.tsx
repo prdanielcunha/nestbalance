@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { localeForIntl, normalizeLocale, type AppLocale } from '@/src/core/locale';
 import { messages } from './messages';
+import {useValuesVisibility} from '@/src/features/privacy/values-visibility-provider';
 
 type MessageKey=keyof (typeof messages)['pt-BR'];
 type MessageSet={readonly [K in MessageKey]:string};
@@ -11,7 +12,7 @@ type I18nContextValue={
   intlLocale:string;
   currency:string;
   t:MessageSet;
-  formatMoney:(minor:number)=>string;
+  formatMoney:(minor:number,currency?:string)=>string;
   formatDate:(value:Date|number|string,options?:Intl.DateTimeFormatOptions)=>string;
 };
 
@@ -20,7 +21,7 @@ const fallback:I18nContextValue={
   intlLocale:'pt-BR',
   currency:'BRL',
   t:messages['pt-BR'] as MessageSet,
-  formatMoney:minor=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(minor/100),
+  formatMoney:(minor,currency='BRL')=>new Intl.NumberFormat('pt-BR',{style:'currency',currency}).format(minor/100),
   formatDate:(value,options)=>new Intl.DateTimeFormat('pt-BR',options).format(new Date(value))
 };
 
@@ -31,6 +32,7 @@ export function LocaleProvider({
   currency='BRL',
   children
 }:{locale:AppLocale|string;currency?:string;children:ReactNode}){
+  const {hidden}=useValuesVisibility();
   const normalized=normalizeLocale(locale);
   const intlLocale=localeForIntl(normalized);
   const safeCurrency=/^[A-Z]{3}$/.test(currency)?currency:'BRL';
@@ -47,10 +49,10 @@ export function LocaleProvider({
       intlLocale,
       currency:safeCurrency,
       t:messages[normalized] as MessageSet,
-      formatMoney:minor=>formatter.format(minor/100),
+      formatMoney:(minor,currency)=>hidden?'••••':currency&&currency!==safeCurrency?new Intl.NumberFormat(intlLocale,{style:'currency',currency}).format(minor/100):formatter.format(minor/100),
       formatDate:(input,options)=>new Intl.DateTimeFormat(intlLocale,options).format(new Date(input))
     };
-  },[normalized,intlLocale,safeCurrency]);
+  },[normalized,intlLocale,safeCurrency,hidden]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

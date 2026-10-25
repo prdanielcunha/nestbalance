@@ -1,4 +1,5 @@
 'use client';
+import {MoneyValue} from '@/src/features/privacy/money-value';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CARD_BRANDS, invoiceCycleForPurchase, type CardBrand } from '@/src/core/cards';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
@@ -274,12 +275,12 @@ export function CreditCardManager({
                 <div className="credit-card-meta">
                   <div><span>{l('Fecha','Closes','Cierra')}</span><strong>{l('dia','day','día')} {card.closingDay}</strong></div>
                   <div><span>{l('Vence','Due','Vence')}</span><strong>{l('dia','day','día')} {card.dueDay}</strong></div>
-                  <div><span>{l('Limite','Limit','Límite')}</span><strong>{card.limitMinor===null?l('Não informado','Not provided','No informado'):formatMoney(card.limitMinor)}</strong></div>
+                  <div><span>{l('Limite','Limit','Límite')}</span><strong>{card.limitMinor===null?l('Não informado','Not provided','No informado'):<MoneyValue id={`${householdId}:card-limit:${card.id}`} minor={card.limitMinor} label={l('Limite do cartão','Card limit','Límite de tarjeta')}/>}</strong></div>
                 </div>
                 {openInvoice
                   ? <div className="card-open-invoice">
                       <span>{openInvoice.status==='confirmed'?l('Fatura aberta','Open statement','Resumen abierto'):l('Fatura em revisão','Statement under review','Resumen en revisión')}</span>
-                      <strong>{formatMoney(openInvoice.confirmedAmountMinor)}</strong>
+                      <strong><MoneyValue id={`${householdId}:invoice:${openInvoice.id}`} minor={openInvoice.confirmedAmountMinor} label={l('Fatura aberta','Open statement','Factura abierta')}/></strong>
                       <small>{l('Vence','Due','Vence')} {dayDate(openInvoice.dueOn)}</small>
                     </div>
                   : cycle&&<small>{l(

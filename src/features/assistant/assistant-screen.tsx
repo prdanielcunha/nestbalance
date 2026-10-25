@@ -1,4 +1,5 @@
 'use client';
+import {MoneyValue,usePrivateText} from '@/src/features/privacy/money-value';
 import { useMemo, useState } from 'react';
 import { askFinanceAssistant, type AssistantAnswerResponse } from '@/src/lib/repositories/assistant';
 import { ProductTopbar } from '@/src/features/navigation/product-topbar';
@@ -8,6 +9,7 @@ import { useI18n } from '@/src/i18n/locale-provider';
 
 export function AssistantScreen({householdId,role}:{householdId:string;role:HouseholdRole}){
   const {t,locale,formatMoney,formatDate}=useI18n();
+  const privateText=usePrivateText();
   const l=(pt:string,en:string,es:string)=>locale==='en'?en:locale==='es'?es:pt;
   const starters=useMemo(()=>[
     l('Por que gastei mais este mês?','Why did I spend more this month?','¿Por qué gasté más este mes?'),
@@ -102,18 +104,18 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
       <div className="assistant-answer-head">
         <div>
           <span>{trustLabel()}</span>
-          <h2>{result.answer.title}</h2>
-          <p>{result.answer.summary}</p>
+          <h2>{privateText(result.answer.title)}</h2>
+          <p>{privateText(result.answer.summary)}</p>
         </div>
         {result.answer.answerMinor!==null&&
-          <strong className="assistant-answer-amount">{formatMoney(result.answer.answerMinor)}</strong>}
+          <strong className="assistant-answer-amount"><MoneyValue id={`${householdId}:assistant:answer`} minor={result.answer.answerMinor} label={l('Resposta do assistente','Assistant answer','Respuesta del asistente')}/></strong>}
       </div>
 
       {result.answer.cards.length>0&&<div className="assistant-card-grid">
         {result.answer.cards.map((card,index)=><article key={`${card.label}-${index}`}>
           <span>{card.label}</span>
-          <strong>{formatMoney(card.amountMinor)}</strong>
-          <small>{card.detail}</small>
+          <strong><MoneyValue id={`${householdId}:assistant:card:${index}`} minor={card.amountMinor} label={card.label}/></strong>
+          <small>{privateText(card.detail)}</small>
         </article>)}
       </div>}
 
@@ -136,10 +138,10 @@ export function AssistantScreen({householdId,role}:{householdId:string;role:Hous
         <div className="assistant-source-list">
           {result.answer.sources.map(source=><article key={`${source.kind}-${source.id}`}>
             <div>
-              <strong>{source.label}</strong>
-              <span>{source.detail}</span>
+              <strong>{privateText(source.label)}</strong>
+              <span>{privateText(source.detail)}</span>
             </div>
-            <b>{formatMoney(source.amountMinor)}</b>
+            <b><MoneyValue id={`${householdId}:assistant:${source.kind}:${source.id}`} minor={source.amountMinor} label={source.label}/></b>
           </article>)}
         </div>
         {(result.answer.intent==='remaining_to_pay'||result.answer.intent==='available_now')&&<div className="assistant-source-foot">

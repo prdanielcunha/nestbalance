@@ -87,8 +87,8 @@ test('authenticated finance screens stay usable from 320px to desktop',async({br
     const page=await context.newPage();
     await mockAuthenticatedApi(page);
     await gotoAuthenticated(page,'/');
-    await expect(page.locator('.hero-balance > strong')).toContainText('8.450');
-    await expect(page.locator('.balance-savings-secondary > strong')).toContainText('6.050');
+    await expect(page.getByTestId('home-account-balance')).toContainText('8.450');
+    await expect(page.getByTestId('home-savings-balance')).toContainText('6.050');
     await page.getByText('Ver detalhes das contas',{exact:false}).click();
     await expect(page.locator('.balance-source-list').first()).toContainText('Conta principal');
     await assertNoHorizontalOverflow(page);
@@ -266,4 +266,64 @@ test('capture review keeps account origin and distinct operations understandable
   await expect(page.getByText('É uma operação distinta, mesmo que já exista outra igual',{exact:true})).toBeVisible();
   await assertNoHorizontalOverflow(page);
   await assertNoSeriousA11y(page);
+});
+
+
+test('Home keeps legacy balances visible and distinguishes provisional spending from confirmed money',async({page},testInfo)=>{
+ const data={...fullHome,accounts:[{...fullHome.accounts[0],balanceCoverage:'unknown'}],savingsPots:[]};
+ await mockAuthenticatedApi(page,data);
+ await page.route('**/api/accounts/update-balance',async route=>{
+  const request=route.request().postDataJSON();
+  expect(request.coverageOnly).toBe(true);
+  expect(request.balanceMinor).toBe(845000);
+  data.accounts[0].balanceCoverage=request.balanceCoverage;
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true})});
+ });
+ await gotoAuthenticated(page);
+ await expect(page.getByTestId('home-account-balance')).toContainText('8.450');
+ await expect(page.getByTestId('home-savings-balance')).toContainText('0,00');
+ await expect(page.getByTestId('home-spending-balance')).toContainText('Até');
+ await expect(page.getByTestId('home-spending-balance')).toContainText('7.823,80');
+ await expect(page.getByText('Pode incluir dinheiro guardado.',{exact:false})).toBeVisible();
+ await expect(page.locator('.balance-accounts-details')).not.toHaveAttribute('open','');
+ await page.screenshot({path:testInfo.outputPath('reported-balance-before-review.png'),fullPage:true});
+ await page.getByRole('button',{name:'Conferir composição agora',exact:true}).click();
+ await expect(page.locator('.balance-source-list').first()).toContainText('8.450');
+ await page.getByRole('combobox',{name:'O saldo informado inclui cofrinhos?'}).selectOption('excludes_pots');
+ await page.getByRole('button',{name:'Confirmar composição',exact:true}).click();
+ await expect(page.getByText('Saldo fora dos cofrinhos',{exact:true}).first()).toBeVisible();
+ await expect(page.getByTestId('home-spending-balance')).not.toContainText('Até');
+ await expect(page.getByTestId('home-spending-balance')).toContainText('7.823,80');
+ await assertNoHorizontalOverflow(page);
+ await assertNoSeriousA11y(page);
+});
+
+test('Values can be hidden globally, revealed individually, and stay private after reload and navigation',async({page},testInfo)=>{
+ await mockAuthenticatedApi(page);
+ await gotoAuthenticated(page);
+ await expect(page.getByTestId('home-account-balance')).toContainText('8.450');
+ await page.getByRole('button',{name:'Ocultar todos os valores',exact:true}).click();
+ for(const id of ['home-account-balance','home-savings-balance','home-spending-balance']){
+  await expect(page.getByTestId(id)).toContainText('••••');
+ }
+ await expect(page.locator('body')).not.toContainText('8.450,00');
+ await expect(page.locator('body')).not.toContainText('6.050,00');
+ await page.getByRole('button',{name:'Mostrar: Saldo fora dos cofrinhos',exact:true}).first().click();
+ await expect(page.getByTestId('home-account-balance')).toContainText('8.450');
+ await expect(page.getByTestId('home-savings-balance')).toContainText('••••');
+ await page.getByRole('button',{name:'Ocultar todos os valores',exact:true}).click();
+ await expect(page.getByTestId('home-account-balance')).toContainText('••••');
+ await page.reload();
+ await expect(page.getByTestId('home-account-balance')).toContainText('••••');
+ await gotoAuthenticated(page,'/accounts');
+ await expect(page.locator('.account-balance-tile').first()).toContainText('••••');
+ await expect(page.locator('body')).not.toContainText('8.450,00');
+ await gotoAuthenticated(page,'/pots');
+ await expect(page.locator('.savings-pot-card-body').first()).toContainText('••••');
+ await expect(page.locator('body')).not.toContainText('2.250,00');
+ await page.screenshot({path:testInfo.outputPath('private-values-pots.png'),fullPage:true});
+ await page.getByRole('button',{name:'Mostrar todos os valores',exact:true}).click();
+ await expect(page.locator('.savings-pot-card-body').first()).toContainText('2.250,00');
+ await assertNoHorizontalOverflow(page);
+ await assertNoSeriousA11y(page);
 });
