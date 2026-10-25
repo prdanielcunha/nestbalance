@@ -57,4 +57,5 @@ test('no reported balance remains unknown; zero and negative balances remain rea
 test('global privacy masks currency figures embedded in financial explanations',()=>{
  assert.equal(maskMoneyInText('Saldo R$ 8.450,00, contas R$ 120,50. Vence 25/10.'),'Saldo ••••, contas ••••. Vence 25/10.');
  assert.equal(maskMoneyInText('USD 1,000.00 and € 45.20 · 3 records'),'•••• and •••• · 3 records');
+ assert.equal(maskMoneyInText('Saldo 8.450,00 BRL y 45,20 € · 3 registros'),'Saldo •••• y •••• · 3 registros');
 });
