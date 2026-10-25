@@ -52,6 +52,14 @@ function institutionFromText(text:string):string|null{
   if(/\bitau\b/.test(normalized)) return 'Itaú';
   if(/\bbradesco\b/.test(normalized)) return 'Bradesco';
   if(/\bsantander\b/.test(normalized)) return 'Santander';
+  if(/\bbanco do brasil\b/.test(normalized)) return 'Banco do Brasil';
+  if(/\bcaixa(?: economica)?\b/.test(normalized)) return 'Caixa';
+  if(/\bsicredi\b/.test(normalized)) return 'Sicredi';
+  if(/\bsicoob\b/.test(normalized)) return 'Sicoob';
+  if(/\bpagbank\b/.test(normalized)) return 'PagBank';
+  if(/\bneon\b/.test(normalized)) return 'Neon';
+  if(/\bnext\b/.test(normalized)) return 'Next';
+  if(/\bbtg pactual\b/.test(normalized)) return 'BTG Pactual';
   return null;
 }
 
@@ -63,6 +71,7 @@ function isCandidateName(value:string){
     .replace(/^[^a-z0-9]+/,'')
     .trim();
 
+  if(/\b\d{1,2}:\d{2}\b/.test(normalized)||/^(?:saldo|total|balance|available|guardado|criar|reservar|retirar)\b/.test(normalized)) return false;
   if(normalized.length<2||normalized.length>80) return false;
   if(POT_SCREEN_HINT.test(normalized)) return false;
   if(/^(meta|saber mais|opcoes|opcao|aproveite|total|saldo|rendimento|rendimentos|cdi|meli\+)$/.test(normalized)) return false;
@@ -117,14 +126,25 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
   if(!POT_SCREEN_HINT.test(normalizedText)) return null;
 
   const lines=normalizedText.split(/\n+/).map(cleanLine).filter(Boolean);
-  const institution=institutionFromText(normalizedText);
+  const explicitInstitution=institutionFromText(normalizedText);
+  // A combination of product controls is a suggestion, never proof from colour alone.
+  const institutionInferred=!explicitInstitution&&/seus cofrinhos/i.test(normalizedText)&&/\bcriar\b/i.test(normalizedText)&&/\breservar\b/i.test(normalizedText)&&/\bretirar\b/i.test(normalizedText)&&/\bCDI\b/i.test(normalizedText);
+  const institution=explicitInstitution||(institutionInferred?'Mercado Pago':null);
+  let savingsTotalMinor:number|null=null;
   const inferredOcrPrefixes=inferRepeatedOcrPrefixes(lines);
   const pots:Array<{name:string;balanceMinor:number;goalMinor:number|null;targetDate:string|null;currency:'BRL';confidence:number}>=[];
   let pendingName:string|null=null;
   let lastPotIndex=-1;
 
   for(const line of lines){
-    if(isSavingsPotProgressCopy(line)) continue;
+    // Totals and device chrome are context, not savings pots.
+    if(/\b\d{1,2}:\d{2}\b/.test(line)){pendingName=null;continue;}
+    if(/^(?:saldo|total|balance|available)\b/i.test(normalizedCopy(line))){
+      const token=[...line.matchAll(MONEY)][0];
+      if(token) savingsTotalMinor=parseMoneyMinor(token[0]);
+      pendingName=null;continue;
+    }
+    if(isSavingsPotProgressCopy(line)){pendingName=null;continue;}
     const meta=/\bmeta\s*:?\s*(R\$\s*\d(?:[\d.\u00a0 ]*\d)?(?:,\d{1,2})?(?=\s|$|[^\d.,]))/i.exec(line);
     const metaGoalMinor=meta?parseMoneyMinor(meta[1]):null;
     const targetDate=parseTargetDate(line);
@@ -159,6 +179,8 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
     let candidate=nameBeforeMoney(valueLine,first.index||0);
     if(!isCandidateName(candidate)) candidate=pendingName||'';
     if(!candidate||!isCandidateName(candidate)){
+      if(!pots.length&&savingsTotalMinor===null) savingsTotalMinor=balanceMinor;
+      pendingName=null;
       continue;
     }
 
@@ -175,7 +197,7 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
       goalMinor:metaGoalMinor,
       targetDate,
       currency:'BRL' as const,
-      confidence:0.94
+      confidence:first[0].includes(',')?0.94:0.87
     };
 
     if(existingIndex>=0){
@@ -197,6 +219,8 @@ export function parseSavingsPotsFromOcr(text:string):AiFinancialScreenSnapshot|n
   return {
     screenType:'savings_pots',
     institution,
+    institutionInferred,
+    savingsTotalMinor,
     accounts:[],
     pots,
     cards:[],

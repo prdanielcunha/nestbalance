@@ -10,7 +10,7 @@ export function normalizeRaisedCents(image:PixelImage):PixelImage|null{
     const at=(y*width+x)*4;
     return data[at+3]>128&&(data[at]+data[at+1]+data[at+2])/3<110;
   };
-  const groups:Array<{left:number;right:number;top:number;bottom:number}>=[];
+  let groups:Array<{left:number;right:number;top:number;bottom:number}>=[];
   let start=-1;
   for(let x=0;x<=width;x++){
     let has=false;
@@ -22,6 +22,9 @@ export function normalizeRaisedCents(image:PixelImage):PixelImage|null{
       groups.push({left:start,right:x,top,bottom});start=-1;
     }
   }
+  // Thousands separators are small baseline dots, not integer digits.
+  const tallest=Math.max(0,...groups.map(g=>g.bottom-g.top));
+  groups=groups.filter(g=>g.bottom-g.top>=tallest*0.25);
   // R, $, at least one integer digit and exactly two small trailing glyphs.
   if(groups.length<5||groups.length>12) return null;
   const integers=groups.slice(2,-2);

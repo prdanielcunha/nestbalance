@@ -24,3 +24,10 @@ test('rejects blank, undersized and incomplete pixel input',()=>{
  const blank=fixture();blank.data.fill(255);assert.equal(normalizeRaisedCents(blank),null);
  assert.equal(normalizeRaisedCents({width:100,height:100,data:new Uint8ClampedArray(4)}),null);
 });
+test('ignores a thousands separator below full height glyphs',()=>{
+ const source=fixture();
+ for(let x=20;x<23;x++) for(let y=31;y<34;y++){
+  const at=(y*source.width+x)*4;source.data[at]=source.data[at+1]=source.data[at+2]=0;
+ }
+ assert.ok(normalizeRaisedCents(source));
+});

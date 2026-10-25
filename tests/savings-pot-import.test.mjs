@@ -136,3 +136,21 @@ TV nova R$ 50,00`);
   assert.ok(screen);
   assert.deepEqual(screen.pots.map(item=>item.name),['Fralda','Dízimo','Studio Z','TV nova']);
 });
+
+test('device status and aggregate cannot become an extra pot',()=>{
+ const screen=parseSavingsPotsFromOcr('18:49 4 SE\nR$ 4.569,29\n115% do CDI\nCriar Reservar Retirar\nSeus cofrinhos\nAniversário Davi R$ 3.244,42\nDavi R$ 623,06\nAniversário R$ 301,25\nReservas R$ 208,05\nDízimo R$ 100,22\nFralda R$ 75,50\nStudio Z R$ 16,71\nCarro R$ 0,08\nMeta: R$ 1.250');
+ assert.equal(screen.pots.length,8);
+ assert.equal(screen.savingsTotalMinor,456929);
+ assert.equal(screen.pots.reduce((sum,p)=>sum+p.balanceMinor,0),456929);
+ assert.equal(screen.institution,'Mercado Pago');
+ assert.equal(screen.institutionInferred,true);
+});
+test('generic savings labels alone never establish a bank',()=>{
+ const screen=parseSavingsPotsFromOcr('Cofrinhos\nViagem R$ 100,00');
+ assert.equal(screen.institution,null);
+});
+test('named aggregate and clock are excluded even after list heading',()=>{
+ const screen=parseSavingsPotsFromOcr('Caixinhas\nSaldo total R$ 500,25\n18:49 4 SE\nViagem R$ 500,25');
+ assert.equal(screen.pots.length,1);
+ assert.equal(screen.savingsTotalMinor,50025);
+});

@@ -2412,3 +2412,11 @@ input,textarea,select{font-size:16px}
   .screen-pot-review-row{align-items:flex-start}
   .screen-pot-review-row>div:last-child{min-width:118px}
 }
+
+/* Capture uses the available viewport; the header and actions share one scroll area. */
+.sheet-backdrop:has(.universal-capture-sheet){display:flex;align-items:stretch;padding:0;overflow:hidden}
+.universal-capture-sheet{max-height:100dvh;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding-block:24px 110px}
+.universal-capture-sheet .sheet-actions{position:sticky;bottom:calc(0px - max(28px,env(safe-area-inset-bottom)));z-index:5;background:var(--surface-strong);padding:14px 0 max(18px,env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+.screen-pot-totals{display:grid;gap:8px;margin:16px 0;line-height:1.5}
+.screen-pot-totals span{color:var(--muted)}
+@media(max-width:720px){.universal-capture-sheet{height:100dvh;max-height:100dvh;border-radius:0;padding-top:max(16px,env(safe-area-inset-top))}.universal-capture-sheet .screen-pot-review-row{padding:14px;gap:10px}.universal-capture-sheet .screen-pot-review-row>div:last-child{min-width:115px}.universal-capture-sheet .screen-money-edit{flex-wrap:wrap;justify-content:flex-end}}
