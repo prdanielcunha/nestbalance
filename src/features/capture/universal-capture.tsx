@@ -1070,8 +1070,11 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
             </div>
           </div>
 
+          {screenSnapshot&&<label className="capture-origin-choice">{l('Banco identificado — você pode corrigir','Identified bank — you can correct it','Banco identificado — puedes corregirlo')}<input className="pot-text-input" maxLength={120} value={screenSnapshot.institution||''} onChange={e=>setScreenSnapshot(current=>current?{...current,institution:e.target.value}:current)}/></label>}
           {screenSnapshot&&<ScreenSourceReview key={`${scope}:${file?.name||preparedEvidenceId||'screen'}:${screenSnapshot.institution}:${screenSnapshot.accounts.length}:${screenSnapshot.pots.length}`} householdId={householdId} uid={uid} scope={scope} screen={screenSnapshot} onReady={acceptScreenReview}/>}
-          {screenSnapshot&&<div className="financial-screen-summary">
+          {screenSnapshot&&<details className="financial-screen-fields" open={screenSnapshot.commitments.some(c=>c.needsReview)||invalidPotName}>
+            <summary>{l('Conferir ou corrigir nomes e valores','Review or correct names and amounts','Revisar o corregir nombres e importes')}</summary>
+            <div className="financial-screen-summary">
             <div className="financial-screen-summary-head">
               <span>{screenSnapshot.institution||l('Tela financeira','Financial screen','Pantalla financiera')}</span>
               <strong>{l('Entendi o que cada número significa.','I understood what each number means.','Entendí qué significa cada número.')}</strong>
@@ -1235,7 +1238,7 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
               </div>)}
             </div>}
             <small>{l('Saldo, limite e dinheiro guardado não viram gasto. Só o que representa movimento ou conta entra nessa categoria.','Balance, card limit and saved money do not become expenses. Only movements and bills are counted that way.','El saldo, el límite y el dinero guardado no se convierten en gastos. Solo los movimientos y las cuentas entran en esa categoría.')}</small>
-          </div>}
+          </div></details>}
 
           {localOcrText&&file?.type.startsWith('image/')&&<details className="capture-reclassify capture-reclassify-details">
             <summary>{l('Entendi o tipo do print errado?','Did I get the screenshot type wrong?','¿Entendí mal el tipo de la captura?')}</summary>

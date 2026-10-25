@@ -851,3 +851,8 @@ html[data-theme="dark"] .home-hero-grid .first-money-card {
  .app-nav-label-mobile{display:inline}
  .app-nav-add{width:52px}
 }
+
+.screen-reconciliation-list details>summary{display:grid;gap:7px;cursor:pointer;min-height:44px;list-style:revert}
+.screen-reconciliation-list details>summary strong{font-size:20px;font-variant-numeric:tabular-nums}
+.screen-reconciliation-list details>label{margin-top:14px}
+.financial-screen-fields>summary{min-height:48px;padding:12px 0;cursor:pointer;font-weight:650;line-height:1.5}

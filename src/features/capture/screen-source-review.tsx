@@ -64,8 +64,9 @@ export function ScreenSourceReview({householdId,uid,scope,screen,onReady}:{house
     {data&&<>
       <p role="status">{l(`${counts.update} para atualizar · ${counts.create} para adicionar · ${counts.unchanged} sem alteração`,`${counts.update} to update · ${counts.create} to add · ${counts.unchanged} unchanged`,`${counts.update} para actualizar · ${counts.create} para agregar · ${counts.unchanged} sin cambios`)}</p>
       <div className="screen-reconciliation-list">{rows.map(r=><article key={r.key} className={r.ambiguous?'needs-choice':''}>
-        <b>{r.item.name}</b>
-        <strong>{r.existing?`${(r.existing.balanceMinor===null?'—':formatMoney(r.existing.balanceMinor))} → `:''}{formatMoney(r.item.balanceMinor)}</strong>
+        <details open={r.ambiguous||r.item.confidence<0.86||Boolean(r.existing?.observedOn&&observedOn&&observedOn<r.existing.observedOn)}>
+        <summary><b>{r.item.name}</b>
+        <strong>{r.existing?`${(r.existing.balanceMinor===null?'—':formatMoney(r.existing.balanceMinor))} → `:''}{formatMoney(r.item.balanceMinor)}</strong></summary>
         <span>{r.ambiguous?l('Qual registro corresponde a este cofrinho ou conta?','Which record matches this savings pot or account?','¿Qué registro corresponde a esta alcancía o cuenta?'):r.existing?screenChangeKind(r.existing,r.item.balanceMinor,'goalMinor' in r.item?r.item.goalMinor:null,'targetDate' in r.item?r.item.targetDate:null)==='unchanged'?l('Sem alteração de valor ou meta · vincular evidência','Amount and goal unchanged · link evidence','Sin cambios de valor o meta · vincular evidencia'):l('Atualizar registro existente','Update existing record','Actualizar registro existente'):l('Adicionar um registro separado','Add a separate record','Agregar un registro separado')}</span>
         <label>{l('Organizar como','Organize as','Organizar como')}<select value={r.choice.targetId||(r.choice.createNew?'new':'')} onChange={e=>{
           const s=r.sources.find(s=>s.id===e.target.value);
@@ -78,6 +79,7 @@ export function ScreenSourceReview({householdId,uid,scope,screen,onReady}:{house
         </>}
         {r.kind==='pots'&&<label>{l('Objetivo consolidado (opcional)','Consolidated goal (optional)','Objetivo consolidado (opcional)')}<select value={r.choice.goalGroupId===undefined?r.existing?.goalGroupId||'':r.choice.goalGroupId||''} onChange={e=>update(r.key,r.choice,{goalGroupId:e.target.value||null})}><option value="">{l('Manter como objetivo separado','Keep as a separate goal','Mantener como objetivo separado')}</option>{(data.pots||[]).filter(p=>p.id!==r.choice.targetId&&(p.scope||'household')===scope&&p.currency===r.item.currency).map(p=><option key={p.id} value={p.goalGroupId||p.id}>{p.name} · {p.institutionName||'NestBalance'}</option>)}</select></label>}
         {r.existing?.observedOn&&observedOn<r.existing.observedOn&&<p role="alert" className="error-copy">{l('Este print é anterior ao saldo salvo. Ele não pode substituir o mais recente.','This screenshot predates the saved balance and cannot replace it.','Esta captura es anterior al saldo guardado y no puede reemplazarlo.')}</p>}
+        </details>
       </article>)}</div>
       <small>{l('Atualizar saldo não cria receita, despesa nem transferência. O original permanece guardado.','Updating a balance creates no income, expense or transfer. The original stays preserved.','Actualizar un saldo no crea ingresos, gastos ni transferencias. El original se conserva.')}</small>
     </>}
