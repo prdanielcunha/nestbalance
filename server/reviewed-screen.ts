@@ -103,7 +103,7 @@ export async function commitReviewedScreen(req:Request,res:Response){
       tx.create(household.collection('auditEvents').doc(),{type:'financial_screen.committed',scope,ownerUid,actorUid:user.uid,evidenceId:evidenceRef.id,screenImportId:receiptRef.id,counts,createdAt:FieldValue.serverTimestamp()});
     });
     return res.status(result.replayed?200:201).json(result);
-  }catch(err:any){return res.status(err.statusCode||500).json({ok:false,error:allowed.includes(err.message)?err.message:'FINANCIAL_SCREEN_COMMIT_FAILED'});}
+  }catch(err:any){return res.status(err.statusCode||(allowed.includes(err.message)?409:500)).json({ok:false,error:allowed.includes(err.message)?err.message:'FINANCIAL_SCREEN_COMMIT_FAILED'});}
 }
 
 export async function undoReviewedScreen(req:Request,res:Response){
@@ -138,5 +138,5 @@ export async function undoReviewedScreen(req:Request,res:Response){
       tx.create(household.collection('auditEvents').doc(),{type:'financial_screen.undone',scope:data.scope,ownerUid:data.ownerUid||null,actorUid:user.uid,screenImportId:receipt.id,createdAt:FieldValue.serverTimestamp()});
     });
     return res.json({ok:true});
-  }catch(err:any){return res.status(err.statusCode||500).json({ok:false,error:allowed.includes(err.message)?err.message:'FINANCIAL_SCREEN_UNDO_FAILED'});}
+  }catch(err:any){return res.status(err.statusCode||(allowed.includes(err.message)?409:500)).json({ok:false,error:allowed.includes(err.message)?err.message:'FINANCIAL_SCREEN_UNDO_FAILED'});}
 }

@@ -67,7 +67,7 @@ test('reviewed screenshot handler preserves sources, versions, privacy and undo'
     assert.equal(docs.get(entry[0]).balanceMinor,20000);
     ev('evidence_stale');
     const conflict=await call(commitReviewedScreen,{evidenceId:'evidence_stale',screenSnapshot:screen,review:{...review,pots:[target]}});
-    assert.equal(conflict.json.error,'SCREEN_REVIEW_CONFLICT');
+    assert.equal(conflict.code,409);assert.equal(conflict.json.error,'SCREEN_REVIEW_CONFLICT');
     const fresh={...target,expectedBalanceMinor:20000,expectedUpdatedAtMs:docs.get(entry[0]).updatedAt.toMillis()};
     const older=await call(commitReviewedScreen,{evidenceId:'evidence_stale',screenSnapshot:screen,review:{...review,pots:[fresh]}});
     assert.equal(older.json.error,'SCREEN_OBSERVATION_OLDER');
