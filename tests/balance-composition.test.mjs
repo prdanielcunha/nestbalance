@@ -17,3 +17,10 @@ test('never combines currencies or archived sources and detects stale balances',
   const c=deriveBalanceComposition([account,{...account,id:'dollar',currency:'USD'}],[pot,{...pot,id:'archived',status:'archived'}]);
   assert.equal(c.savedMinor,200000);assert.deepEqual(c.otherCurrencies,['USD']);assert.equal(c.stale,true);
 });
+
+
+test('a newly uploaded old screenshot retains its observation age',()=>{
+ const now=Date.UTC(2026,9,25,12);
+ const c=deriveBalanceComposition([{...account,balanceAsOfMs:now,observedOn:'2026-09-20'}],[{...pot,updatedAtMs:now,observedOn:'2026-09-20'}],'BRL',now);
+ assert.equal(c.stale,true);assert.equal(c.rows[0].stale,true);
+});
