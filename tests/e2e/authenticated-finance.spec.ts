@@ -89,6 +89,11 @@ test('authenticated finance screens stay usable from 320px to desktop',async({br
     await gotoAuthenticated(page,'/');
     await expect(page.getByTestId('home-account-balance')).toContainText('8.450');
     await expect(page.getByTestId('home-savings-balance')).toContainText('6.050');
+    if(viewport.width<=720){
+      const labels=await page.locator('.app-nav-label-mobile').evaluateAll(elements=>elements.filter(element=>element.getBoundingClientRect().width>0).map(element=>{const range=document.createRange();range.selectNodeContents(element);const rect=range.getBoundingClientRect();return {left:rect.left,right:rect.right};}));
+      for(let i=1;i<labels.length;i++) expect(labels[i].left-labels[i-1].right).toBeGreaterThanOrEqual(2);
+    }
+    await page.screenshot({path:testInfo.outputPath(`balance-summary-${viewport.width}.png`),fullPage:false});
     await page.getByText('Ver detalhes das contas',{exact:false}).click();
     await expect(page.locator('.balance-source-list').first()).toContainText('Conta principal');
     await assertNoHorizontalOverflow(page);

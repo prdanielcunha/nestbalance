@@ -916,3 +916,11 @@ html[data-theme="dark"] .home-hero-grid .first-money-card {
   .balance-overview .home-safe-card>strong{font-size:26px}
   .money-value{gap:1px}
 }
+.money-value .money-value-toggle{background:transparent;color:var(--muted);border:1px solid transparent;border-radius:12px;padding:10px;min-width:44px;min-height:44px;box-shadow:none}
+.money-value .money-value-toggle:hover{background:var(--surface-strong);color:var(--ink)}
+@media(max-width:720px){
+  .home-topbar.product-topbar{gap:10px;align-items:center}
+  .home-topbar .product-topbar-logo{width:min(138px,38vw)}
+  .home-topbar .topbar-actions{max-width:none;flex-wrap:nowrap;flex-shrink:0}
+}
+@media(max-width:360px){.app-nav-link{font-size:11px}}
