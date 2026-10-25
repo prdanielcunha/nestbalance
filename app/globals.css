@@ -2420,3 +2420,12 @@ input,textarea,select{font-size:16px}
 .screen-pot-totals{display:grid;gap:8px;margin:16px 0;line-height:1.5}
 .screen-pot-totals span{color:var(--muted)}
 @media(max-width:720px){.universal-capture-sheet{height:100dvh;max-height:100dvh;border-radius:0;padding-top:max(16px,env(safe-area-inset-top))}.universal-capture-sheet .screen-pot-review-row{padding:14px;gap:10px}.universal-capture-sheet .screen-pot-review-row>div:last-child{min-width:115px}.universal-capture-sheet .screen-money-edit{flex-wrap:wrap;justify-content:flex-end}}
+
+/* Reserve a full row for the editable name, including on narrow iPhones. */
+.universal-capture-sheet .screen-pot-review-editable{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:14px}
+.universal-capture-sheet .screen-pot-review-editable>div:last-child{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 12px;min-width:0;white-space:normal;text-align:left}
+.universal-capture-sheet .screen-pot-review-editable .screen-money-edit{grid-column:1/-1;grid-template-columns:1fr 110px;justify-content:stretch}
+.universal-capture-sheet .screen-pot-review-editable small{white-space:normal;font-size:12px}
+.universal-capture-sheet .screen-pot-review-editable .pot-inline-name{font-size:16px;min-height:44px}
+.universal-capture-sheet .screen-pot-review-editable .capture-remove-item{margin:0;justify-self:end}
+.universal-capture-sheet .sheet-handle{margin-bottom:12px}
