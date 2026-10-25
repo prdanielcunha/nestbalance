@@ -71,7 +71,12 @@ export async function readImageTextLocally(
           if(repaired>=3||!/R\$/i.test(line.text)) continue;
           const word=line.words.find(item=>/^R\$/i.test(item.text));
           if(!word) continue;
-          const {x0,y0,x1,y1}=word.bbox;
+          // The currency prefix, integer and raised cents may be separate OCR words.
+          const moneyWords=line.words.filter(item=>item.bbox.x0>=word.bbox.x0);
+          const x0=word.bbox.x0;
+          const x1=Math.max(...moneyWords.map(item=>item.bbox.x1));
+          const y0=Math.min(...moneyWords.map(item=>item.bbox.y0));
+          const y1=Math.max(...moneyWords.map(item=>item.bbox.y1));
           const pixels=context.getImageData(x0,y0,x1-x0,y1-y0);
           const normalized=normalizeRaisedCents(pixels);
           if(!normalized) continue;
@@ -87,7 +92,9 @@ export async function readImageTextLocally(
           if(!match) continue;
           const digits=match[1];
           const money='R$ '+digits.slice(0,-2)+','+digits.slice(-2);
-          text=text.replace(word.text.normalize('NFKC'),money);
+          const original=line.text.normalize('NFKC').trim();
+          const replaced=original.replace(/R\$[\s\d.,]+/,money+' ');
+          text=text.replace(original,replaced);
           repaired++;
         }
       }
