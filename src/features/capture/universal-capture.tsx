@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseFinancialList } from '@/src/core/text-parser';
 import { parseMoneyInputToMinor } from '@/src/core/accounts';
@@ -891,6 +892,10 @@ export function UniversalCapture({ householdId, uid, onCommitted, defaultOpen=fa
       <section className="capture-sheet universal-capture-sheet" role="dialog" aria-modal="true" aria-label={t.captureTitle}>
         {screenResult?<div className="screen-import-success" role="status">
           <h2>{screenResult.undone?l('Este print já foi desfeito','This screenshot import was undone','La importación de esta captura ya se deshizo'):screenResult.replayed?l('Este print já foi organizado','This screenshot was already organized','Esta captura ya se organizó'):l('Seus dados foram organizados','Your data is organized','Tus datos están organizados')}</h2>
+          {screenResult.counts.pots>0&&!screenResult.undone&&<>
+            <p>{l('Os cofrinhos deste print estão na área Cofrinhos do app, com o banco de origem e o histórico preservados.','These screenshot savings pots are in the app’s Savings pots area, with their bank source and history preserved.','Las alcancías de esta captura están en el área Alcancías, con su banco de origen e historial.')}</p>
+            <Link className="primary-button" href="/pots" onClick={()=>{try{localStorage.setItem('nestbalance-financial-view',scope);}catch{}clearAll();}}>{l('Ver meus cofrinhos','View my savings pots','Ver mis alcancías')}</Link>
+          </>}
           {screenResult.replayed&&<p>{l('Nenhuma alteração foi repetida.','No changes were repeated.','No se repitió ningún cambio.')}</p>}
           <p>{l(`${screenResult.counts.updated||0} atualizados · ${screenResult.counts.created||0} adicionados · ${screenResult.counts.unchanged||0} sem alteração`,`${screenResult.counts.updated||0} updated · ${screenResult.counts.created||0} added · ${screenResult.counts.unchanged||0} unchanged`,`${screenResult.counts.updated||0} actualizados · ${screenResult.counts.created||0} agregados · ${screenResult.counts.unchanged||0} sin cambios`)}</p>
           <p>{l('O print original e o histórico foram preservados.','The original screenshot and history were preserved.','La captura original y el historial se conservaron.')}</p>
