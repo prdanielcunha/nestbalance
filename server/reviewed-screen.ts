@@ -59,7 +59,7 @@ export async function commitReviewedScreen(req:Request,res:Response){
     for(const [i,p] of screen.pots.entries()){
       const choice=review.pots[i];
       if(!choice.targetId&&!choice.createNew) throw fail('SCREEN_REVIEW_REQUIRED');
-      records.push({collection:'savingsPots',ref:household.collection('savingsPots').doc(choice.targetId||hash(receiptRef.id+'|pot|'+i)),choice,data:{...sourceFields,name:p.name,balanceMinor:p.balanceMinor,amountMinor:p.balanceMinor,currency:p.currency,trackingMode:'bank_mirror',sourceAccountLabel:choice.sourceAccountLabel||null,...(choice.goalGroupId!==undefined?{goalGroupId:choice.goalGroupId}:{}),...(p.goalMinor!=null?{goalMinor:p.goalMinor}:{}),...(p.targetDate?{targetDate:p.targetDate}:{})}});
+      records.push({collection:'savingsPots',ref:household.collection('savingsPots').doc(choice.targetId||hash(receiptRef.id+'|pot|'+i)),choice,data:{...sourceFields,name:p.name,sourceName:p.name,balanceMinor:p.balanceMinor,amountMinor:p.balanceMinor,currency:p.currency,trackingMode:'bank_mirror',sourceAccountLabel:choice.sourceAccountLabel||null,...(choice.goalGroupId!==undefined?{goalGroupId:choice.goalGroupId}:{}),...(p.goalMinor!=null?{goalMinor:p.goalMinor}:{}),...(p.targetDate?{targetDate:p.targetDate}:{})}});
     }
     for(const [i,c] of screen.cards.entries()) records.push({collection:'cardSnapshots',ref:household.collection('cardSnapshots').doc(hash([scope,ownerUid||'','card',screen.institution,c.name,c.last4||''].join('|'))),data:{...sourceFields,...c}});
     // Commitments retain their lifecycle. A later screenshot never reopens a paid bill.
@@ -92,6 +92,7 @@ export async function commitReviewedScreen(req:Request,res:Response){
           if(r.choice) assertScreenRevision({id:r.ref.id,name:String(previous.name),balanceMinor:previous.balanceMinor??null,currency:String(previous.currency),updatedAtMs:previous.updatedAt?.toMillis?.()??null,observedOn:previous.observedOn||previous.balanceAsOf?.toDate?.().toISOString().slice(0,10)||null},r.choice,review.observedOn);
           else if(previous.observedOn&&review.observedOn<previous.observedOn) throw fail('SCREEN_OBSERVATION_OLDER');
         }else if(r.choice?.targetId) throw fail('SCREEN_REVIEW_CONFLICT');
+        if(previous&&r.collection==='savingsPots') r.data.name=previous.name||r.data.name;
         const unchanged=previous&&Object.entries(r.data).filter(([key])=>!['updatedAt','balanceAsOf','lastScreenCommitId','evidenceIds','importedBy','observedOn'].includes(key)).every(([key,val])=>JSON.stringify(previous[key]??null)===JSON.stringify(val??null));
         counts[previous?unchanged?'unchanged':'updated':'created']++;
         const key=r.collection==='savingsPots'?'pots':r.collection==='cardSnapshots'?'cards':r.collection as 'accounts'|'commitments';counts[key]++;
