@@ -37,3 +37,10 @@ test('goal name follows the explicitly chosen objective, not the longest source 
  const g=groupSavingsPots([pot,{...pot,id:'other',name:'A very long label at the other bank',goalGroupId:pot.id}]);
  assert.equal(g[0].name,'Viagem');
 });
+
+
+test('bank source name still matches after a user gives the app pot a custom name',()=>{
+ const source={id:'pot1',name:'Minha viagem',sourceName:'Viagem',institutionName:'Mercado Pago',currency:'BRL',scope:'household',balanceMinor:100};
+ assert.equal(screenSourceCandidates([source],{name:'Viagem',institution:'Mercado Pago',currency:'BRL',scope:'household'}).length,1);
+ assert.equal(screenSourceCandidates([source],{name:'Viagem',institution:'Nubank',currency:'BRL',scope:'household'}).length,0);
+});

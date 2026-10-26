@@ -81,6 +81,7 @@ export type HomeInvoiceImport={
 };
 
 export type HomeSavingsPot={
+  sourceName?:string|null;
   ownerUid?:string|null;
   sourceAccountLabel?:string|null;
   updatedAtMs?:number|null;

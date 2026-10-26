@@ -63,11 +63,18 @@ test('reviewed screenshot handler preserves sources, versions, privacy and undo'
     assert.equal(replay.json.replayed,true);
     const entry=[...docs.entries()].find(([p])=>p.includes('/savingsPots/'))!;
     const potId=entry[0].split('/').at(-1)!;
+    Object.assign(entry[1],{name:'Minha viagem',hasCover:true,coverVersion:3,note:'Preservar',goalMinor:50000,automation:{enabled:false}});
     const target={targetId:potId,expectedUpdatedAtMs:entry[1].updatedAt.toMillis(),expectedBalanceMinor:10000};
     ev('evidence_update');
     const update=await call(commitReviewedScreen,{evidenceId:'evidence_update',screenSnapshot:{...screen,pots:[{...screen.pots[0],balanceMinor:20000}]},review:{...review,observedOn:'2026-09-21',pots:[target]}});
     assert.equal(update.code,201);assert.equal(update.json.counts.updated,1);
     assert.equal(docs.get(entry[0]).balanceMinor,20000);
+    assert.equal(docs.get(entry[0]).name,'Minha viagem');
+    assert.equal(docs.get(entry[0]).sourceName,'Viagem');
+    assert.equal(docs.get(entry[0]).coverVersion,3);
+    assert.equal(docs.get(entry[0]).note,'Preservar');
+    assert.equal(docs.get(entry[0]).goalMinor,50000);
+    assert.deepEqual(docs.get(entry[0]).automation,{enabled:false});
     ev('evidence_stale');
     const conflict=await call(commitReviewedScreen,{evidenceId:'evidence_stale',screenSnapshot:screen,review:{...review,pots:[target]}});
     assert.equal(conflict.code,409);assert.equal(conflict.json.error,'SCREEN_REVIEW_CONFLICT');
