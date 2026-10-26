@@ -531,6 +531,7 @@ export function PotsScreen({householdId,role}:{householdId:string;role:Household
                       {group.scope==='personal'&&<em className="personal-pill">{l('Só eu','Only me','Solo yo')}</em>}
                     </div>
                     <h3>{group.name}</h3>
+                    <small>{group.sources.every(s=>s.trackingMode==='bank_mirror')?l('Reserva no banco · acompanhada por prints','Bank savings · tracked from screenshots','Reserva bancaria · seguida por capturas'):group.sources.every(s=>s.trackingMode==='manual')?l('Cofrinho organizado no NestBalance','Savings pot organized in NestBalance','Alcancía organizada en NestBalance'):l('Objetivo com reservas manuais e do banco','Goal with manual and bank savings','Objetivo con reservas manuales y bancarias')}</small>
                     <strong><MoneyValue id={group.sources.length===1?`${householdId}:pot:${group.sources[0].id}`:`${householdId}:pot-group:${group.key}`} minor={group.balanceMinor} label={group.name} currency={group.currency}/></strong>
 
                     {group.goalMinor&&group.goalMinor>0

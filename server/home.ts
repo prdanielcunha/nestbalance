@@ -46,6 +46,7 @@ function savingsPotDto(doc:any){
     observedOn:data.observedOn||null,
     sourceAccountLabel:data.sourceAccountLabel||null,
     name:String(data.name||'Dinheiro guardado'),
+    sourceName:typeof data.sourceName==='string'?data.sourceName:null,
     balanceMinor:Number(data.balanceMinor||0),
     goalMinor:Number.isSafeInteger(data.goalMinor)?data.goalMinor:null,
     goalGroupId:data.goalGroupId||null,

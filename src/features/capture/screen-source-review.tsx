@@ -27,12 +27,15 @@ export function ScreenSourceReview({householdId,uid,scope,screen,onReady}:{house
     const result:Array<{key:string;kind:'accounts'|'pots';item:AiFinancialScreenSnapshot['pots'][number]|AiFinancialScreenSnapshot['accounts'][number];choice:ScreenDecision;sources:ScreenSource[];existing?:ScreenSource;ambiguous:boolean}>=[];
     for(const kind of ['accounts','pots'] as const) screen[kind].forEach((item,index)=>{
       const sources:ScreenSource[]=(data?.[kind]||[]).filter(s=>(s.scope||'household')===scope&&s.currency===item.currency&&(!s.institutionName||normalizeSavingsPotName(s.institutionName)===normalizeSavingsPotName(screen.institution||'')));
-      const matches=screenSourceCandidates(sources,{name:item.name,institution:screen.institution,currency:item.currency,scope,ownerUid:uid,last4:'last4' in item?item.last4:null});
+      let matches=screenSourceCandidates(sources,{name:item.name,institution:screen.institution,currency:item.currency,scope,ownerUid:uid,last4:'last4' in item?item.last4:null});
+      const unassigned=kind==='pots'&&matches.length===0?screenSourceCandidates(sources,{name:item.name,institution:null,currency:item.currency,scope,ownerUid:uid}):[];
+      const needsLink=unassigned.length>0;
+      if(needsLink) matches=unassigned;
       const key=kind+':'+index;
       const repeatedLabel=screen[kind].filter(other=>normalizeSavingsPotName(other.name)===normalizeSavingsPotName(item.name)).length>1;
-      const target=matches.length===1&&!repeatedLabel?matches[0]:undefined;
+      const target=matches.length===1&&!repeatedLabel&&!needsLink?matches[0]:undefined;
       const choice=overrides[key]|| (target?{targetId:target.id,expectedUpdatedAtMs:target.updatedAtMs??null,expectedBalanceMinor:target.balanceMinor,sourceAccountLabel:target.sourceAccountLabel||'',balanceCoverage:target.balanceCoverage,includedSavingsMinor:target.includedSavingsMinor}:{createNew:matches.length===0&&!repeatedLabel});
-      result.push({key,kind,item,choice,sources,existing:sources.find(s=>s.id===choice.targetId),ambiguous:(matches.length>1||repeatedLabel)&&!choice.targetId&&!choice.createNew});
+      result.push({key,kind,item,choice,sources,existing:sources.find(s=>s.id===choice.targetId),ambiguous:(needsLink||matches.length>1||repeatedLabel)&&!choice.targetId&&!choice.createNew});
     });
     return result;
   },[data,screen,scope,uid,overrides]);
@@ -54,7 +57,7 @@ export function ScreenSourceReview({householdId,uid,scope,screen,onReady}:{house
   },[data,observedOn,rows,today,totals.mismatch]);
   useEffect(()=>{onReady(review);return ()=>onReady(null);},[review,onReady]);
   function update(key:string,current:ScreenDecision,patch:Partial<ScreenDecision>){setOverrides(o=>({...o,[key]:{...current,...patch}}));}
-  const counts=rows.reduce((c,r)=>{c[screenChangeKind(r.existing,r.item.balanceMinor,'goalMinor' in r.item?r.item.goalMinor:null,'targetDate' in r.item?r.item.targetDate:null)]++;return c;},{create:0,update:0,unchanged:0});
+  const counts=rows.reduce((c,r)=>{if(r.ambiguous){c.pending++;return c;}c[screenChangeKind(r.existing,r.item.balanceMinor,'goalMinor' in r.item?r.item.goalMinor:null,'targetDate' in r.item?r.item.targetDate:null)]++;return c;},{create:0,update:0,unchanged:0,pending:0});
   return <section className="screen-reconciliation" aria-label={l('Comparar com seus dados','Compare with your data','Comparar con tus datos')}>
     <div className="screen-import-identity">
       <strong>{screen.institution||l('Banco a confirmar','Bank to confirm','Banco por confirmar')} · {screen.pots.length?l(`${screen.pots.length} cofrinhos`,`${screen.pots.length} savings pots`,`${screen.pots.length} alcancías`):l('Saldos e registros','Balances and records','Saldos y registros')}</strong>
@@ -74,6 +77,7 @@ export function ScreenSourceReview({householdId,uid,scope,screen,onReady}:{house
     {!observedOn&&<small>{l('Para aplicar, informe a data do print ou toque em “Acabei de tirar este print”.','To apply, enter the screenshot date or tap “I just took this screenshot”.','Para aplicar, indica la fecha de la captura.')}</small>}
     <button className="text-button" type="button" onClick={()=>setObservedOn(today)}>{l('Acabei de tirar este print','I just took this screenshot','Acabo de tomar esta captura')}</button>
     {data&&<>
+      {counts.pending>0&&<p role="status">{l(`${counts.pending} cofrinho(s) aguardam você escolher o registro correspondente.`,`${counts.pending} savings pot(s) need you to choose the matching record.`,`${counts.pending} alcancía(s) necesitan que elijas el registro correspondiente.`)}</p>}
       <p role="status">{l(`${counts.update} para atualizar · ${counts.create} para adicionar · ${counts.unchanged} sem alteração`,`${counts.update} to update · ${counts.create} to add · ${counts.unchanged} unchanged`,`${counts.update} para actualizar · ${counts.create} para agregar · ${counts.unchanged} sin cambios`)}</p>
       <div className="screen-reconciliation-list">{rows.map(r=><article key={r.key} className={r.ambiguous?'needs-choice':''}>
         <details open={r.ambiguous||r.item.confidence<0.86||Boolean(r.existing?.observedOn&&observedOn&&observedOn<r.existing.observedOn)}>
